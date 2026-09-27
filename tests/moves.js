@@ -1,0 +1,28 @@
+// Spin (hold attack), down-stab (jump + attack), specials (F moving / still / in the air).
+const g = window.__game;
+const c = document.querySelector('#view canvas');
+const log = [];
+const md = () => c.dispatchEvent(new MouseEvent('mousedown', { button: 0, clientX: 800, clientY: 360, bubbles: true }));
+const mu = () => window.dispatchEvent(new MouseEvent('mouseup', { button: 0 }));
+const kd = (code) => window.dispatchEvent(new KeyboardEvent('keydown', { code, bubbles: true }));
+const ku = (code) => window.dispatchEvent(new KeyboardEvent('keyup', { code, bubbles: true }));
+const at = (ms, fn) => setTimeout(fn, ms);
+at(200, md);
+at(900, () => log.push(['holding', g.player.state]));
+at(1500, () => log.push(['charged?', g.player.state, g.player.t.toFixed(2)]));
+at(1550, mu);
+at(1620, () => log.push(['release', g.player.state]));
+at(2500, () => kd('Space'));
+at(2550, () => ku('Space'));
+at(2700, md);
+at(2740, () => { log.push(['air attack', g.player.state]); mu(); });
+at(3600, () => { g.player.energy = 100; kd('KeyF'); });
+at(3650, () => { ku('KeyF'); log.push(['F still', g.player.state]); });
+at(4300, () => { kd('KeyD'); });
+at(4450, () => { kd('KeyF'); });
+at(4500, () => { ku('KeyF'); log.push(['F moving', g.player.state]); ku('KeyD'); });
+at(5200, () => { g.player.energy = 100; kd('Space'); });
+at(5250, () => ku('Space'));
+at(5400, () => { kd('KeyF'); });
+at(5450, () => { ku('KeyF'); log.push(['F air', g.player.state]); });
+window.__report = () => log;

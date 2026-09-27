@@ -1,0 +1,15 @@
+const g = window.__game;
+const log = [];
+const kd = (code) => window.dispatchEvent(new KeyboardEvent('keydown', { code, bubbles: true }));
+const ku = (code) => window.dispatchEvent(new KeyboardEvent('keyup', { code, bubbles: true }));
+g.player.place(104.4, 106.4, g);
+setTimeout(() => { kd('KeyE'); }, 300);
+setTimeout(() => { ku('KeyE'); log.push(['mounted', !!g.player.riding]); }, 360);
+setTimeout(() => kd('KeyW'), 600);
+setTimeout(() => { log.push(['galloping', Math.hypot(g.player.vx, g.player.vz).toFixed(1)]); }, 1500);
+setTimeout(() => { ku('KeyW'); }, 1700);
+setTimeout(() => { kd('KeyE'); }, 2600);
+setTimeout(() => { ku('KeyE'); log.push(['dismounted', !g.player.riding, g.horse.state]); }, 2660);
+setTimeout(() => { kd('KeyE'); }, 3200);
+setTimeout(() => { ku('KeyE'); log.push(['remounted', !!g.player.riding]); }, 3260);
+window.__report = () => log;

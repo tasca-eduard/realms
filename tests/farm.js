@@ -1,0 +1,12 @@
+const g = window.__game;
+const log = [];
+const kd = (c) => window.dispatchEvent(new KeyboardEvent('keydown', { code: c, bubbles: true }));
+const ku = (c) => window.dispatchEvent(new KeyboardEvent('keyup', { code: c, bubbles: true }));
+const press = (c) => { kd(c); setTimeout(() => ku(c), 40); };
+const talk = () => { g.talkTo(g.npc('warden')); };
+const skip = () => { for (let i = 0; i < 12; i++) setTimeout(() => press('KeyE'), i * 90); };
+setTimeout(() => { talk(); skip(); }, 300);
+setTimeout(() => { log.push(['after talk', g.save.data.quests.farm]); for (const e of g.enemies) if (e.group === 'farm') e.die(g); }, 1800);
+setTimeout(() => log.push(['raiders gone', g.save.data.quests.farm]), 2200);
+setTimeout(() => { const c0 = g.player.coins; talk(); skip(); setTimeout(() => log.push(['paid', g.save.data.quests.farm, g.player.coins - c0]), 1500); }, 2600);
+window.__report = () => log;
