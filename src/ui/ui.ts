@@ -33,6 +33,8 @@ export class UI {
   private powerEl = el('div', 'power', 'off', '<span class="pn"></span><div class="pbar"><div class="pfill"></div></div>');
   private comboEl = el('div', 'combo', '', '<span class="cn"></span><span class="cm"></span>');
   private horseEl = el('div', 'horseHp', 'off');
+  private fxEl = el('div', 'effects');
+  private fxKey = '';
   private objEl = el('div', 'objective', 'off');
   private questEl = el('div', 'questNote');
   private questT = 0;
@@ -71,7 +73,7 @@ export class UI {
 
   constructor(root: HTMLElement) {
     this.root = root;
-    this.hudEl.append(this.hearts, this.stam, this.energyEl, this.flasks, this.powerEl, this.horseEl);
+    this.hudEl.append(this.hearts, this.stam, this.energyEl, this.flasks, this.powerEl, this.horseEl, this.fxEl);
     root.append(this.hurtEl, this.hudEl, this.coinsEl, this.objEl, this.questEl, this.comboEl, this.promptEl, this.toastEl, this.areaEl, this.bubbleEl, this.bossEl, this.bossIntroEl, this.hintEl, this.dialogEl, this.loreEl, this.deadEl, this.fader);
     this.dialogEl.addEventListener('pointerdown', (e) => {
       e.stopPropagation();
@@ -139,6 +141,28 @@ export class UI {
     e.style.color = color;
     this.root.appendChild(e);
     setTimeout(() => e.remove(), 1100);
+  }
+
+  /** Status effect icons with a bar for the time left. */
+  effects(left: Record<string, number>, max: Record<string, number>) {
+    const ICONS: Record<string, [string, string, string]> = {
+      maim: ['Maimed', '#ff8a8a', '<path d="M2 0h2v4h2v2H1V5h1z"/><path fill="#c02020" d="M5 1h1v1H5zM6 2h1v1H6z"/>'],
+      daze: ['Dazed', '#fff0a0', '<path d="M1 1h1v1H1zM5 0h1v1H5zM3 3h1v1H3zM0 5h1v1H0zM5 5h1v1H5zM2 6h1v1H2z"/>'],
+      burn: ['Burning', '#ff9a50', '<path d="M3 0h1v1h1v2h1v3H5v1H2V6H1V3h1V1h1z"/><path fill="#ffe080" d="M3 4h1v2H3z"/>'],
+      poison: ['Poisoned', '#9ef07a', '<path d="M2 0h3v1h1v3H5v1H2V4H1V1h1z"/><path fill="#15132a" d="M2 2h1v1H2zM4 2h1v1H4z"/><path d="M2 6h1v1H2zM4 6h1v1H4z"/>'],
+    };
+    const on = Object.keys(ICONS).filter((k) => left[k] > 0);
+    const key = on.join(',');
+    if (key !== this.fxKey) {
+      this.fxKey = key;
+      this.fxEl.innerHTML = on
+        .map((k) => `<div class="fx" data-k="${k}" style="color:${ICONS[k][1]}"><svg viewBox="0 0 7 7" shape-rendering="crispEdges" fill="currentColor">${ICONS[k][2]}</svg><span>${ICONS[k][0]}</span><i></i></div>`)
+        .join('');
+    }
+    for (const k of on) {
+      const bar = this.fxEl.querySelector(`[data-k="${k}"] i`) as HTMLElement | null;
+      if (bar) bar.style.width = `${Math.max(0, Math.min(1, left[k] / (max[k] || 1))) * 100}%`;
+    }
   }
 
   objective(text: string | null) {

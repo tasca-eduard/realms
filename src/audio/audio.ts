@@ -288,6 +288,45 @@ export class Audio {
       case 'rustle':
         this.noiseHit(o(0.25, 0.05), t, 0.2, 'highpass', 2500, 1800, 0.7, 0.3, 0.02);
         break;
+      case 'daze':
+        this.bell(o(0.5, 0.5), t, 1560, 0.5, 0.18);
+        this.bell(o(0.4, 0.5), t + 0.12, 1320, 0.5, 0.12);
+        this.tone(o(0.4, 0.2), t, 'sine', 120, 60, 0.3, 0.4);
+        break;
+      case 'ignite':
+        this.noiseHit(o(0.6, 0.2), t, 0.5, 'bandpass', 400, 2400, 0.8, 0.6, 0.04);
+        break;
+      case 'extinguish':
+        this.noiseHit(o(0.5, 0.2), t, 0.6, 'highpass', 4000, 2000, 0.7, 0.4, 0.02);
+        break;
+      case 'maim':
+        this.tone(o(0.5, 0.2), t, 'sine', 180, 70, 0.2, 0.4);
+        this.noiseHit(o(0.3, 0.1), t, 0.12, 'lowpass', 900, 200, 0.8, 0.5);
+        break;
+      case 'poison':
+        for (let i = 0; i < 3; i++) this.tone(o(0.25, 0.2), t + i * 0.08, 'sine', 300 + i * 90, 200 + i * 60, 0.1, 0.12);
+        break;
+      case 'steal':
+        [0, 3, 7].forEach((s0, i) => this.tone(o(0.3, 0.3), t + i * 0.05, 'square', 1760 * Math.pow(2, -s0 / 12), 1760 * Math.pow(2, -s0 / 12), 0.06, 0.06));
+        break;
+      case 'throw':
+        this.noiseHit(o(0.4, 0.1), t, 0.2, 'bandpass', 600, 1600, 1, 0.4, 0.03);
+        break;
+      case 'potBreak':
+        this.noiseHit(o(0.7, 0.3), t, 0.2, 'bandpass', 2400, 900, 1.2, 0.7);
+        this.noiseHit(o(0.6, 0.3), t + 0.05, 0.7, 'lowpass', 1400, 300, 0.7, 0.7, 0.05, true);
+        break;
+      case 'blowpipe':
+        this.noiseHit(o(0.4, 0.1), t, 0.08, 'bandpass', 1800, 900, 3, 0.5, 0.005);
+        break;
+      case 'chant': {
+        const d = o(0.4, 0.8);
+        for (const f of [110, 165, 220]) this.tone(d, t, 'sawtooth', f, f * 1.02, 1.1, 0.05, 0.3);
+        break;
+      }
+      case 'blink':
+        this.tone(o(0.3, 0.5), t, 'sine', 1400, 300, 0.25, 0.12);
+        break;
       case 'glint':
         this.tone(o(0.3, 0.3), t, 'sine', 2400, 3200, 0.12, 0.1);
         this.tone(o(0.3, 0.3), t + 0.08, 'sine', 3200, 3000, 0.2, 0.06);

@@ -1,12 +1,13 @@
 import * as THREE from 'three';
+import { FOES } from '../config';
 import { P } from '../engine/particles';
 import { clamp } from '../engine/util';
-import { makeArcher, makeBat, makeBoar, makeGoblin, makeKing, type Model } from './models';
+import { makeArcher, makeBat, makeBoar, makeBomber, makeBrute, makeDarter, makeGoblin, makeKing, makeShaman, type Model } from './models';
 import type { Game } from './game';
 import type { EnemyType } from '../world/realm1';
 
 type St = 'idle' | 'alert' | 'chase' | 'windup' | 'strike' | 'recover' | 'hurt' | 'stun' | 'dead' | 'aim' | 'retreat' | 'swoop' | 'paw' | 'charge' | 'return'
-  | 'slam' | 'summon' | 'sleep' | 'wake' | 'jump';
+  | 'slam' | 'summon' | 'sleep' | 'wake' | 'jump' | 'flee' | 'chant' | 'blink';
 
 interface Spec {
   hp: number;
@@ -15,17 +16,11 @@ interface Spec {
   aggro: number;
   reach: number;
   windup: number;
-  coins: [number, number];
+  coins: readonly [number, number];
 }
 
-const SPECS: Record<EnemyType, Spec> = {
-  goblin: { hp: 3, r: 0.34, speed: 2.9, aggro: 8.5, reach: 1.35, windup: 0.5, coins: [2, 4] },
-  shield: { hp: 4, r: 0.36, speed: 2.4, aggro: 8, reach: 1.35, windup: 0.62, coins: [3, 6] },
-  archer: { hp: 2, r: 0.32, speed: 2.4, aggro: 11, reach: 9, windup: 0.95, coins: [2, 5] },
-  bat: { hp: 1, r: 0.3, speed: 4, aggro: 8, reach: 0.9, windup: 0.5, coins: [1, 2] },
-  boar: { hp: 7, r: 0.5, speed: 2.2, aggro: 9, reach: 1.2, windup: 0.9, coins: [6, 10] },
-  king: { hp: 48, r: 0.85, speed: 3.1, aggro: 30, reach: 2.3, windup: 0.6, coins: [0, 0] },
-};
+// All the numbers live in config.ts (FOES) so balance is tuned in one place.
+const SPECS = FOES as unknown as Record<EnemyType, Spec>;
 
 export class Enemy {
   x: number;
@@ -64,6 +59,17 @@ export class Enemy {
 
   golden = false;
   elite = false;
+  /** Bats: some steal coins, then flee with them. */
+  thief = false;
+  loot = 0;
+  escapeT = 0;
+  /** Shaman's war-chant: faster feet, quicker blows. */
+  hasteT = 0;
+  blinkCd = 0;
+  private armorPopT = -9;
+  /** Where a firepot is headed (set when the thrower takes aim). */
+  potTarget = new THREE.Vector2();
+  private potRing: THREE.Mesh | null = null;
   /** Index in the realm's enemy list for placed foes; undefined for summoned ones. */
   spawnId?: number;
 
@@ -83,6 +89,10 @@ export class Enemy {
       : type === 'archer' ? makeArcher()
       : type === 'bat' ? makeBat()
       : type === 'boar' ? makeBoar()
+      : type === 'brute' ? makeBrute()
+      : type === 'bomber' ? makeBomber()
+      : type === 'darter' ? makeDarter()
+      : type === 'shaman' ? makeShaman()
       : makeKing();
     this.fx = -0.7;
     this.fz = -0.7;
@@ -100,6 +110,7 @@ export class Enemy {
     // Seen through trees and walls whenever the knight has line of sight.
     this.model.rig.enableSilhouette(new THREE.Color(1.2, 0.32, 0.22), 2);
     this.model.rig.showSilhouette(false);
+    if (type === 'bat') this.thief = Math.random() < FOES.bat.thiefChance;
     if (type === 'king') {
       this.state = 'sleep';
       this.fx = 1;
@@ -114,7 +125,7 @@ export class Enemy {
   }
   /** Rough standing height, for attacks from above. */
   get height() {
-    const base = this.type === 'king' ? 2.6 : this.type === 'boar' ? 1.1 : this.type === 'bat' ? 0.5 : this.type === 'archer' ? 1.7 : 1.3;
+    const base = this.type === 'king' ? 2.6 : this.type === 'boar' ? 1.1 : this.type === 'bat' ? 0.5 : this.type === 'archer' ? 1.7 : this.type === 'brute' ? 1.8 : 1.3;
     return base * this.model.rig.scale;
   }
   get solid() {
@@ -153,8 +164,14 @@ export class Enemy {
     return g.grid.lineClear(this.x, this.z, p.x, p.z, Math.max(this.y, p.y) - (this.flying ? 1.3 : 0));
   }
 
+  /** How much faster this foe acts (the shaman's chant). */
+  get tempo() {
+    return this.hasteT > 0 ? 1.35 : 1;
+  }
+
   private walk(g: Game, dx: number, dz: number, speed: number, dt: number) {
     if (this.elite) speed *= 1.15;
+    speed *= this.tempo;
     const l = Math.hypot(dx, dz);
     if (l < 0.01) return;
     let mx = (dx / l) * speed * dt, mz = (dz / l) * speed * dt;
@@ -179,7 +196,12 @@ export class Enemy {
     this.t += dt;
     this.animT += dt;
     this.flashT = Math.max(0, this.flashT - dt);
-    this.cooldown = Math.max(0, this.cooldown - dt);
+    this.cooldown = Math.max(0, this.cooldown - dt * this.tempo);
+    this.blinkCd = Math.max(0, this.blinkCd - dt);
+    if (this.hasteT > 0) {
+      this.hasteT -= dt;
+      if (Math.random() < dt * 12) g.fx.emit(P.haste, this.x + (Math.random() - 0.5) * 0.5, this.y + 0.4 + Math.random(), this.z + (Math.random() - 0.5) * 0.5, 0, 0.5, 0);
+    }
     const p = g.player;
     const d = this.distTo(g);
 
@@ -203,7 +225,8 @@ export class Enemy {
 
     if (this.type === 'king') this.bossUpdate(dt, g, d);
     else if (this.type === 'bat') this.batUpdate(dt, g, d);
-    else if (this.type === 'archer') this.archerUpdate(dt, g, d);
+    else if (this.type === 'shaman') this.shamanUpdate(dt, g, d);
+    else if (this.type === 'archer' || this.type === 'bomber' || this.type === 'darter') this.archerUpdate(dt, g, d);
     else if (this.type === 'boar') this.boarUpdate(dt, g, d);
     else this.meleeUpdate(dt, g, d);
 
@@ -256,6 +279,7 @@ export class Enemy {
     if (this.state === 'stun') rig.tint.setRGB(0.75, 0.82, 1.25);
     else if (this.golden) rig.tint.setRGB(1.7, 1.3, 0.45);
     else if (this.elite) rig.tint.setRGB(1.15, 0.8, 0.8);
+    else if (this.hasteT > 0) rig.tint.setRGB(1.3, 0.85, 0.8);
     else rig.tint.setRGB(1, 1, 1);
     if (this.golden && this.alive && Math.random() < dt * 4) g.fx.emit(P.coinGlint, this.x + (Math.random() - 0.5) * 0.6, this.y + Math.random() * 1.4, this.z + (Math.random() - 0.5) * 0.6, 0, 0.6, 0);
   }
@@ -304,35 +328,42 @@ export class Enemy {
         if (d > want) this.walk(g, p.x - this.x, p.z - this.z, spec.speed, dt);
         break;
       }
-      case 'windup':
-        this.faceTo(p.x, p.z);
-        this.telegraph = this.t > spec.windup - 0.25 ? 1 : 0;
-        if (this.t >= spec.windup) {
+      case 'windup': {
+        const wind = spec.windup / this.tempo;
+        // The brute stops turning just before the blow: step aside and it misses.
+        if (this.type !== 'brute' || this.t < wind - 0.35) this.faceTo(p.x, p.z);
+        this.telegraph = this.t > wind - (this.type === 'brute' ? 0.4 : 0.25) ? 1 : 0;
+        if (this.t >= wind) {
           this.set('strike');
-          g.audio.sfx('enemySwing', this.x, this.z);
+          g.audio.sfx(this.type === 'brute' ? 'swingHeavy' : 'enemySwing', this.x, this.z);
         }
         break;
+      }
       case 'strike': {
-        if (this.t < 0.14) this.walk(g, this.fx, this.fz, 5, dt);
-        if (!this.struck && this.t > 0.05) {
+        const brute = this.type === 'brute';
+        if (this.t < 0.14) this.walk(g, this.fx, this.fz, brute ? 3 : 5, dt);
+        if (!this.struck && this.t > (brute ? 0.1 : 0.05)) {
           this.struck = true;
           const dx = p.x - this.x, dz = p.z - this.z, dd = Math.hypot(dx, dz);
-          if (dd < spec.reach + p.r + 0.2 && (dx * this.fx + dz * this.fz) / (dd || 1) > 0.2 && Math.abs(p.y - this.y) < 1.2 && g.clearBetween(this.x, this.z, p.x, p.z, Math.max(p.y, this.y) + 0.3, 0.6)) g.enemyHitsPlayer(this, 1);
+          const lands = dd < spec.reach + p.r + 0.2 && (dx * this.fx + dz * this.fz) / (dd || 1) > (brute ? 0.4 : 0.2) && Math.abs(p.y - this.y) < 1.2 && g.clearBetween(this.x, this.z, p.x, p.z, Math.max(p.y, this.y) + 0.3, 0.6);
+          if (brute) g.hammerImpact(this);
+          if (lands && brute) g.bruteHits(this);
+          else if (lands) g.enemyHitsPlayer(this, 1);
         }
-        if (this.t > 0.3) {
+        if (this.t > (brute ? 0.45 : 0.3)) {
           this.set('recover');
-          this.cooldown = 0.6 + Math.random() * 0.6;
+          this.cooldown = brute ? 1.2 + Math.random() * 0.6 : 0.6 + Math.random() * 0.6;
         }
         break;
       }
       case 'recover':
-        if (this.t > 0.55) this.set('chase');
+        if (this.t > (this.type === 'brute' ? 0.9 : 0.55)) this.set('chase');
         break;
       case 'hurt':
         if (this.t > 0.32) this.set('chase');
         break;
       case 'stun':
-        if (this.t > 1.3) this.set('chase');
+        if (this.t > (this.type === 'brute' ? 1.9 : 1.3)) this.set('chase');
         break;
     }
   }
@@ -353,40 +384,122 @@ export class Enemy {
         break;
       case 'chase':
       case 'retreat': {
-        if (!p.alive || d > this.spec.aggro + 6) {
-          this.set('idle');
+        const strayed = Math.hypot(this.x - this.home.x, this.z - this.home.z) > 20;
+        if (!p.alive || d > this.spec.aggro + 6 || strayed) {
+          this.set(this.guard ? 'idle' : 'return');
           break;
         }
         this.faceTo(p.x, p.z);
-        if (!this.guard && d < 3.6) {
+        if (!this.guard && d < (this.type === 'bomber' ? 4.5 : 3.6)) {
           this.walk(g, this.x - p.x, this.z - p.z, this.spec.speed, dt);
           this.state = 'retreat';
-        } else if (!this.guard && d > 8.5) {
+        } else if (!this.guard && d > (this.type === 'bomber' ? 7.5 : 8.5)) {
           this.walk(g, p.x - this.x, p.z - this.z, this.spec.speed, dt);
           this.state = 'chase';
-        } else if (this.cooldown <= 0 && this.sees(g, this.spec.aggro + 2)) this.set('aim');
-        break;
-      }
-      case 'aim':
-        this.faceTo(p.x, p.z);
-        this.telegraph = this.t > 0.55 ? 1 : 0;
-        g.aimLine(this);
-        if (this.t >= this.spec.windup) {
-          this.set('strike');
-          g.shootArrow(this, p.x, p.y + 0.8, p.z);
+        } else if (this.cooldown <= 0 && this.sees(g, this.spec.aggro + 2)) {
+          this.set('aim');
+          if (this.type === 'bomber') {
+            // Lob it where the knight is heading; a ring marks the spot.
+            this.potTarget.set(p.x + clamp(p.vx * 0.6, -2.5, 2.5), p.z + clamp(p.vz * 0.6, -2.5, 2.5));
+            this.potRing = g.combat.markTarget(this.potTarget.x, this.potTarget.y);
+          }
         }
         break;
+      }
+      case 'aim': {
+        const wind = this.spec.windup / this.tempo;
+        this.faceTo(this.type === 'bomber' ? this.potTarget.x : p.x, this.type === 'bomber' ? this.potTarget.y : p.z);
+        this.telegraph = this.t > wind - 0.4 ? 1 : 0;
+        if (this.type !== 'bomber') g.aimLine(this);
+        if (this.t >= wind) {
+          this.set('strike');
+          if (this.type === 'bomber') {
+            g.combat.throwPot(this, this.potTarget.x, this.potTarget.y, this.potRing);
+            this.potRing = null;
+          } else if (this.type === 'darter') g.combat.shootDart(this, p.x, p.y + 0.8, p.z);
+          else g.shootArrow(this, p.x, p.y + 0.8, p.z);
+        }
+        break;
+      }
       case 'strike':
         if (this.t > 0.3) {
           this.set('chase');
-          this.cooldown = 1.3 + Math.random() * 0.8;
+          this.cooldown = this.type === 'bomber' ? 2.4 + Math.random() : this.type === 'darter' ? 1.6 + Math.random() * 0.6 : 1.3 + Math.random() * 0.8;
         }
         break;
+      case 'return': {
+        const dx = this.home.x - this.x, dz = this.home.z - this.z;
+        this.hp = Math.min(this.maxHp, this.hp + this.maxHp * 0.25 * dt);
+        if (this.sees(g, this.spec.aggro) && this.inPatch(g, 20)) this.set('chase');
+        else if (Math.hypot(dx, dz) < 0.6 || this.t > 8) this.set('idle');
+        else {
+          this.faceTo(this.home.x, this.home.z);
+          this.walk(g, dx, dz, this.spec.speed * 0.7, dt);
+        }
+        break;
+      }
       case 'hurt':
         if (this.t > 0.35) this.set('chase');
         break;
       case 'stun':
         if (this.t > 1.2) this.set('chase');
+        break;
+    }
+  }
+
+  private shamanUpdate(dt: number, g: Game, d: number) {
+    const p = g.player;
+    this.telegraph = 0;
+    switch (this.state) {
+      case 'idle':
+        if (this.sees(g, this.spec.aggro)) {
+          this.set('alert');
+          g.alert(this);
+        }
+        break;
+      case 'alert':
+        this.faceTo(p.x, p.z);
+        if (this.t > 0.4) this.set('chase');
+        break;
+      case 'chase':
+      case 'retreat': {
+        if (!p.alive || Math.hypot(this.x - this.home.x, this.z - this.home.z) > 22) {
+          this.set('return');
+          break;
+        }
+        this.faceTo(p.x, p.z);
+        // Too close: vanish in a puff and reappear further off.
+        if (d < 3.2 && this.blinkCd <= 0 && g.shamanBlink(this)) {
+          this.blinkCd = 4;
+          break;
+        }
+        if (d < 5.5) this.walk(g, this.x - p.x, this.z - p.z, this.spec.speed, dt);
+        else if (d > 9) this.walk(g, p.x - this.x, p.z - this.z, this.spec.speed, dt);
+        if (this.cooldown <= 0) this.set('chant');
+        break;
+      }
+      case 'chant':
+        this.telegraph = this.t > 0.6 ? 1 : 0;
+        if (Math.random() < dt * 20) g.fx.emit(P.heal2, this.x + (Math.random() - 0.5) * 2, this.y + 0.2, this.z + (Math.random() - 0.5) * 2, 0, 1.5, 0);
+        if (this.t >= this.spec.windup) {
+          g.shamanChant(this);
+          this.set('chase');
+          this.cooldown = 5.5;
+        }
+        break;
+      case 'return': {
+        const dx = this.home.x - this.x, dz = this.home.z - this.z;
+        this.hp = Math.min(this.maxHp, this.hp + this.maxHp * 0.25 * dt);
+        this.faceTo(this.home.x, this.home.z);
+        this.walk(g, dx, dz, this.spec.speed, dt);
+        if (Math.hypot(dx, dz) < 0.8 || this.t > 6) this.set('idle');
+        break;
+      }
+      case 'hurt':
+        if (this.t > 0.3) this.set('chase');
+        break;
+      case 'stun':
+        if (this.t > 1.3) this.set('chase');
         break;
     }
   }
@@ -436,7 +549,7 @@ export class Enemy {
         this.y += (p.y + 0.9 - this.y) * Math.min(1, dt * 8);
         if (!this.struck && d < 0.8) {
           this.struck = true;
-          g.enemyHitsPlayer(this, 1);
+          if (g.batHits(this)) break;
         }
         if (this.t > 0.5) {
           this.set('chase');
@@ -444,9 +557,20 @@ export class Enemy {
         }
         break;
       }
+      case 'flee': {
+        // Off with the loot: away from the knight and up out of reach.
+        const ax = this.x - p.x, az = this.z - p.z, l = Math.hypot(ax, az) || 1;
+        this.faceTo(this.x + ax, this.z + az);
+        this.walk(g, ax / l, az / l, 5.5, dt);
+        this.y += (g.grid.groundAt(this.x, this.z) + 2.4 - this.y) * Math.min(1, dt * 2);
+        if (Math.random() < dt * 10) g.fx.emit(P.coinGlint, this.x, this.y, this.z, 0, -0.5, 0);
+        this.escapeT = d > 12 ? this.escapeT + dt : 0;
+        if (this.escapeT > 2.5) g.batEscaped(this);
+        break;
+      }
       case 'hurt':
       case 'stun':
-        if (this.t > 0.35) this.set('chase');
+        if (this.t > 0.35) this.set(this.loot > 0 ? 'flee' : 'chase');
         break;
     }
   }
@@ -500,7 +624,7 @@ export class Enemy {
         if (Math.random() < 0.6) g.fx.emit(P.dust, this.x, this.y + 0.1, this.z, 0, 0.4, 0);
         if (!this.struck && d < this.r + p.r + 0.3 && Math.abs(p.y - this.y) < 1) {
           this.struck = true;
-          g.enemyHitsPlayer(this, 1, { kb: 12 });
+          if (g.enemyHitsPlayer(this, 1, { kb: 12 }) === 'hit' && p.alive) p.afflict('daze', g, { down: true });
         }
         if (moved < 9.5 * dt * 0.4 && this.t > 0.1) {
           this.set('stun');
@@ -616,7 +740,7 @@ export class Enemy {
         if (Math.random() < 0.7) g.fx.emit(P.dust, this.x, this.y + 0.1, this.z, 0, 0.5, 0);
         if (!this.struck && d < this.r + p.r + 0.4) {
           this.struck = true;
-          g.enemyHitsPlayer(this, 1, { kb: 14 });
+          if (g.enemyHitsPlayer(this, 1, { kb: 14 }) === 'hit' && p.alive) p.afflict('daze', g, { down: true });
         }
         if ((moved < v * dt * 0.4 && this.t > 0.12) || this.t > 1.6) {
           const wall = this.t <= 1.6;
@@ -707,8 +831,17 @@ export class Enemy {
       }
       return 'hit';
     }
-    // Interrupts unless mid-charge.
-    if (this.state !== 'charge' && this.state !== 'stun' && !(this.type === 'boar' && this.state === 'paw')) {
+    if (this.potRing) {
+      g.combat.clearMark(this.potRing);
+      this.potRing = null;
+    }
+    // Interrupts unless mid-charge, and brutes shrug off blows while they wind up.
+    const armored = this.type === 'brute' && (this.state === 'windup' || this.state === 'strike');
+    if (armored && g.time - this.armorPopT > 2) {
+      this.armorPopT = g.time;
+      g.pop(this, 'unflinching', '#c0c0cc');
+    }
+    if (!armored && this.state !== 'charge' && this.state !== 'stun' && !(this.type === 'boar' && this.state === 'paw')) {
       this.set('hurt');
       this.cooldown = Math.max(this.cooldown, 0.3);
     }
@@ -723,8 +856,26 @@ export class Enemy {
     void g;
   }
 
+  /** Drop any half-finished throw (used when the world resets). */
+  cancelAim(g: Game) {
+    if (this.potRing) g.combat.clearMark(this.potRing);
+    this.potRing = null;
+    this.hasteT = 0;
+  }
+
+  /** Take fire damage (standing in burning ground). */
+  scorch(dmg: number, g: Game) {
+    if (!this.alive || this.state === 'sleep') return;
+    this.hp -= dmg;
+    this.flashT = 0.1;
+    g.fx.burst(P.flame, this.x, this.y + 0.6, this.z, 6, 1, 1.5);
+    if (this.hp <= 0) this.die(g);
+    else if (this.state === 'idle') this.set('chase');
+  }
+
   /** Vanish without a death: no coins, no quest progress. */
   despawn(g: Game) {
+    this.cancelAim(g);
     this.state = 'dead';
     this.t = 0;
     this.deathT = 0;
@@ -732,6 +883,10 @@ export class Enemy {
   }
 
   die(g: Game) {
+    if (this.potRing) {
+      g.combat.clearMark(this.potRing);
+      this.potRing = null;
+    }
     this.state = 'dead';
     this.t = 0;
     this.deathT = 0;
@@ -741,7 +896,7 @@ export class Enemy {
   get coinDrop() {
     const [a, b] = this.spec.coins;
     const n = a + Math.floor(Math.random() * (b - a + 1));
-    return this.golden ? n * 10 : this.elite ? n * 3 : n;
+    return (this.golden ? n * 10 : this.elite ? n * 3 : n) + this.loot;
   }
 }
 

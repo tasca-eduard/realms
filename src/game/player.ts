@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { PLAYER } from '../config';
+import { EFFECTS, PLAYER } from '../config';
 import { P } from '../engine/particles';
 import { clamp } from '../engine/util';
 import { makeKnight, type Model } from './models';
@@ -18,7 +18,10 @@ import type { Mount } from './mount';
 
 type State =
   | 'idle' | 'run' | 'attack' | 'charge' | 'spin' | 'roll' | 'airdash' | 'block' | 'hurt' | 'dead'
-  | 'drink' | 'rest' | 'stab' | 'dash' | 'wave' | 'plunge';
+  | 'drink' | 'rest' | 'stab' | 'dash' | 'wave' | 'plunge' | 'dazed' | 'down';
+
+/** Status effects: seconds left on each (burn counts down to the moment it hurts). */
+export type Effect = 'maim' | 'daze' | 'burn' | 'poison';
 
 interface Swing {
   anim: string;
@@ -114,6 +117,10 @@ export class Player {
   plungePhase: 'hang' | 'dive' | 'land' = 'hang';
   power: { kind: PowerKind; t: number; hits: number } | null = null;
   private tiredT = 0;
+  effects: Record<Effect, number> = { maim: 0, daze: 0, burn: 0, poison: 0 };
+  /** Max duration of each running effect, for the HUD bars. */
+  effectMax: Record<Effect, number> = { maim: 1, daze: 1, burn: 1, poison: 1 };
+  private dazeImmune = 0;
   // Riding.
   riding: Mount | null = null;
   rideState: 'ride' | 'kick' | 'rear' | 'charge' = 'ride';
@@ -177,7 +184,7 @@ export class Player {
     this.iframes = Math.max(0, this.iframes - dt);
     this.guardBroken = Math.max(0, this.guardBroken - dt);
     this.staminaWait -= dt;
-    if (this.staminaWait <= 0 && this.state !== 'block' && this.state !== 'roll') this.stamina = Math.min(this.maxStamina, this.stamina + PLAYER.staminaRegen * dt);
+    if (this.staminaWait <= 0 && this.state !== 'block' && this.state !== 'roll') this.stamina = Math.min(this.maxStamina, this.stamina + PLAYER.staminaRegen * dt * (this.effects.poison > 0 ? EFFECTS.poisonRegen : 1));
     this.energy = Math.min(100, this.energy + 3 * dt);
     if (this.power) {
       this.power.t -= dt;
@@ -189,6 +196,7 @@ export class Player {
       }
     }
     this.atkHeld = inp.held('attack') ? this.atkHeld + dt : 0;
+    this.updateEffects(g.worldFrozen ? 0 : dt, g);
     if (this.riding && this.alive) return this.updateRiding(dt, g);
 
     const controls = g.controlsEnabled;
@@ -453,11 +461,28 @@ export class Player {
       case 'hurt':
         if (this.t > 0.32) this.setState('idle');
         break;
+      case 'dazed':
+      case 'down': {
+        const dur = this.state === 'down' ? EFFECTS.downTime : EFFECTS.dazeTime;
+        if (this.state === 'dazed') {
+          // Stars circle the helmet.
+          const a = g.time * 7;
+          if (Math.random() < dt * 30) g.fx.emit(P.coinGlint, this.x + Math.cos(a) * 0.35, this.y + 2.05, this.z + Math.sin(a) * 0.35, 0, 0.2, 0, 0.3);
+        }
+        if (this.t >= dur) {
+          this.effects.daze = 0;
+          this.dazeImmune = EFFECTS.dazeImmune;
+          this.setState('idle');
+        }
+        break;
+      }
       case 'drink': {
         if (!this.healed && this.t > 0.55) {
           this.healed = true;
           this.flasks--;
           this.hp = Math.min(this.maxHp, this.hp + 2);
+          if (this.effects.maim > 0 || this.effects.poison > 0 || this.effects.burn > 0) g.pop(this, 'cured', '#8ef0a0');
+          this.effects.maim = this.effects.poison = this.effects.burn = 0;
           g.fx.burst(P.heal, this.x, this.y + 0.8, this.z, 18, 1.2, 1.5);
           g.audio.sfx('heal');
           g.ui.pulseHearts();
@@ -472,9 +497,12 @@ export class Player {
         break;
     }
 
-    // Wading through shallow water slows the knight.
+    if (this.effects.maim > 0 && (this.state === 'run' || this.state === 'block' || this.state === 'charge')) speed *= EFFECTS.maimSlow;
+
+    // Wading through shallow water slows the knight (and puts out flames).
     const wt = g.grid.waterAt(this.x, this.z);
     const wading = this.onGround && wt > g.grid.groundAt(this.x, this.z) + 0.05;
+    if (wading && this.effects.burn > 0) this.extinguish(g, 'steam');
     if (wading) {
       speed *= this.state === 'roll' || this.state === 'dash' ? 0.8 : 0.62;
       if (speed > 0.5 && Math.random() < dt * 14) g.fx.emit(P.splash, this.x, wt + 0.05, this.z, (Math.random() - 0.5) * 2, 2 + Math.random() * 2, (Math.random() - 0.5) * 2);
@@ -563,13 +591,20 @@ export class Player {
       name = 'attack2';
       dur = 0.3;
     } else if (this.state === 'plunge') name = this.plungePhase === 'land' ? 'land' : 'stab';
+    else if (this.state === 'down') dur = EFFECTS.downTime;
     if (!this.onGround && (this.state === 'idle' || this.state === 'run' || this.state === 'hurt')) name = 'fall';
     this.model.animate(dt, this.x, this.z, name, t, g.time, { dur, v: this.spinFull ? 1 : 0 });
     const blink = this.iframes > 0 && this.state !== 'roll' && this.state !== 'dead' && this.state !== 'dash' && Math.floor(g.time * 20) % 2 === 0;
     const charged = this.state === 'charge' && this.t >= CHARGE_FULL;
     rig.flash = this.state === 'hurt' && this.t < 0.08 ? 1 : charged ? 0.25 + 0.15 * Math.sin(g.time * 20) : 0;
     const bubble = this.powerOn('bubble');
-    rig.tint.setRGB(this.state === 'hurt' ? 1 : bubble ? 0.85 : 1, this.state === 'hurt' ? 0.7 : 1, this.state === 'hurt' ? 0.7 : bubble ? 1.25 : 1);
+    const burn = this.effects.burn > 0 ? 0.25 + 0.2 * Math.sin(g.time * 30) : 0;
+    const pois = this.effects.poison > 0 ? 0.25 : 0;
+    rig.tint.setRGB(
+      (this.state === 'hurt' ? 1 : bubble ? 0.85 : 1) + burn - pois * 0.4,
+      (this.state === 'hurt' ? 0.7 : 1) + burn * 0.3 + pois * 0.2,
+      (this.state === 'hurt' ? 0.7 : bubble ? 1.25 : 1) - burn * 0.5 - pois * 0.4,
+    );
     rig.place(g.cam, this.x, this.y, this.z, gy, !blink);
     // The spin turns the whole body.
     if (this.state === 'spin') rig.root.rotation.y = rig.yaw + Math.min(1, this.t / (this.spinFull ? 0.5 : 0.3)) * Math.PI * 2 * (this.spinFull ? 2 : 1);
@@ -764,9 +799,12 @@ export class Player {
         break;
     }
 
-    // Wading slows even a horse.
+    // Wading slows even a horse, and puts out flames.
     const wt = g.grid.waterAt(this.x, this.z);
-    if (this.onGround && wt > g.grid.groundAt(this.x, this.z) + 0.05) speed *= 0.8;
+    if (this.onGround && wt > g.grid.groundAt(this.x, this.z) + 0.05) {
+      speed *= 0.8;
+      if (this.effects.burn > 0) this.extinguish(g, 'steam');
+    }
 
     const a = accel;
     this.vx += clamp(tx * speed - this.vx, -a * dt, a * dt);
@@ -876,6 +914,7 @@ export class Player {
     this.setState('roll');
     this.combo = 0;
     g.audio.sfx('roll');
+    if (this.effects.burn > 0) this.extinguish(g, 'roll');
   }
 
   private airDash(g: Game, dx: number, dz: number) {
@@ -1004,9 +1043,9 @@ export class Player {
   }
 
   /** An enemy attack reaches the knight. */
-  hurt(dmg: number, fromX: number, fromZ: number, g: Game, opts: { unblockable?: boolean; kb?: number } = {}): HitResult {
+  hurt(dmg: number, fromX: number, fromZ: number, g: Game, opts: { unblockable?: boolean; kb?: number; guardCost?: number; force?: boolean } = {}): HitResult {
     if (!this.alive || g.godMode) return 'ignored';
-    if (this.iframes > 0) return this.state === 'roll' || this.state === 'dash' || this.state === 'airdash' ? 'dodged' : 'ignored';
+    if (this.iframes > 0 && !opts.force) return this.state === 'roll' || this.state === 'dash' || this.state === 'airdash' ? 'dodged' : 'ignored';
     const dx = this.x - fromX, dz = this.z - fromZ;
     const d = Math.hypot(dx, dz) || 1;
     const nx = dx / d, nz = dz / d;
@@ -1019,7 +1058,7 @@ export class Player {
           this.energy = Math.min(100, this.energy + 20);
           return 'parried';
         }
-        this.useStamina(PLAYER.blockCost * (this.crest ? 0.7 : 1));
+        this.useStamina(PLAYER.blockCost * (this.crest ? 0.7 : 1) * (opts.guardCost ?? 1));
         this.vx += nx * 4;
         this.vz += nz * 4;
         this.blockHitT = 0;
@@ -1060,6 +1099,113 @@ export class Player {
     return 'hit';
   }
 
+  // ---------- status effects ----------
+
+  private updateEffects(dt: number, g: Game) {
+    const e = this.effects;
+    this.dazeImmune = Math.max(0, this.dazeImmune - dt);
+    if (e.maim > 0) {
+      e.maim = Math.max(0, e.maim - dt);
+      if (Math.random() < dt * 4) g.fx.emit(P.drip, this.x + (Math.random() - 0.5) * 0.3, this.y + 0.5, this.z + (Math.random() - 0.5) * 0.3, 0, 0, 0);
+    }
+    if (e.poison > 0) {
+      e.poison = Math.max(0, e.poison - dt);
+      if (Math.random() < dt * 8) g.fx.emit(P.bubble, this.x + (Math.random() - 0.5) * 0.6, this.y + 0.6 + Math.random() * 1.2, this.z + (Math.random() - 0.5) * 0.6, 0, 0.7, 0);
+    }
+    if (e.burn > 0 && this.alive) {
+      if (this.state !== 'dazed' && this.state !== 'down') e.burn -= dt;
+      if (Math.random() < dt * 40) g.fx.emit(P.flame, this.x + (Math.random() - 0.5) * 0.5, this.y + 0.3 + Math.random() * 1.4, this.z + (Math.random() - 0.5) * 0.5, 0, 0.6, 0);
+      if (e.burn <= 0) {
+        e.burn = 0;
+        if (!g.godMode) {
+          const res = this.hurt(1, this.x - this.fx, this.z - this.fz, g, { unblockable: true, kb: 2, force: true });
+          g.afterHit(res, this.x, this.z, null);
+          g.pop(this, 'burned!', '#ff9a50');
+        }
+      }
+    }
+    e.daze = this.state === 'dazed' || this.state === 'down' ? Math.max(0, e.daze - dt) : 0;
+  }
+
+  /** Something bad happens to the knight. Returns false if it didn't take. */
+  afflict(kind: Effect, g: Game, opts: { down?: boolean; time?: number } = {}) {
+    if (!this.alive || g.godMode) return false;
+    const e = this.effects;
+    if (kind === 'daze') {
+      // The horse takes the blow; a fresh daze can't follow right after another.
+      if (this.riding || this.dazeImmune > 0 || this.state === 'dazed' || this.state === 'down') return false;
+      const t = opts.down ? EFFECTS.downTime : EFFECTS.dazeTime;
+      e.daze = this.effectMax.daze = t;
+      this.dazeImmune = t + EFFECTS.dazeImmune;
+      this.combo = 0;
+      this.setState(opts.down ? 'down' : 'dazed');
+      this.vx *= 0.3;
+      this.vz *= 0.3;
+      g.pop(this, opts.down ? 'knocked down!' : 'dazed!', '#fff0a0');
+      g.audio.sfx('daze', this.x, this.z);
+      g.effectTip('daze');
+      return true;
+    }
+    if (kind === 'burn') {
+      if (e.burn > 0) return false;
+      e.burn = this.effectMax.burn = EFFECTS.burnFuse;
+      g.pop(this, 'on fire! roll!', '#ff9a50');
+      g.audio.sfx('ignite', this.x, this.z);
+      g.effectTip('burn');
+      return true;
+    }
+    const t = opts.time ?? (kind === 'maim' ? EFFECTS.maimTime : EFFECTS.poisonTime);
+    const fresh = e[kind] <= 0;
+    e[kind] = Math.max(e[kind], t);
+    this.effectMax[kind] = Math.max(e[kind], this.effectMax[kind] * (fresh ? 0 : 1));
+    if (fresh) {
+      g.pop(this, kind === 'maim' ? 'maimed!' : 'poisoned!', kind === 'maim' ? '#ff8a8a' : '#9ef07a');
+      g.audio.sfx(kind === 'maim' ? 'maim' : 'poison', this.x, this.z);
+      g.effectTip(kind);
+    }
+    return true;
+  }
+
+  extinguish(g: Game, how: 'roll' | 'steam') {
+    this.effects.burn = 0;
+    g.pop(this, 'put out', '#b8d8ff');
+    g.audio.sfx('extinguish', this.x, this.z);
+    g.fx.burst(P.puff, this.x, this.y + 0.8, this.z, how === 'steam' ? 12 : 6, 1.5);
+  }
+
+  cureAll() {
+    this.effects.maim = this.effects.poison = this.effects.burn = this.effects.daze = 0;
+  }
+
+  /**
+   * A nuisance hit (bat swoops, darts): no hearts lost, but it shoves the
+   * knight, costs stamina and interrupts whatever he was doing.
+   */
+  harass(fromX: number, fromZ: number, g: Game, opts: { kb?: number; stamina?: number } = {}): HitResult {
+    if (!this.alive || g.godMode) return 'ignored';
+    if (this.iframes > 0) return this.state === 'roll' || this.state === 'dash' || this.state === 'airdash' ? 'dodged' : 'ignored';
+    const dx = this.x - fromX, dz = this.z - fromZ;
+    const d = Math.hypot(dx, dz) || 1;
+    const nx = dx / d, nz = dz / d;
+    if (this.state === 'block' && -(nx * this.fx + nz * this.fz) > 0.1) {
+      this.useStamina(5);
+      this.blockHitT = 0;
+      return 'blocked';
+    }
+    const kb = opts.kb ?? 4;
+    this.vx += nx * kb;
+    this.vz += nz * kb;
+    this.useStamina(opts.stamina ?? 0);
+    this.iframes = 0.35;
+    if (!this.riding && (this.state === 'drink' || this.state === 'charge' || this.state === 'attack' || this.state === 'idle' || this.state === 'run')) {
+      if (this.state === 'drink' && !this.healed) g.pop(this, 'interrupted! (flask kept)', '#b8d8ff');
+      this.combo = 0;
+      this.setState('hurt');
+      this.t = 0.2;
+    }
+    return 'hit';
+  }
+
   givePower(kind: PowerKind) {
     this.power = { kind, t: 20, hits: kind === 'bubble' ? 2 : 0 };
   }
@@ -1075,6 +1221,7 @@ export class Player {
     this.setState('idle');
   }
   revive() {
+    this.cureAll();
     this.riding = null;
     this.r = PLAYER.radius;
     this.hp = this.maxHp;

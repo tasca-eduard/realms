@@ -15,7 +15,12 @@ const browser = await chromium.launch({
   args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'],
 });
 const mobile = !!process.env.MOBILE;
-const page = await browser.newPage({ viewport: { width: w, height: h }, ...(mobile ? { isMobile: true, hasTouch: true, deviceScaleFactor: 2 } : {}) });
+const ctxOpts = { viewport: { width: w, height: h }, ...(mobile ? { isMobile: true, hasTouch: true, deviceScaleFactor: 2 } : {}) };
+// PROFILE=<dir> keeps browser storage between runs (to test saving and loading).
+const ctx = process.env.PROFILE
+  ? await chromium.launchPersistentContext(process.env.PROFILE, { channel: 'msedge', headless: true, args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist'], ...ctxOpts })
+  : null;
+const page = ctx ? await ctx.newPage() : await browser.newPage(ctxOpts);
 const logs = [];
 page.on('console', (m) => logs.push(`[${m.type()}] ${m.text()}`));
 page.on('response', (r) => { if (r.status() >= 400) logs.push('[404] ' + r.url()); });
@@ -44,6 +49,7 @@ try {
 } catch (e) {
   logs.push(`[report error] ${e.message}`);
 }
+if (ctx) await ctx.close();
 await browser.close();
 console.log(logs.slice(-40).join('\n'));
 console.log('saved', out);

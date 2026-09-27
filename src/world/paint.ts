@@ -71,11 +71,12 @@ export class Painter {
     if (set.noGrass !== undefined) g.noGrass[i] = set.noGrass ? 1 : 0;
   }
 
-  /** Road or trail along a polyline; only changes the ground type. */
-  path(pts: Pt[], width: number, t: number, jitter = 0.5, seed = 3) {
+  /** Road or trail along a polyline; only changes the ground type (overWater: false leaves stream beds alone). */
+  path(pts: Pt[], width: number, t: number, jitter = 0.5, seed = 3, overWater = true) {
     const xs = pts.map((p) => p[0]), zs = pts.map((p) => p[1]);
     this.each(
       (x, z, i) => {
+        if (!overWater && this.g.water[i] !== NONE) return;
         const n = (fbm(x * 0.3 + seed, z * 0.3, 2, seed) - 0.5) * 2 * jitter;
         if (distLine(pts, x + 0.5, z + 0.5) < width / 2 + n) {
           this.g.t[i] = t;

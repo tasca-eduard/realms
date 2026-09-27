@@ -15,8 +15,8 @@ import type { EnemyType } from '../world/realm1';
  */
 const WAVES: { type: EnemyType; elite?: boolean }[][] = [
   [{ type: 'goblin' }, { type: 'goblin' }, { type: 'goblin' }],
-  [{ type: 'shield' }, { type: 'shield' }, { type: 'archer' }, { type: 'archer' }],
-  [{ type: 'boar', elite: true }, { type: 'goblin' }, { type: 'goblin' }, { type: 'bat' }],
+  [{ type: 'shield' }, { type: 'shield' }, { type: 'archer' }, { type: 'bomber' }],
+  [{ type: 'brute' }, { type: 'shaman' }, { type: 'goblin' }, { type: 'boar', elite: true }],
 ];
 
 export class Trial implements Interactable {

@@ -8,6 +8,7 @@ import type { Game } from './game';
 import type { Enemy } from './enemies';
 import type { PowerKind } from './player';
 import type { LightSource } from '../engine/lights';
+import { FOES } from '../config';
 
 // ---------- arrows ----------
 
@@ -34,6 +35,43 @@ export interface Arrow {
   stuck: number;
   dead: boolean;
   from: Enemy | null;
+  kind: 'arrow' | 'dart';
+}
+
+export interface Pot {
+  mesh: THREE.Mesh;
+  ring: THREE.Mesh | null;
+  x: number;
+  y: number;
+  z: number;
+  vx: number;
+  vy: number;
+  vz: number;
+  t: number;
+  T: number;
+  tx: number;
+  tz: number;
+}
+
+export interface Fire {
+  x: number;
+  y: number;
+  z: number;
+  r: number;
+  t: number;
+  life: number;
+  light: LightSource;
+  tick: number;
+}
+
+let dartGeo: THREE.BufferGeometry | null = null;
+function dartGeometry() {
+  if (dartGeo) return dartGeo;
+  const g = new Geo();
+  g.box(0, -0.015, 0, 0.3, 0.03, 0.03, '#c8c0a0');
+  g.box(-0.14, -0.03, 0, 0.06, 0.06, 0.06, '#6a9a3a');
+  dartGeo = g.build();
+  return dartGeo;
 }
 
 export interface Wave {
@@ -88,6 +126,9 @@ const ORB_COL: Record<PowerKind, [number, number, number]> = {
 };
 
 export class Combat {
+  pots: Pot[] = [];
+  fires: Fire[] = [];
+  private ringMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(3, 0.7, 0.25), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
   orbs: PowerOrb[] = [];
   swordWaves: SwordWave[] = [];
   arrows: Arrow[] = [];
@@ -110,7 +151,7 @@ export class Combat {
     const mesh = new THREE.Mesh(arrowGeometry(), this.mat);
     mesh.castShadow = true;
     this.g.scene.add(mesh);
-    this.arrows.push({ mesh, x: sx, y: sy, z: sz, vx: (dx / d) * speed, vy: dy / t + 0.5 * 6 * t, vz: (dz / d) * speed, t: 0, stuck: 0, dead: false, from: null });
+    this.arrows.push({ mesh, x: sx, y: sy, z: sz, vx: (dx / d) * speed, vy: dy / t + 0.5 * 6 * t, vz: (dz / d) * speed, t: 0, stuck: 0, dead: false, from: null, kind: 'arrow' });
     this.g.audio.sfx('bow', sx, sz);
   }
 
@@ -123,7 +164,7 @@ export class Combat {
     const mesh = new THREE.Mesh(arrowGeometry(), this.mat);
     mesh.castShadow = true;
     this.g.scene.add(mesh);
-    this.arrows.push({ mesh, x: sx, y: sy, z: sz, vx: (dx / d) * speed, vy: dy / t + 0.5 * 6 * t, vz: (dz / d) * speed, t: 0, stuck: 0, dead: false, from });
+    this.arrows.push({ mesh, x: sx, y: sy, z: sz, vx: (dx / d) * speed, vy: dy / t + 0.5 * 6 * t, vz: (dz / d) * speed, t: 0, stuck: 0, dead: false, from, kind: 'arrow' });
     this.g.audio.sfx('bow', sx, sz);
   }
 
@@ -175,6 +216,62 @@ export class Combat {
     this.orbs.push({ mesh, kind: k, x, y, z, t: 0, light });
   }
 
+  /** A poison dart from a blowpipe: fast and flat. */
+  shootDart(from: Enemy, tx: number, ty: number, tz: number) {
+    const sx = from.x + from.fx * 0.5, sy = from.y + 1.0, sz = from.z + from.fz * 0.5;
+    const dx = tx - sx, dy = ty - sy, dz = tz - sz;
+    const d = Math.hypot(dx, dz) || 1;
+    const speed = 17;
+    const t = d / speed;
+    const mesh = new THREE.Mesh(dartGeometry(), this.mat);
+    this.g.scene.add(mesh);
+    this.arrows.push({ mesh, x: sx, y: sy, z: sz, vx: (dx / d) * speed, vy: dy / t + 0.5 * 6 * t, vz: (dz / d) * speed, t: 0, stuck: 0, dead: false, from, kind: 'dart' });
+    this.g.audio.sfx('blowpipe', sx, sz);
+  }
+
+  /** A pulsing ring on the ground where something is about to land. */
+  markTarget(x: number, z: number) {
+    const ring = new THREE.Mesh(new THREE.RingGeometry(1.05, 1.3, 32), this.ringMat.clone());
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(x, this.g.grid.groundAt(x, z) + 0.06, z);
+    ring.renderOrder = 5;
+    this.g.scene.add(ring);
+    return ring;
+  }
+
+  clearMark(ring: THREE.Mesh) {
+    this.g.scene.remove(ring);
+    ring.geometry.dispose();
+    (ring.material as THREE.Material).dispose();
+  }
+
+  /** Lob a firepot in an arc onto a spot. */
+  throwPot(from: Enemy, tx: number, tz: number, ring: THREE.Mesh | null) {
+    const sx = from.x + from.fx * 0.4, sy = from.y + 1.4, sz = from.z + from.fz * 0.4;
+    const ty = this.g.grid.groundAt(tx, tz);
+    const T = 0.85, G = 18;
+    const mesh = new THREE.Mesh(new THREE.IcosahedronGeometry(0.16, 0), new THREE.MeshLambertMaterial({ color: 0x8a5a3a, emissive: new THREE.Color(0.4, 0.15, 0.02) }));
+    mesh.castShadow = true;
+    this.g.scene.add(mesh);
+    this.pots.push({ mesh, ring: ring ?? this.markTarget(tx, tz), x: sx, y: sy, z: sz, vx: (tx - sx) / T, vy: (ty - sy) / T + 0.5 * G * T, vz: (tz - sz) / T, t: 0, T, tx, tz });
+    this.g.audio.sfx('throw', sx, sz);
+  }
+
+  /** Burning ground: sets the knight alight, scorches foes standing in it. */
+  fire(x: number, z: number) {
+    const y = this.g.grid.groundAt(x, z);
+    // Water puts it straight out.
+    if (this.g.grid.waterAt(x, z) > y - 0.1) {
+      this.g.fx.burst(P.puff, x, y + 0.3, z, 10, 2);
+      this.g.audio.sfx('extinguish', x, z);
+      return;
+    }
+    const light = this.g.lights.add(x, y + 0.8, z, 0xff7a30, 10, 6, 0.4);
+    this.fires.push({ x, y, z, r: FOES.bomber.fireRadius, t: 0, life: FOES.bomber.fireTime, light, tick: 0 });
+    this.g.fx.burst(P.flame, x, y + 0.3, z, 30, 3, 2);
+    this.g.audio.sfx('potBreak', x, z);
+  }
+
   /** Knock arrows out of the air around a point. */
   deflectArrows(x: number, z: number, r: number) {
     for (const a of this.arrows) {
@@ -208,6 +305,54 @@ export class Combat {
 
   update(dt: number) {
     const g = this.g, p = g.player, grid = g.grid;
+    for (const pot of this.pots) {
+      pot.t += dt;
+      pot.vy -= 18 * dt;
+      pot.x += pot.vx * dt;
+      pot.y += pot.vy * dt;
+      pot.z += pot.vz * dt;
+      pot.mesh.position.set(pot.x, pot.y, pot.z);
+      pot.mesh.rotation.x += dt * 9;
+      if (pot.ring) (pot.ring.material as THREE.MeshBasicMaterial).opacity = 0.45 + 0.4 * Math.sin(g.time * 18);
+      if (Math.random() < 0.6) g.fx.emit(P.ember, pot.x, pot.y, pot.z, 0, 0.3, 0, 0.3);
+      if (pot.t >= pot.T || (pot.t > 0.2 && pot.y <= grid.groundAt(pot.x, pot.z))) {
+        pot.t = -1;
+        this.fire(pot.tx, pot.tz);
+      }
+    }
+    this.pots = this.pots.filter((pot) => {
+      if (pot.t >= 0) return true;
+      g.scene.remove(pot.mesh);
+      pot.mesh.geometry.dispose();
+      (pot.mesh.material as THREE.Material).dispose();
+      if (pot.ring) this.clearMark(pot.ring);
+      return false;
+    });
+    for (const f of this.fires) {
+      f.t += dt;
+      const fade = Math.min(1, (f.life - f.t) / 0.6);
+      f.light.level = Math.max(0, fade);
+      for (let k = 0; k < 3; k++)
+        if (Math.random() < dt * 30 * fade) {
+          const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * f.r;
+          g.fx.emit(P.flame, f.x + Math.cos(a) * r, f.y + 0.1, f.z + Math.sin(a) * r, 0, 0.8, 0, 0.8);
+        }
+      if (Math.random() < dt * 3) g.fx.emit(P.smoke, f.x, f.y + 1, f.z, 0, 0.5, 0);
+      // The knight catches fire standing in it.
+      if (p.alive && p.onGround && Math.hypot(p.x - f.x, p.z - f.z) < f.r && Math.abs(p.y - f.y) < 0.8 && fade > 0.3) p.afflict('burn', g);
+      // Foes scorch too (the throwers know better than to stand in it).
+      f.tick -= dt;
+      if (f.tick <= 0) {
+        f.tick = 1;
+        for (const e of g.enemies)
+          if (e.alive && !e.flying && e.type !== 'bomber' && e.type !== 'king' && Math.hypot(e.x - f.x, e.z - f.z) < f.r + e.r * 0.5) e.scorch(1, g);
+      }
+    }
+    this.fires = this.fires.filter((f) => {
+      if (f.t < f.life) return true;
+      this.g.lights.remove(f.light);
+      return false;
+    });
     for (const o of this.orbs) {
       o.t += dt;
       const gy = grid.groundAt(o.x, o.z) + 0.7;
@@ -230,8 +375,7 @@ export class Combat {
       g.scene.remove(o.mesh);
       o.mesh.geometry.dispose();
       (o.mesh.material as THREE.Material).dispose();
-      o.light.on = false;
-      o.light.level = 0;
+      this.g.lights.remove(o.light);
       return false;
     });
     for (const w of this.swordWaves) {
@@ -283,7 +427,7 @@ export class Combat {
       a.mesh.rotation.set(0, -Math.atan2(a.vz, a.vx), Math.atan2(a.vy, Math.hypot(a.vx, a.vz)), 'YZX');
       // Player.
       if (p.alive && Math.hypot(p.x - a.x, p.z - a.z) < 0.45 && a.y > p.y && a.y < p.y + 1.7) {
-        const res = g.arrowHitsPlayer(a);
+        const res = a.kind === 'dart' ? g.dartHitsPlayer(a) : g.arrowHitsPlayer(a);
         if (res !== 'dodged' && res !== 'ignored') {
           a.dead = true;
           if (res === 'blocked' || res === 'parried') {

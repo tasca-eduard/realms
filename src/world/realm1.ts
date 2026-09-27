@@ -15,7 +15,7 @@ import type { CritterDef } from '../game/critters';
 export const MAP_W = 120;
 export const MAP_D = 120;
 
-export type EnemyType = 'goblin' | 'shield' | 'archer' | 'bat' | 'boar' | 'king';
+export type EnemyType = 'goblin' | 'shield' | 'archer' | 'bat' | 'boar' | 'brute' | 'bomber' | 'darter' | 'shaman' | 'king';
 
 export interface EnemySpawn {
   type: EnemyType;
@@ -26,6 +26,8 @@ export interface EnemySpawn {
   guard?: boolean;
   /** Bigger, tougher, drops a power-up. */
   elite?: boolean;
+  /** Retired from the realm (kept in the list so later save ids don't shift). */
+  off?: boolean;
 }
 
 export interface NpcDef {
@@ -108,6 +110,21 @@ const BAILEY_ROAD2: Pt[] = [[56, 15], [55, 22], [52, 24.5], [46, 24.5]];
 const CAMP = { x: 95, z: 27, r: 9 };
 const FORD = { x: 69, z: 104 };
 
+// Footpaths from the roads to every place with a purpose, so the ground shows the way.
+// Places that are there to be found (the marsh, the island, the Hollow) get none.
+const LANE_HOME: Pt[] = [[99.9, 95.2], [96, 95.4], [90.4, 95.1]];
+const LANE_STONES: Pt[] = [[102.3, 98.8], [104.2, 97.6], [106.2, 94.6], [109.2, 89.6]];
+const LANE_RIVER: Pt[] = [[113.6, 90], [116.5, 92.6], [119, 95], [120.4, 96.4]];
+const LANE_FARM: Pt[] = [[106.8, 105.8], [99, 109.1], [91, 109.8], [86, 110.3], [86, 116]];
+// Graveyard gate -> past the farmhouse -> over the ford -> into the farm.
+const LANE_FIELDS: Pt[] = [
+  [44.2, 71.5], [46.5, 78], [48.3, 84.5], [49.3, 89], [51.2, 94], [52, 99.3],
+  [56, 101.3], [63, 102.9], [69, 104], [74, 106.2], [80, 108.5], [86, 110.3],
+];
+const LANE_PIER: Pt[] = [[48.4, 85], [41, 87.8], [31, 91.5], [21, 96.8], [14, 99.3], [9.6, 99.5]];
+const LANE_STAIR: Pt[] = [[48, 69.3], [42, 66.8], [30, 65.5], [20, 62.6], [10, 60.6], [6.2, 59.8], [6, 58.3]];
+const LANES = [LANE_HOME, LANE_STONES, LANE_RIVER, LANE_FARM, LANE_FIELDS, LANE_PIER, LANE_STAIR];
+
 export function buildRealm1(builder: Builder): RealmData {
   const grid = builder.grid;
   const p = new Painter(grid);
@@ -140,7 +157,7 @@ export function buildRealm1(builder: Builder): RealmData {
   // The stream, crossed by the road bridge, and a shallow ford further down.
   p.stream(STREAM, 3.4, -0.35, -1.3, 1.4);
   p.each((x, z, i) => {
-    if (grid.water[i] !== NONE && Math.hypot(x + 0.5 - FORD.x, z + 0.5 - FORD.z) < 2.6) grid.h[i] = Math.max(grid.h[i], -0.62);
+    if (grid.water[i] !== NONE && Math.hypot(x + 0.5 - FORD.x, z + 0.5 - FORD.z) < 2.6) grid.h[i] = Math.max(grid.h[i], -0.5);
   }, FORD.x - 4, FORD.z - 4, FORD.x + 4, FORD.z + 4);
   // Keep the SE arrival flat around the road.
   p.flattenAlong(ROAD_IN.slice(1, 4), 5, 0);
@@ -272,10 +289,13 @@ export function buildRealm1(builder: Builder): RealmData {
   p.poly([[27, 69], [43, 69], [43, 83], [27, 83]], { t: T.Moss }, 0.8, 12);
   p.poly([[36, 92], [44, 90], [46, 97], [38, 100]], { h: 1, t: T.Grass, side: S.Dirt }, 1.2, 13);
 
+  // Footpaths (after the ground they cross). The farm lane is a cart track.
+  LANES.forEach((l, k) => p.path(l, l === LANE_FARM ? 2 : 1.7, T.Path, 0.4, 20 + k, false));
+
   // ---------- props ----------
   const b = builder;
   const inKnoll = (x: number, z: number) => x > 27 && x < 40 && z > 50 && z < 63;
-  const avoid: Pt[][] = [ROAD_IN, ROAD_WEST, ROAD_NORTH, ROAD_CAMP_WEST, BAILEY_ROAD, BAILEY_ROAD2, TRAIL_EAST, TRAIL_LODGE];
+  const avoid: Pt[][] = [ROAD_IN, ROAD_WEST, ROAD_NORTH, ROAD_CAMP_WEST, BAILEY_ROAD, BAILEY_ROAD2, TRAIL_EAST, TRAIL_LODGE, ...LANES];
   const nearRoad = (x: number, z: number, d: number) => avoid.some((l) => distLine(l, x, z) < d);
   const flatAround = (x: number, z: number, rad: number) => {
     const h = grid.groundAt(x, z);
@@ -427,7 +447,7 @@ export function buildRealm1(builder: Builder): RealmData {
   // Stepping stones across the ford.
   for (let k = -2; k <= 2; k++) {
     const x = FORD.x + k * 0.85 + (r() - 0.5) * 0.3, z = FORD.z + k * 0.55 + (r() - 0.5) * 0.3;
-    b.g(x, z).blob(x, -0.42, z, 0.34, 0.14, 0.3, PAL.rockDark, 300 + k, { kind: K.Rock, flatBottom: true });
+    b.g(x, z).blob(x, -0.5, z, 0.34, 0.2, 0.3, PAL.rockDark, 300 + k, { kind: K.Rock, flatBottom: true });
   }
   b.reeds(FORD.x - 2.5, FORD.z + 2, 6);
   b.reeds(FORD.x + 2.4, FORD.z - 2.2, 6);
@@ -696,13 +716,13 @@ export function buildRealm1(builder: Builder): RealmData {
     { type: 'goblin', x: 38, z: 88 },
     { type: 'bat', x: 33, z: 77 },
     { type: 'bat', x: 38, z: 72 },
-    { type: 'goblin', x: 22, z: 96 },
+    { type: 'shaman', x: 22, z: 96 },
     { type: 'goblin', x: 24, z: 99 },
     // Road into the woods
     { type: 'goblin', x: 88, z: 38 },
     { type: 'archer', x: 91, z: 36 },
     // Goblin camp
-    { type: 'goblin', x: 93, z: 23, group: 'camp' },
+    { type: 'brute', x: 93, z: 23, group: 'camp' },
     { type: 'goblin', x: 98, z: 26, group: 'camp' },
     { type: 'shield', x: 92, z: 29, group: 'camp', elite: true },
     { type: 'archer', x: 100, z: 20, group: 'camp' },
@@ -715,38 +735,38 @@ export function buildRealm1(builder: Builder): RealmData {
     { type: 'shield', x: 56, z: 22 },
     { type: 'archer', x: 57.5, z: 30, guard: true },
     { type: 'archer', x: 58.5, z: 36, guard: true },
-    { type: 'goblin', x: 58, z: 12 },
+    { type: 'brute', x: 58, z: 12 },
     // The Overlook's sentries
     { type: 'goblin', x: 16.5, z: 48.5 },
-    { type: 'goblin', x: 32, z: 45.5 },
+    { type: 'bomber', x: 32, z: 45.5 },
     // The gorge lookout
     { type: 'archer', x: 120.4, z: 28.2, guard: true },
     { type: 'archer', x: 120.4, z: 32.8, guard: true },
-    { type: 'goblin', x: 117, z: 30.5 },
+    { type: 'brute', x: 117, z: 30.5 },
     // The old lodge and its beast
     { type: 'boar', x: 108.5, z: 11.5, group: 'lodge', elite: true },
-    { type: 'goblin', x: 104.5, z: 15 },
+    { type: 'shaman', x: 104.5, z: 15 },
     { type: 'archer', x: 111.5, z: 14 },
     // Bog goblins in the Sallow Marsh
-    { type: 'goblin', x: 33, z: 111 },
+    { type: 'darter', x: 33, z: 111 },
     { type: 'shield', x: 43, z: 116 },
     { type: 'bat', x: 38, z: 117 },
     { type: 'bat', x: 51, z: 110 },
     // Raiders on the southern fields
     { type: 'goblin', x: 78.5, z: 114, group: 'farm' },
-    { type: 'goblin', x: 83.5, z: 117.5, group: 'farm' },
+    { type: 'bomber', x: 83.5, z: 117.5, group: 'farm' },
     { type: 'archer', x: 87, z: 115.5, group: 'farm' },
-    { type: 'goblin', x: 93, z: 114.5, group: 'farm' },
+    { type: 'bomber', x: 93, z: 114.5, group: 'farm' },
     // A goblin fishing camp on the Mirrow's bank
     { type: 'goblin', x: 121, z: 97.5 },
-    { type: 'goblin', x: 121.6, z: 101 },
+    { type: 'bomber', x: 121.6, z: 101 },
     // Patrols in the western fields
     { type: 'goblin', x: 13, z: 73 },
     { type: 'goblin', x: 15, z: 66 },
     { type: 'bat', x: 17, z: 88 },
     // Courtyard garrison: the hall stays barred until they fall.
     { type: 'goblin', x: 40, z: 22, group: 'courtyard' },
-    { type: 'goblin', x: 38, z: 30, group: 'courtyard' },
+    { type: 'brute', x: 38, z: 30, group: 'courtyard' },
     { type: 'shield', x: 36, z: 25, group: 'courtyard' },
     { type: 'shield', x: 30, z: 33, group: 'courtyard' },
     { type: 'archer', x: 42, z: 14, group: 'courtyard' },
@@ -754,6 +774,15 @@ export function buildRealm1(builder: Builder): RealmData {
     { type: 'boar', x: 28, z: 30, group: 'courtyard', elite: true },
     // The tyrant.
     { type: 'king', x: 19.5, z: 18.5, group: 'boss' },
+    // ---- added in the balance update (appended: a foe's index is its save id) ----
+    { type: 'goblin', x: 25.5, z: 95.5 },
+    { type: 'shaman', x: 97, z: 21.5, group: 'camp' },
+    { type: 'bomber', x: 101.5, z: 27.5, group: 'camp' },
+    { type: 'bomber', x: 55.5, z: 33 },
+    { type: 'darter', x: 41, z: 112.5 },
+    { type: 'shaman', x: 26, z: 36.5, group: 'courtyard' },
+    { type: 'bomber', x: 44, z: 35, group: 'courtyard', off: true },
+    { type: 'darter', x: 47, z: 113.5, guard: true },
   ];
 
   const npcs: NpcDef[] = [
@@ -927,7 +956,8 @@ export function buildRealm1(builder: Builder): RealmData {
       gg.beam([125.1, rim + 0.9, 29], [125.1, rim + 0.9, 32], 0.05, PAL.woodDark, { kind: K.Wood });
       bb.collide({ kind: 'b', x0: 125, z0: 29, x1: 125.3, z1: 32, y0: rim - 1, y1: rim + 1.2 });
       bb.standingTorch(119.2, 28.4);
-      // A goblin fishing camp on the Mirrow's bank.
+      // A goblin fishing camp on the Mirrow's bank, at the end of the lane from the stones.
+      new Painter(g).path(LANE_RIVER, 1.7, T.Path, 0.4, 22, false);
       bb.tent(121.4, 100.4, Math.PI / 2, '#5a4a2a');
       bb.campfire(120.4, 97.6);
       bb.barrel(122.3, 98.6);

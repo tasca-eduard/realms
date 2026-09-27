@@ -48,7 +48,39 @@ It won't go indoors, and it finds you when you rest at a far-off moonfire. Resti
 4 times the coins. Blocking drains stamina while held; rolling needs stamina ("tired"
 when you're out). A parry stuns, slows time and gives stamina and energy back. Enemies
 flash before they strike; ones you could see from where the knight stands show as a red
-outline when trees, walls or roofs hide them from the camera.
+outline when trees, walls or roofs hide them from the camera. Knee-high walls and fences
+don't block sight, for you or for them.
+
+## Foes and effects
+
+Some blows do more than cost a heart. What's on the knight shows under the flasks, with a
+bar for the time left; the first time each one lands, a tip explains it (tips are
+remembered on this device). Effects hold still while you read, talk or watch a cutscene.
+
+| Effect | What it does | How to deal with it |
+| --- | --- | --- |
+| **Maimed** | 40% slower on foot for 3 s | Drink a flask, or rest |
+| **Dazed** | Can't act for about a second (knocked down: a little longer, flat on your back) | Parry the blow, or roll clear of the charge. Once dazed, you can't be dazed again until 3 s after it ends, even if a hit cuts it short |
+| **Burning** | Costs a heart after 1.5 s. The count pauses while you're dazed, so you always get your chance to roll | Roll, or step (or ride) into water, before then |
+| **Poisoned** | Stamina refills at half speed for 6 s | Drink a flask, or rest |
+
+| Foe | Where | What to know |
+| --- | --- | --- |
+| Goblin | Everywhere | Flashes before it swings |
+| Shield goblin | Camp, marsh, bailey, courtyard | Blocks from the front until the third hit of a combo breaks the shield |
+| Skeleton archer | Towers, camps, the farm | Shows a red aim line; its arrows **maim** 30% of the time. (The keep's arrow slits glint before they fire and don't maim.) |
+| Bat | Barrow Fields, woods, marsh | Harmless but a pest: a swoop shoves you, costs stamina and interrupts what you're doing (a flask you were drinking isn't used up). Some **steal coins** and fly off; catch them before they escape and the coins drop |
+| Armored boar | Camp, lodge, courtyard | Paws the ground, then charges; a charge that hits **knocks you down**. Hits into a wall stun it |
+| **Hammer brute** | Camp, bailey winch, gorge, courtyard | Slow, can't be interrupted while it winds up, and stops turning just before the blow: step aside. A hit may **daze**; blocking it costs over twice the stamina. A parry stuns it for almost two seconds |
+| **Firepot thrower** | Farm, camp, bailey, overlook, river | Keeps its distance and lobs a pot where you're heading; a red ring marks the spot. The flames **burn** you, and they also scorch other goblins |
+| **Bog darter** | Sallow Marsh | Blowpipe darts do no damage but **poison** |
+| **Goblin shaman** | Barrow Fields, camp, lodge, courtyard | Chants to heal nearby goblins and make them faster (they glow red), and vanishes when you get close. Kill it first |
+| Goblin King | The great hall | Charges **knock you down**; enraged, he calls in a brute |
+
+Foes that lose you walk back to their posts and heal. Golden foes (rare) drop ten times
+the coins; elites are bigger, tougher and drop a power-up.
+Every number here (health, speed, wind-ups, chances, durations) is in `src/config.ts`
+(`FOES`, `EFFECTS`, `PLAYER`), so balance can be tuned in one place.
 
 ## The realm
 
@@ -60,7 +92,8 @@ outline when trees, walls or roofs hide them from the camera.
 - **The Outer Bailey**: the winch that lowers the drawbridge (arrow slits watch it).
 - **The Moonlit Keep**: clear the courtyard garrison to open the great hall and the
   Goblin King. His crashes can bring the chandeliers down, on you or on him.
-- **Off the road**: the Seven Stones (a three-wave trial for the Knight's Crest relic), the
+- **Off the road**: the Seven Stones (a three-wave trial for the Knight's Crest relic; the
+  last wave is a brute, a shaman, a goblin and an elite boar), the
   Old Lodge (an elite beast), the Barrow Fields and its graveyard, the Overlook (a ruined
   watch post up the Pilgrims' Stair), the Hollow (a cave in the cliff below it),
   Mirrormere with its pier, the Sallow Marsh, the raided farm, a goblin camp on the
@@ -74,6 +107,11 @@ outline when trees, walls or roofs hide them from the camera.
 
 The **journal** in the pause menu lists your quests; the current step of the main quest
 shows at the top right.
+
+**Finding your way.** Roads and trodden footpaths link every place with a purpose: the
+village, the camps, the keep, the homestead, the stones, the farms, the ford, the pier
+and the Overlook stair. Places that are there to be found (the Sallow Marsh, the island
+in Mirrormere, the Hollow) have no path: leave the track to find them.
 
 Unexplored land stays under mist (fog of war) until you walk near it.
 
@@ -94,6 +132,7 @@ dark deep water can't be entered or jumped across. The stream has a ford in the 
 
 ```
 src/
+  config.ts  every tuning number: the knight, the foes, the status effects
   engine/    renderer (low-res pixel pipeline, outlines, bloom, fog, fog of war),
              camera, input, lights, particles, materials, character rigs
   world/     map grid and collision, terrain and water meshes, grass, props,
@@ -129,7 +168,9 @@ Add these to the URL while the dev server runs:
 **Automated checks.** With the dev server running, `npm test` drives the game in headless
 Microsoft Edge through every scripted check and prints what each one found: reachability,
 controls, the full moveset, a fight, death and respawn, riding, the cracked wall, the
-trial, the Warden's quest, saved kills, the boss fight and the phone flow. Screenshots
+trial, the Warden's quest, saved kills, the status effects, thief bats, each new foe in a
+live encounter, effects pausing in dialogs, no stun-locks, foes walking home, fire on
+horseback, the trial's waves, a light-leak soak, the boss fight and the phone flow. Screenshots
 land in `shots/` (not kept).
 
 One screenshot from the command line:

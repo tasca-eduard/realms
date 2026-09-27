@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { MOBILE, VIEW, WORLD } from '../config';
+import { FOES, MOBILE, VIEW, WORLD } from '../config';
 import { Pipeline } from '../engine/pipeline';
 import { IsoCamera } from '../engine/camera';
 import { Input } from '../engine/input';
@@ -17,7 +17,7 @@ import { Builder, type Structure } from '../world/builder';
 import { buildTerrain, buildWater } from '../world/terrain';
 import { decorateOutskirts, paintOutskirts } from '../world/outskirts';
 import { buildGrass } from '../world/grass';
-import { buildRealm1, MAP_D, MAP_W, type RealmData, type RegionDef } from '../world/realm1';
+import { buildRealm1, MAP_D, MAP_W, type EnemyType, type RealmData, type RegionDef } from '../world/realm1';
 import { ALERT_FRAME, type Assets } from './assets';
 import { Player, POWERS, type PowerKind } from './player';
 import { Enemy } from './enemies';
@@ -31,7 +31,7 @@ import { ArrowSlit, Chandelier } from './hazards';
 import { Critter } from './critters';
 import { QUESTS, questDef, questDone } from './quests';
 import { reachability } from './reach';
-import { makeArcher, makeBat, makeBoar, makeGoblin, makeKing, makeKnight, makeVillager, type Model } from './models';
+import { makeArcher, makeBat, makeBoar, makeBomber, makeBrute, makeDarter, makeGoblin, makeKing, makeKnight, makeShaman, makeVillager, type Model } from './models';
 
 type GameState = 'loading' | 'title' | 'story' | 'play' | 'dead' | 'victory';
 
@@ -138,7 +138,27 @@ export class Game {
   private ambCache = { water: 0, fire: 0 };
   private deadT = 0;
   private titleT = 0;
-  private hintsShown = new Set<string>();
+  private hintsShown = new Set<string>(Game.loadTips());
+
+  private static loadTips(): string[] {
+    try {
+      return JSON.parse(localStorage.getItem('realms-tips') || '[]');
+    } catch {
+      return [];
+    }
+  }
+
+  /** True the first time a tip comes up on this device; remembers it. */
+  private firstTime(key: string) {
+    if (this.hintsShown.has(key)) return false;
+    this.hintsShown.add(key);
+    try {
+      localStorage.setItem('realms-tips', JSON.stringify([...this.hintsShown]));
+    } catch {
+      /* storage blocked: tips may repeat */
+    }
+    return true;
+  }
   private padHeld = false;
   private campCleared = false;
   private debug = new URLSearchParams(location.search).has('debug');
@@ -298,7 +318,7 @@ export class Game {
     for (const e of this.enemies) e.model.rig.removeFrom(this.scene);
     this.enemies = [];
     this.realm.enemies.forEach((s, id) => {
-      if (this.save.data.killed.includes(id)) return;
+      if (s.off || this.save.data.killed.includes(id)) return;
       if (s.group === 'courtyard' && this.save.data.courtyard) return;
       if (s.group === 'boss' && this.save.data.boss) return;
       const e = new Enemy(s.type, s.x, s.z, this, s.group, s.guard, s.elite);
@@ -307,6 +327,11 @@ export class Game {
       this.enemies.push(e);
       if (s.type === 'king') this.boss = e;
     });
+  }
+
+  /** Reading, talking or watching a cutscene: foes, arrows and effects all wait. */
+  get worldFrozen() {
+    return this.ui.dialogOpen || this.ui.loreOpen || !!this.cutscene;
   }
 
   get controlsEnabled() {
@@ -605,8 +630,7 @@ export class Game {
     s.shadow.visible = false;
     this.scene.add(s.mesh);
     this.alerts.push({ s, e, t: 0 });
-    if (!this.hintsShown.has('fight') && this.settings.hints) {
-      this.hintsShown.add('fight');
+    if (this.settings.hints && this.firstTime('fight')) {
       this.ui.hint(this.input.usingTouch ? 'Enemies flash before they strike. Tap the shield to roll through, hold it to block.' : 'Enemies flash before they strike. Tap <kbd>Right click</kbd> to roll through, hold it to block', 7);
     }
   }
@@ -682,7 +706,7 @@ export class Game {
     this.swooshes.push({ mesh, mat, t: -0.02, dur: full ? 0.45 : 0.25 });
   }
 
-  enemyHitsPlayer(e: Enemy, dmg: number, opts: { kb?: number; unblockable?: boolean } = {}) {
+  enemyHitsPlayer(e: Enemy, dmg: number, opts: { kb?: number; unblockable?: boolean; guardCost?: number } = {}) {
     const res = this.player.hurt(dmg, e.x, e.z, this, opts);
     this.afterPlayerHit(res, e.x, e.z, e);
     return res;
@@ -691,13 +715,134 @@ export class Game {
   arrowHitsPlayer(a: Arrow) {
     const res = this.player.hurt(1, a.x - a.vx, a.z - a.vz, this, { kb: 4 });
     this.afterPlayerHit(res, a.x, a.z, null);
+    // Arrows can lodge in a leg.
+    if (res === 'hit' && a.from && this.player.alive && Math.random() < FOES.archer.maimChance) this.player.afflict('maim', this);
     return res;
+  }
+
+  /** A bat's swoop: no hearts lost, but a shove, lost stamina, a broken action, maybe lost coins. */
+  batHits(e: Enemy) {
+    const p = this.player;
+    const res = p.harass(e.x, e.z, this, { kb: 5, stamina: FOES.bat.stamina });
+    if (res === 'blocked') {
+      this.audio.sfx('guard', e.x, e.z);
+      e.vx = -e.fx * 6;
+      e.vz = -e.fz * 6;
+    }
+    if (res !== 'hit') return false;
+    this.audio.sfx('bat', e.x, e.z);
+    this.fx.burst(P.dust, p.x, p.y + 1, p.z, 5, 1.5);
+    if (e.thief && e.loot === 0 && p.coins > 0) {
+      const [a, b] = FOES.bat.steal;
+      const n = Math.min(p.coins, a + Math.floor(Math.random() * (b - a + 1)));
+      p.coins -= n;
+      e.loot = n;
+      this.pop(p, `-${n} coins! a bat snatched them`, '#feae34');
+      this.audio.sfx('steal', e.x, e.z);
+      e.state = 'flee';
+      e.t = 0;
+      return true;
+    }
+    return false;
+  }
+
+  /** The first time each effect lands, say how to deal with it. */
+  effectTip(kind: string) {
+    if (!this.firstTime('fx-' + kind)) return;
+    const touch = this.input.usingTouch;
+    const roll = touch ? 'tap the shield' : 'tap <kbd>Right click</kbd>';
+    const drink = touch ? 'the flask' : '<kbd>Q</kbd>';
+    const tips: Record<string, string> = {
+      burn: `<b>Burning</b>: ${roll} to roll, or step into water, before it costs a heart.`,
+      maim: `<b>Maimed</b>: you move slower for a while. A flask (${drink}) cures it.`,
+      poison: `<b>Poisoned</b>: stamina comes back at half speed. A flask (${drink}) cures it.`,
+      daze: `<b>Dazed</b>: the brute's maul and charges knock the wits out of you. A parry turns them back.`,
+    };
+    this.ui.hint(tips[kind] ?? '', 7);
+  }
+
+  /** A blowpipe dart: no hearts lost, but poison. */
+  dartHitsPlayer(a: Arrow) {
+    const p = this.player;
+    const res = p.harass(a.x - a.vx, a.z - a.vz, this, { kb: 1.5, stamina: 10 });
+    if (res === 'blocked') this.audio.sfx('guard', a.x, a.z);
+    if (res === 'hit') p.afflict('poison', this);
+    return res;
+  }
+
+  /** The brute's maul comes down: a crack in the ground and a cloud of dust. */
+  hammerImpact(e: Enemy) {
+    const x = e.x + e.fx * 1.6, z = e.z + e.fz * 1.6;
+    this.audio.sfx('thud', x, z);
+    this.shake(0.35);
+    this.fx.burst(P.puff, x, this.grid.groundAt(x, z) + 0.1, z, 10, 2.5);
+    this.fx.burst(P.spark, x, this.grid.groundAt(x, z) + 0.2, z, 6, 3, 2);
+  }
+
+  /** The brute's maul lands on the knight: a heavy blow that may leave him dazed. */
+  bruteHits(e: Enemy) {
+    const res = this.enemyHitsPlayer(e, 1, { kb: 9, guardCost: FOES.brute.guardCost });
+    if (res === 'hit' && this.player.alive && Math.random() < FOES.brute.dazeChance) this.player.afflict('daze', this);
+    if (res === 'blocked') this.pop(this.player, 'heavy blow!', '#c0c0cc');
+    return res;
+  }
+
+  /** The shaman sings: nearby goblins heal and quicken, idle ones join the fight. */
+  shamanChant(s: Enemy) {
+    this.audio.sfx('chant', s.x, s.z);
+    this.fx.burst(P.heal2, s.x, s.y + 1.2, s.z, 20, 3, 2);
+    let n = 0;
+    for (const e of this.enemies) {
+      if (!e.alive || e === s || e.type === 'king' || e.type === 'bat') continue;
+      if (Math.hypot(e.x - s.x, e.z - s.z) > FOES.shaman.chantRange) continue;
+      e.hp = Math.min(e.maxHp, e.hp + FOES.shaman.heal);
+      e.hasteT = FOES.shaman.hasteTime;
+      if (e.state === 'idle' || e.state === 'return') e.state = 'chase';
+      this.fx.burst(P.heal2, e.x, e.y + 1, e.z, 10, 1, 1.5);
+      n++;
+    }
+    if (n) this.pop(s, 'war-chant!', '#9ef07a');
+  }
+
+  /** The shaman vanishes and reappears further from the knight. Returns false if there was no room. */
+  shamanBlink(s: Enemy) {
+    const p = this.player;
+    const away = Math.atan2(s.z - p.z, s.x - p.x);
+    for (const off of [0, 0.7, -0.7, 1.4, -1.4]) {
+      const a = away + off, r = 5.5;
+      const x = s.x + Math.cos(a) * r, z = s.z + Math.sin(a) * r;
+      const cx = Math.floor(x), cz = Math.floor(z);
+      if (!this.grid.inside(cx, cz) || this.grid.isDeep(cx, cz) || this.grid.solid[this.grid.i(cx, cz)]) continue;
+      if (Math.abs(this.grid.groundAt(x, z) - s.y) > 1 || !this.grid.lineClear(s.x, s.z, x, z, s.y + 0.5)) continue;
+      this.fx.burst(P.puff, s.x, s.y + 0.8, s.z, 12, 2);
+      this.fx.burst(P.bubble, s.x, s.y + 0.8, s.z, 10, 2, 1);
+      s.x = x;
+      s.z = z;
+      s.y = this.grid.groundAt(x, z);
+      this.fx.burst(P.puff, x, s.y + 0.8, z, 12, 2);
+      this.audio.sfx('blink', x, z);
+      return true;
+    }
+    return false;
+  }
+
+  /** A thief bat got away: gone for good, and so are the coins. */
+  batEscaped(e: Enemy) {
+    this.pop(e, `the bat got away with ${e.loot} coins`, '#8a82a3');
+    if (e.spawnId !== undefined && !this.save.data.killed.includes(e.spawnId)) this.save.data.killed.push(e.spawnId);
+    e.loot = 0;
+    e.despawn(this);
   }
 
   waveHitsPlayer(w: Wave) {
     if (!this.player.onGround) return;
     const res = this.player.hurt(1, w.x, w.z, this, { unblockable: true, kb: 9 });
     this.afterPlayerHit(res, w.x, w.z, null);
+  }
+
+  /** Feedback after something reaches the knight (hit, blocked, parried...). */
+  afterHit(res: string, x: number, z: number, e: Enemy | null) {
+    this.afterPlayerHit(res, x, z, e);
   }
 
   private afterPlayerHit(res: string, x: number, z: number, e: Enemy | null) {
@@ -729,8 +874,7 @@ export class Game {
       this.shake(0.3);
       if (e && e.type !== 'king') e.parried(this);
       else if (e && e.type === 'king' && e.state === 'charge') e.parried(this);
-      if (!this.hintsShown.has('parry')) {
-        this.hintsShown.add('parry');
+      if (this.firstTime('parry')) {
         this.ui.toast('Parry!', 'The foe is stunned and takes extra damage');
       }
     }
@@ -849,7 +993,7 @@ export class Game {
       if (c.power || Math.random() < 0.35) this.combat.powerOrb(c.x, c.y + 0.9, c.z, c.power);
       this.fx.burst(P.coinGlint, c.x, c.y + 0.7, c.z, 20, 2, 3);
       const l = this.lights.add(c.x, c.y + 1, c.z, 0xffc060, 8, 5, 0.1);
-      this.after(1.2, () => (l.on = false, (l.level = 0)));
+      this.after(1.2, () => this.lights.remove(l));
       this.ui.toast(`${c.coins} coins`);
     });
     this.save.data.chests.push(c.id);
@@ -884,6 +1028,7 @@ export class Game {
     p.hp = p.maxHp;
     p.flasks = p.flasksMax;
     p.stamina = p.maxStamina;
+    p.cureAll();
     p.rest();
     const h = this.horse;
     h.hp = h.maxHp;
@@ -1047,9 +1192,10 @@ export class Game {
 
   bossSummon(e: Enemy) {
     this.audio.sfx('roar', e.x, e.z);
-    this.bubbleAt(e, 'GUARDS!');
-    for (const [x, z] of [[30, 13], [30, 24]]) {
-      const g = new Enemy('goblin', x, z, this, 'boss');
+    this.bubbleAt(e, e.enraged ? 'BRING ME GROGG!' : 'GUARDS!');
+    const kinds: EnemyType[] = e.enraged ? ['brute', 'goblin'] : ['goblin', 'goblin'];
+    for (const [i, [x, z]] of ([[30, 13], [30, 24]] as [number, number][]).entries()) {
+      const g = new Enemy(kinds[i], x, z, this, 'boss');
       g.model.rig.addTo(this.scene);
       g.state = 'chase';
       this.enemies.push(g);
@@ -1122,18 +1268,19 @@ export class Game {
   }
 
   private viewer(anim: string, tFixed: string | null) {
-    const models = [makeKnight(false), makeGoblin(false), makeGoblin(true), makeArcher(), makeBat(), makeBoar(), makeKing(), makeVillager('old'), makeVillager('girl'), makeVillager('smith')];
+    const models = [makeKnight(false), makeGoblin(false), makeGoblin(true), makeArcher(), makeBat(), makeBrute(), makeBomber(), makeDarter(), makeShaman(), makeBoar(), makeKing(), makeVillager('old'), makeVillager('girl'), makeVillager('smith')];
     const cx = 79, cz = 64.5;
     const R = this.cam.groundRight, U = this.cam.groundUp;
     models.forEach((m, i) => {
       m.rig.addTo(this.scene);
-      const col = (i % 5) - 2, row = Math.floor(i / 5) === 0 ? 1.6 : -1.6;
+      const col = (i % 5) - 2, row = (1 - Math.floor(i / 5)) * 2.2;
       const x = cx + R.x * col * 2.4 + U.x * row * 1.6, z = cz + R.z * col * 2.4 + U.z * row * 1.6;
       const y = this.grid.groundAt(x, z) + (i === 4 ? 1.2 : 0);
       m.rig.face(0.7, 0.7, 0);
       this.viewerModels.push({ m, x, y, z });
     });
     this.player.place(60, 60, this);
+    this.fow.revealAll();
     this.viewerAnim = anim;
     this.viewerT = tFixed === null ? null : Number(tFixed);
     this.cam.focus.set(cx, 1.4, cz);
@@ -1202,9 +1349,12 @@ export class Game {
       if (cp && (cp.lit || cp.id === 'hearth')) p.place(cp.x + 1.3, cp.z + 1.3, this);
       else p.place(this.realm.start.x, this.realm.start.z, this);
       this.cam.focus.set(p.x, p.y, p.z);
-      // Survivors regroup and heal.
+      // Survivors regroup and heal; flames and pots in flight are gone.
+      for (const f of this.combat.fires) f.t = f.life;
+      for (const pot of this.combat.pots) pot.t = -1;
       for (const e of this.enemies) {
         if (!e.alive) continue;
+        e.cancelAim(this);
         if ((e.group === 'boss' && e.type !== 'king') || e.group === 'trial') {
           e.despawn(this);
           continue;
@@ -1347,7 +1497,7 @@ export class Game {
 
     if (playing) {
       // Foes and arrows hold still while you read, talk or watch a cutscene.
-      const frozen = this.ui.dialogOpen || this.ui.loreOpen || !!this.cutscene;
+      const frozen = this.worldFrozen;
       const edt = frozen ? 0 : dt;
       if (this.state === 'play') this.save.data.playTime += dt;
       p.update(dt, this);
@@ -1463,13 +1613,13 @@ export class Game {
     }
 
     this.ui.hud(p, p.riding ? { hp: p.riding.hp, max: p.riding.maxHp } : null);
+    this.ui.effects(p.effects, p.effectMax);
     if (this.pipe.flash > 0) this.pipe.flash = Math.max(0, this.pipe.flash - real * 1.5);
     this.pipe.desat = damp(this.pipe.desat, this.state === 'dead' ? 0.85 : p.hp <= 1 ? 0.35 : 0, 3, real);
     this.audio.setMuffle(this.paused ? 700 : this.state === 'dead' ? 500 : p.hp <= 1 ? 2500 : 20000);
 
     // First steps: point the way.
-    if (this.state === 'play' && this.settings.hints && !this.hintsShown.has('road') && this.tutorialT > 12 && !this.save.data.lit.length && Math.hypot(p.x - 105.5, p.z - 99.5) < 22) {
-      this.hintsShown.add('road');
+    if (this.state === 'play' && this.settings.hints && !this.hintsShown.has('road') && this.tutorialT > 12 && !this.save.data.lit.length && Math.hypot(p.x - 105.5, p.z - 99.5) < 22 && this.firstTime('road')) {
       this.ui.hint('Light the <b>moonfire</b> at the wayshrine with <kbd>E</kbd>. If you fall, you will rise there.', 7);
     }
   }

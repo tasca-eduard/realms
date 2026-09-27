@@ -1,5 +1,6 @@
 import { Rig } from '../engine/rig';
 import type { Geo } from '../engine/geo';
+import { K } from '../engine/materials';
 import { clamp } from '../engine/util';
 import { LOOKS, type Look } from './assets';
 
@@ -281,6 +282,36 @@ function knightPose(r: Rig, a: Anim) {
       r.j('legR').rotation.x = -0.4;
       r.j('legL').rotation.x = 0.2;
       break;
+    case 'dazed': {
+      // Reeling: head lolls, arms drop, knees buckle.
+      knightIdleArms(r);
+      const w = Math.sin(a.time * 9);
+      r.j('head').rotation.z = w * 0.3;
+      r.j('head').rotation.x = 0.25;
+      r.j('torso').rotation.z = -w * 0.12;
+      r.j('torso').rotation.x = 0.2;
+      r.j('armR').rotation.x = 0.1;
+      r.j('armL').rotation.x = 0.1;
+      r.j('armL').rotation.y = 0;
+      r.j('hips').position.y -= 0.1;
+      r.j('legR').rotation.x = -0.25;
+      r.j('legL').rotation.x = 0.2;
+      break;
+    }
+    case 'down': {
+      // Knocked flat on the back, then scrambling up.
+      knightIdleArms(r);
+      const dur = a.dur ?? 0.85;
+      const fall = easeOut(seg(a.t, 0, 0.18)), rise = ease(seg(a.t, dur - 0.3, dur));
+      const k = fall * (1 - rise);
+      r.j('hips').rotation.x = -1.45 * k;
+      r.j('hips').position.y = mix(0.95, 0.22, k);
+      r.j('armR').rotation.z = -0.9 * k;
+      r.j('armL').rotation.z = 0.9 * k;
+      r.j('legR').rotation.x = -0.5 * k;
+      r.j('head').rotation.x = -0.4 * k;
+      break;
+    }
     case 'charge': {
       // Sword drawn back low, weight down, ready to whirl.
       const k = ease(seg(a.t, 0, 0.2));
@@ -438,6 +469,143 @@ export function makeGoblin(shield: boolean): Model {
       g.box(0.08, -0.52, 0, 0.02, 0.5, 0.06, '#4a3424');
     });
   return new Model(r, (rig, a) => goblinPose(rig, a, shield), 0.8);
+}
+
+// ---------- goblin kinds ----------
+
+/** The hammer brute: a head taller, iron-capped, with a great maul. */
+export function makeBrute(): Model {
+  const r = new Rig({ shadow: 1.0 });
+  goblinBody(r);
+  r.part('head', (g) => {
+    g.box(0, 0.2, 0, 0.46, 0.18, 0.42, '#5a5a66', { kind: K.Metal });
+    g.box(0, 0.08, 0.2, 0.08, 0.2, 0.06, '#5a5a66', { kind: K.Metal });
+    g.box(0, 0.36, 0, 0.1, 0.08, 0.3, '#7a7a88', { kind: K.Metal });
+  });
+  r.part('torso', (g) => {
+    g.box(0, 0.02, 0.02, 0.44, 0.34, 0.3, '#4a3a2e', { kind: K.Wood });
+    for (const s of [-1, 1]) g.box(s * 0.26, 0.36, 0, 0.18, 0.12, 0.3, '#5a5a66', { kind: K.Metal });
+  });
+  r.part('handR', (g) => {
+    g.box(0, -0.4, 0, 0.07, 1.05, 0.07, '#4a3424', { kind: K.Wood });
+    g.box(0, -0.98, 0, 0.26, 0.3, 0.46, '#5a5a66', { kind: K.Metal });
+    g.box(0, -0.98, 0, 0.3, 0.12, 0.5, '#3a3a44', { kind: K.Metal });
+  });
+  const m = new Model(r, brutePose, 0.9);
+  r.scale = 1.4;
+  return m;
+}
+
+function brutePose(r: Rig, a: Anim) {
+  goblinPose(r, a, false);
+  // Both hands on the haft for the overhead smash.
+  if (a.name === 'windup' || a.name === 'strike') {
+    r.j('armL').rotation.x = r.j('armR').rotation.x;
+    r.j('armL').rotation.y = -0.35;
+    r.j('armL').rotation.z = 0;
+  } else {
+    r.j('armR').rotation.x = -0.15;
+    r.j('handR').rotation.x = -0.2;
+  }
+}
+
+/** The firepot thrower: a satchel of clay pots, one always in hand. */
+export function makeBomber(): Model {
+  const r = new Rig({ shadow: 0.7 });
+  goblinBody(r);
+  r.part('head', (g) => {
+    g.box(0, 0.2, -0.02, 0.44, 0.1, 0.4, '#6a4a2a', { kind: K.Cloth });
+    g.box(0, 0.26, -0.02, 0.3, 0.12, 0.3, '#6a4a2a', { kind: K.Cloth });
+  });
+  r.part('hips', (g) => {
+    g.box(0.2, -0.28, 0.02, 0.14, 0.2, 0.22, '#5a3a22', { kind: K.Cloth });
+    g.cyl(0.21, -0.14, 0.06, 0.07, 0.05, 0.1, 6, '#8a5a3a');
+    g.cyl(0.21, -0.14, -0.05, 0.07, 0.05, 0.1, 6, '#8a5a3a');
+  });
+  r.part('handR', (g, gl) => {
+    g.cyl(0, -0.2, 0, 0.12, 0.09, 0.16, 7, '#8a5a3a');
+    g.cyl(0, -0.04, 0, 0.09, 0.05, 0.06, 6, '#6a4028');
+    gl.box(0, 0.04, 0, 0.04, 0.08, 0.04, [4, 2, 0.6], { kind: 1 });
+  });
+  return new Model(r, (rig, a) => {
+    const name = a.name === 'aim' ? 'windup' : a.name;
+    goblinPose(rig, { ...a, name }, false);
+  }, 0.8);
+}
+
+/** The bog darter: a reed hood and a long blowpipe. */
+export function makeDarter(): Model {
+  const r = new Rig({ shadow: 0.7 });
+  goblinBody(r);
+  r.part('head', (g) => {
+    g.box(0, 0.12, -0.04, 0.48, 0.3, 0.44, '#3e5232', { kind: K.Thatch });
+    g.box(0, -0.06, -0.16, 0.48, 0.3, 0.14, '#3e5232', { kind: K.Thatch });
+  });
+  r.part('handR', (g) => {
+    g.box(0, -0.3, 0, 0.04, 0.9, 0.04, '#6a7040', { kind: K.Wood });
+    g.box(0, -0.72, 0, 0.06, 0.06, 0.06, '#4a3424');
+  });
+  return new Model(r, darterPose, 0.8);
+}
+
+function darterPose(r: Rig, a: Anim) {
+  goblinPose(r, { ...a, name: a.name === 'aim' || a.name === 'strike' ? 'idle' : a.name }, false);
+  if (a.name === 'aim' || a.name === 'strike') {
+    // Pipe to the lips, pointed at the knight.
+    r.j('armR').rotation.x = -1.5;
+    r.j('armR').rotation.y = 0.35;
+    r.j('handR').rotation.x = 0;
+    r.j('armL').rotation.x = -1.4;
+    r.j('armL').rotation.y = -0.2;
+    r.j('torso').rotation.x = 0.1;
+    if (a.name === 'strike') r.j('head').rotation.x = -0.15;
+  } else {
+    r.j('armR').rotation.x = -0.2;
+    r.j('handR').rotation.x = -0.4;
+  }
+}
+
+/** The shaman: a bone mask, feathers, a staff crowned with a glowing skull. */
+export function makeShaman(): Model {
+  const r = new Rig({ shadow: 0.7 });
+  goblinBody(r);
+  r.part('head', (g) => {
+    g.box(0, 0.02, 0.2, 0.36, 0.3, 0.04, '#d8d0b8');
+    g.box(-0.08, 0.06, 0.225, 0.07, 0.05, 0.01, '#1a1010');
+    g.box(0.08, 0.06, 0.225, 0.07, 0.05, 0.01, '#1a1010');
+    for (const [x, c, h] of [[-0.12, '#c83030', 0.4], [0, '#e0b040', 0.5], [0.12, '#3a8a5a', 0.38]] as [number, string, number][]) {
+      g.push().translate(x, 0.2, -0.05).rotateZ(x * -1.5);
+      g.box(0, h / 2, 0, 0.05, h, 0.03, c, { wind: 0.4 });
+      g.pop();
+    }
+  });
+  r.part('hips', (g) => {
+    g.box(0, -0.42, 0, 0.44, 0.42, 0.32, '#3a4a3a', { kind: K.Cloth });
+  });
+  r.part('handR', (g, gl) => {
+    g.box(0, -0.2, 0, 0.05, 1.5, 0.05, '#5a4030', { kind: K.Wood });
+    g.box(0, 0.6, 0, 0.16, 0.16, 0.16, '#d8d0b8');
+    gl.box(0, 0.62, 0.085, 0.1, 0.05, 0.01, [0.5, 3.2, 0.9]);
+    for (const s of [-1, 1]) g.box(s * 0.1, 0.45, 0, 0.02, 0.2, 0.02, '#c83030', { wind: 0.6 });
+  });
+  return new Model(r, shamanPose, 0.8);
+}
+
+function shamanPose(r: Rig, a: Anim) {
+  goblinPose(r, { ...a, name: a.name === 'chant' ? 'idle' : a.name }, false);
+  r.j('armR').rotation.x = -0.35;
+  r.j('handR').rotation.x = 0.35;
+  if (a.name === 'chant') {
+    // Staff and arms raised, swaying with the song.
+    const k = Math.min(1, a.t / 0.3);
+    r.j('armR').rotation.x = -2.6 * k;
+    r.j('handR').rotation.x = 0.3;
+    r.j('armL').rotation.x = -2.4 * k;
+    r.j('armL').rotation.z = 0.5;
+    r.j('torso').rotation.x = -0.25 * k;
+    r.j('torso').rotation.z = Math.sin(a.time * 8) * 0.12;
+    r.j('hips').position.y += Math.abs(Math.sin(a.time * 8)) * 0.05;
+  }
 }
 
 function goblinPose(r: Rig, a: Anim, shield: boolean) {

@@ -142,6 +142,8 @@ export function paintOutskirts(grid: Grid, W: number, D: number) {
 export function decorateOutskirts(b: Builder, grid: Grid, W: number, D: number, r: Rng) {
   const wet = (x: number, z: number) => grid.waterAt(x, z) !== NONE;
   const nearWater = (x: number, z: number) => wet(x + 1.2, z) || wet(x - 1.2, z) || wet(x, z + 1.2) || wet(x, z - 1.2);
+  const trodden = (x: number, z: number) => grid.inside(Math.floor(x), Math.floor(z)) && grid.t[grid.i(Math.floor(x), Math.floor(z))] === T.Path;
+  const onPath = (x: number, z: number) => trodden(x, z) || trodden(x + 1.2, z) || trodden(x - 1.2, z) || trodden(x, z + 1.2) || trodden(x, z - 1.2);
   for (let z = grid.oz; z < grid.oz + grid.d; z += 1.5)
     for (let x = grid.ox; x < grid.ox + grid.w; x += 1.5) {
       if (x > -1 && z > -1 && x < W && z < D) continue;
@@ -151,6 +153,7 @@ export function decorateOutskirts(b: Builder, grid: Grid, W: number, D: number, 
       const out = Math.max(-tx, -tz, tx - W, tz - D, 0);
       const k = r();
       const h = grid.groundAt(tx, tz);
+      if (onPath(tx, tz)) continue;
       switch (biomeAt(Math.floor(tx), Math.floor(tz), W, D)) {
         case 'mountain':
           if (h < 18 && k < 0.28) b.pine(tx, tz, 1 + r() * 0.7);

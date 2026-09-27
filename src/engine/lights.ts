@@ -48,6 +48,12 @@ export class LightPool {
     return s;
   }
 
+  /** Forget a light for good (fires burning out, pickups taken). */
+  remove(s: LightSource) {
+    const i = this.sources.indexOf(s);
+    if (i >= 0) this.sources.splice(i, 1);
+  }
+
   update(time: number, fx: number, fz: number) {
     const arr = this.scratch;
     arr.length = 0;

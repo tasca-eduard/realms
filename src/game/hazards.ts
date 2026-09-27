@@ -30,7 +30,7 @@ export class ArrowSlit {
       if (this.aim <= 0) {
         this.glint.visible = false;
         g.combat.shootFrom(this.x, this.y, this.z, p.x + p.vx * 0.25, p.y + 0.9, p.z + p.vz * 0.25);
-        this.cd = 3.5 + Math.random() * 2.5;
+        this.cd = 5 + Math.random() * 3;
       }
       return;
     }

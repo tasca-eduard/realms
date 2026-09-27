@@ -273,7 +273,7 @@ export class Grid {
       if (this.solid[i]) return false;
       if (this.cellTop(cx, cz, x, z) > y + 0.9) return false;
       for (const c of this.collidersNear(x, z)) {
-        if (!c.on || c.y1 < y + 0.5) continue;
+        if (!c.on || c.y1 < y + 1.1) continue; // knee-high walls and fences do not block sight
         if (c.kind === 'b' ? x > c.x0 && x < c.x1 && z > c.z0 && z < c.z1 : (x - c.x) ** 2 + (z - c.z) ** 2 < c.r * c.r) return false;
       }
     }
