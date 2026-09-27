@@ -89,7 +89,7 @@ export class Trial implements Interactable {
   /** The knight fell mid-trial: everything resets. */
   reset(g: Game) {
     if (this.state === 'idle' || this.state === 'won') return;
-    for (const e of this.foes) if (e.alive) e.die(g);
+    for (const e of this.foes) if (e.alive) e.despawn(g);
     this.foes = [];
     this.seal(false, g);
     this.state = 'idle';

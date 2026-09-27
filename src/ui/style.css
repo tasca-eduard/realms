@@ -212,3 +212,8 @@ body.touch #flaskKey, body.touch #prompt { display: none; }
 .quest.done { opacity: 0.55; }
 .quest.done b { text-decoration: line-through; }
 @media (max-height: 500px) { #objective { top: 38px; font-size: 12px; } }
+
+.keys.tch { display: none; }
+body.touch .keys.tch { display: grid; }
+body.touch .keys.desk { display: none; }
+@media (max-height: 500px) { #questNote { top: 64px; font-size: 16px; } }

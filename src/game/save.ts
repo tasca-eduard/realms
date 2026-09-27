@@ -21,6 +21,8 @@ export interface SaveData {
   shards: string[];
   relic: boolean;
   quests: Record<string, number>;
+  /** Placed foes that have been defeated (indexes into the realm's enemy list). */
+  killed: number[];
 }
 
 const KEY = 'realms-save';
@@ -45,6 +47,7 @@ const fresh = (): SaveData => ({
   shards: [],
   relic: false,
   quests: {},
+  killed: [],
 });
 
 export class Save {

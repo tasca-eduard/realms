@@ -64,6 +64,8 @@ export class Enemy {
 
   golden = false;
   elite = false;
+  /** Index in the realm's enemy list for placed foes; undefined for summoned ones. */
+  spawnId?: number;
 
   constructor(public type: EnemyType, x: number, z: number, g: Game, public group?: string, public guard = false, elite = false) {
     this.spec = SPECS[type];
@@ -125,6 +127,11 @@ export class Enemy {
     this.struck = false;
   }
 
+  /** Is the knight close enough to this foe's home to be worth chasing? */
+  private inPatch(g: Game, leash: number) {
+    return Math.hypot(g.player.x - this.home.x, g.player.z - this.home.z) < leash - 4;
+  }
+
   private distTo(g: Game) {
     return Math.hypot(g.player.x - this.x, g.player.z - this.z);
   }
@@ -151,11 +158,11 @@ export class Enemy {
     const l = Math.hypot(dx, dz);
     if (l < 0.01) return;
     let mx = (dx / l) * speed * dt, mz = (dz / l) * speed * dt;
-    if (this.sideStep > 0) {
+    if (this.sideStep !== 0) {
       const s = Math.sign(this.sideStep);
       [mx, mz] = [mx * 0.3 - mz * s, mz * 0.3 + mx * s];
       this.sideStep -= dt * s;
-      if (Math.abs(this.sideStep) < 0.05) this.sideStep = 0;
+      if (Math.abs(this.sideStep) < 0.05 || Math.sign(this.sideStep) !== s) this.sideStep = 0;
     }
     const bx = this.x, bz = this.z;
     if (this.flying) {
@@ -269,7 +276,7 @@ export class Enemy {
       case 'return': {
         const dx = this.home.x - this.x, dz = this.home.z - this.z;
         this.hp = Math.min(this.maxHp, this.hp + this.maxHp * 0.25 * dt);
-        if (this.sees(g, spec.aggro)) this.set('chase');
+        if (this.sees(g, spec.aggro) && this.inPatch(g, 20)) this.set('chase');
         else if (Math.hypot(dx, dz) < 0.6 || this.t > 6) this.set('idle');
         else {
           this.faceTo(this.home.x, this.home.z);
@@ -395,7 +402,7 @@ export class Enemy {
         this.faceTo(tx, tz);
         this.walk(g, tx - this.x, tz - this.z, 1.5, dt);
         this.y += (baseY - this.y) * Math.min(1, dt * 3);
-        if (this.sees(g, this.spec.aggro)) {
+        if (this.sees(g, this.spec.aggro) && this.inPatch(g, 18)) {
           this.set('chase');
           g.audio.sfx('bat', this.x, this.z);
         }
@@ -714,6 +721,14 @@ export class Enemy {
     this.vx = -this.fx * 4;
     this.vz = -this.fz * 4;
     void g;
+  }
+
+  /** Vanish without a death: no coins, no quest progress. */
+  despawn(g: Game) {
+    this.state = 'dead';
+    this.t = 0;
+    this.deathT = 0;
+    g.fx.burst(P.puff, this.x, this.y + 0.5, this.z, 8, 2);
   }
 
   die(g: Game) {

@@ -80,6 +80,20 @@ export class Chandelier {
     g.scene.add(this.ring);
   }
 
+  /** Hang it back up (the knight fell in the boss fight and tries again). */
+  reset() {
+    this.state = 'hang';
+    this.y = this.y0;
+    this.vy = 0;
+    this.group.position.y = this.y0;
+    this.group.rotation.set(0, 0, 0);
+    this.group.getObjectByName('chain')!.visible = true;
+    this.ring.visible = false;
+    this.light.y = this.y0 - 0.3;
+    this.light.intensity = 10;
+    this.light.flicker = 0.12;
+  }
+
   drop(g: Game) {
     if (this.state !== 'hang') return;
     this.state = 'warn';

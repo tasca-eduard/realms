@@ -49,7 +49,17 @@ export class Screens {
         <div class="row"><span>Screen shake</span><button class="tog" data-s="shake"></button></div>
         <div class="row"><span>Tips</span><button class="tog" data-s="hints"></button></div>
         <h3>Controls</h3>
-        <div class="keys">
+        <div class="keys tch">
+          <b>Left thumb</b><span>Move (the stick stays where you first touch)</span>
+          <b>Sword</b><span>Attack; tap again to combo. Hold to charge a spin. In the air: down-stab</span>
+          <b>Shield</b><span>Tap to roll, hold to block, press just before a hit to parry. In the air: dodge</span>
+          <b>Arrow</b><span>Jump</span>
+          <b>Star</b><span>Special (half the blue bar): dash strike when moving, sword wave when still, plunge in the air</span>
+          <b>Gold button</b><span>Talk, open, rest, read, ride</span>
+          <b>Flask</b><span>Drink a Moon Flask</span>
+          <b>Aim</b><span>Automatic: the nearest foe roughly where you push</span>
+        </div>
+        <div class="keys desk">
           <b>WASD</b><span>Move</span>
           <b>Mouse</b><span>Aim: attacks, rolls and blocks go where you point</span>
           <b>Left click</b><span>Attack; click again to combo. Hold to charge a spin (release when it glows blue)</span>
@@ -57,7 +67,7 @@ export class Screens {
           <b>Right click</b><span>Guard: tap to roll, hold to block, press just before a hit to parry. In the air: dodge</span>
           <b>Space</b><span>Jump</span>
           <b>F</b><span>Special (half the blue bar): dash strike when moving, sword wave when still, plunge in the air</span>
-          <b>E</b><span>Talk, open, rest, read</span>
+          <b>E</b><span>Talk, open, rest, read, ride</span>
           <b>Q</b><span>Drink a Moon Flask</span>
           <b>Esc</b><span>Pause</span>
         </div>

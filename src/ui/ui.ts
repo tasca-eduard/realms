@@ -197,7 +197,11 @@ export class UI {
     this.toastT = dur;
   }
 
+  /** Tips can be turned off in the pause menu. */
+  tipsOn: () => boolean = () => true;
+
   hint(text: string, dur = 6) {
+    if (!this.tipsOn()) return;
     this.hintEl.innerHTML = text;
     this.hintEl.classList.add('on');
     this.hintT = dur;

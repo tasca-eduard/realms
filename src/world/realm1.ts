@@ -848,6 +848,7 @@ export function buildRealm1(builder: Builder): RealmData {
   for (const [x, z, what] of pots) objects.push({ kind: 'breakable', x, z, what });
 
   const regions: RegionDef[] = [
+    { name: "The Warden's Homestead", music: 'road', amb: 'road', test: (x, z) => Math.abs(x - HOME.x) < 7.5 && z > HOME.z - 6 && z < HOME.z + 13 },
     { name: 'The Crescent & Crown', music: 'tavern', amb: 'indoor', test: (x, z) => x > 72 && x < 82 && z > 50 && z < 57 },
     { name: 'Hall of the Moon Throne', music: 'hall', amb: 'indoor', test: (x, z) => x > 16 && x < 34 && z > 10 && z < 27 },
     { name: 'The Hollow', music: 'hall', amb: 'indoor', test: (x, z, y) => x > 30 && x < 36.2 && z > 54 && z < 59.4 && y < 1 },

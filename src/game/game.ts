@@ -139,6 +139,7 @@ export class Game {
   private deadT = 0;
   private titleT = 0;
   private hintsShown = new Set<string>();
+  private padHeld = false;
   private campCleared = false;
   private debug = new URLSearchParams(location.search).has('debug');
   private tutorialT = 0;
@@ -149,6 +150,7 @@ export class Game {
     this.pipe = new Pipeline(view);
     this.input = new Input(this.pipe.renderer.domElement);
     this.ui = new UI(uiRoot);
+    this.ui.tipsOn = () => this.settings.hints;
     this.ui.blip = () => this.audio.sfx('blip');
     try {
       const s = JSON.parse(localStorage.getItem('realms-settings') || 'null');
@@ -295,14 +297,16 @@ export class Game {
   private spawnEnemies() {
     for (const e of this.enemies) e.model.rig.removeFrom(this.scene);
     this.enemies = [];
-    for (const s of this.realm.enemies) {
-      if (s.group === 'courtyard' && this.save.data.courtyard) continue;
-      if (s.group === 'boss' && this.save.data.boss) continue;
+    this.realm.enemies.forEach((s, id) => {
+      if (this.save.data.killed.includes(id)) return;
+      if (s.group === 'courtyard' && this.save.data.courtyard) return;
+      if (s.group === 'boss' && this.save.data.boss) return;
       const e = new Enemy(s.type, s.x, s.z, this, s.group, s.guard, s.elite);
+      e.spawnId = id;
       e.model.rig.addTo(this.scene);
       this.enemies.push(e);
       if (s.type === 'king') this.boss = e;
-    }
+    });
   }
 
   get controlsEnabled() {
@@ -734,6 +738,7 @@ export class Game {
 
   onEnemyDeath(e: Enemy) {
     this.kills++;
+    if (e.spawnId !== undefined && !this.save.data.killed.includes(e.spawnId)) this.save.data.killed.push(e.spawnId);
     this.audio.sfx('enemyDie', e.x, e.z);
     this.fx.burst(P.puff, e.x, e.y + 0.5, e.z, 8, 2);
     if (e.type !== 'king') {
@@ -881,6 +886,7 @@ export class Game {
     p.stamina = p.maxStamina;
     p.rest();
     const h = this.horse;
+    h.hp = h.maxHp;
     if (!p.riding && h.state !== 'flee' && Math.hypot(h.x - m.x, h.z - m.z) > 25 && m.id !== 'hearth') {
       h.arriveAt(m.x - 2.2, m.z + 1.5, this);
       h.model.rig.root.visible = true;
@@ -1154,7 +1160,7 @@ export class Game {
     this.ui.fade(true);
     this.after(0.7, () => {
       const p = this.player;
-      p.hp = Math.max(0, p.hp - 1);
+      if (!this.godMode) p.hp = Math.max(0, p.hp - 1);
       p.place(p.lastSafe.x, p.lastSafe.z, this);
       p.iframes = 1.2;
       this.cam.focus.set(p.x, p.y, p.z);
@@ -1191,6 +1197,7 @@ export class Game {
         this.horse.state = 'idle';
         this.horse.home = { x: this.horse.x, z: this.horse.z };
       }
+      this.horse.hp = this.horse.maxHp;
       p.revive();
       if (cp && (cp.lit || cp.id === 'hearth')) p.place(cp.x + 1.3, cp.z + 1.3, this);
       else p.place(this.realm.start.x, this.realm.start.z, this);
@@ -1198,8 +1205,8 @@ export class Game {
       // Survivors regroup and heal.
       for (const e of this.enemies) {
         if (!e.alive) continue;
-        if (e.group === 'boss' && e.type !== 'king') {
-          e.die(this);
+        if ((e.group === 'boss' && e.type !== 'king') || e.group === 'trial') {
+          e.despawn(this);
           continue;
         }
         e.hp = e.maxHp;
@@ -1210,6 +1217,7 @@ export class Game {
         e.enraged = false;
         e.model.rig.lift = 0;
       }
+      if (this.boss?.alive) for (const c of this.chandeliers) c.reset();
       if (this.bossActive) {
         this.bossActive = false;
         this.ui.bossHide();
@@ -1264,7 +1272,15 @@ export class Game {
 
   private handleMenus(real: number) {
     const inp = this.input;
-    if (this.state === 'title' && this.screens.titleOpen) return;
+    if (this.state === 'title' && this.screens.titleOpen) {
+      if (inp.usingPad) {
+        const y = inp.padMove.y;
+        if (Math.abs(y) > 0.6 && !this.padHeld) this.screens.titleKey(y > 0 ? 'up' : 'down');
+        this.padHeld = Math.abs(y) > 0.6;
+        if (inp.hit('attack') || inp.hit('interact') || inp.hit('jump')) this.screens.titleKey('ok');
+      }
+      return;
+    }
     if (this.state === 'story') {
       if (inp.anyPressed) this.screens.storyKey();
       return;
@@ -1285,6 +1301,11 @@ export class Game {
     if (this.ui.dialogOpen) {
       if (inp.keyPressed('KeyW')) this.ui.dialogKey('up');
       if (inp.keyPressed('KeyS')) this.ui.dialogKey('down');
+      if (inp.usingPad) {
+        const y = inp.padMove.y;
+        if (Math.abs(y) > 0.6 && !this.padHeld) this.ui.dialogKey(y > 0 ? 'up' : 'down');
+        this.padHeld = Math.abs(y) > 0.6;
+      }
       if (inp.hit('interact')) this.ui.dialogKey('ok');
       return;
     }
@@ -1620,7 +1641,7 @@ export class Game {
       fields: [1, 1, 0.7], road: [0.7, 0.9, 0.6], village: [0.5, 0.7, 0.4], woods: [0.6, 0.5, 1], keep: [0.9, 0.2, 0.2], indoor: [0, 0, 0],
     };
     const [wind, crickets, owls] = prof[amb];
-    const campAlive = !this.campCleared && this.enemies.some((e) => e.alive && e.group === 'camp');
+    const campAlive = this.enemies.some((e) => e.alive && e.group === 'camp');
     const campD = Math.hypot(p.x - 95, p.z - 27);
     const dawnMul = 1 - this.dawn * 0.8;
     a.update(real, {
