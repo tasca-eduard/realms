@@ -36,12 +36,13 @@ Open that on the phone. The game goes fullscreen and asks for landscape when you
 | Pause, settings, journal | Esc | Pause button at the top |
 
 A gamepad also works: left stick moves, right stick aims, X attack, B guard, A jump,
-RB special, Y interact, LB drink, Start pause.
+RB special, Y interact, LB drink, Start pause. In menus and dialogs the stick picks and
+A, X or Y confirms. The pause menu lists the controls for whichever device you are using.
 
 **On the warhorse** (it waits by the King's Road; E to ride and to get off): attack kicks,
 guard rears and stomps, special charges, galloping into foes tramples them. Hits land on
 the horse first; if its three pips run out you are thrown and it bolts, coming back later.
-It won't go indoors, and it finds you when you rest at a far-off moonfire.
+It won't go indoors, and it finds you when you rest at a far-off moonfire. Resting heals it.
 
 **Combat details:** hits build energy and a combo; at 5, 10 and 15 hits foes drop 2, 3 or
 4 times the coins. Blocking drains stamina while held; rolling needs stamina ("tired"
@@ -61,8 +62,9 @@ outline when trees, walls or roofs hide them from the camera.
   Goblin King. His crashes can bring the chandeliers down, on you or on him.
 - **Off the road**: the Seven Stones (a three-wave trial for the Knight's Crest relic), the
   Old Lodge (an elite beast), the Barrow Fields and its graveyard, the Overlook (a ruined
-  watch post up the Pilgrims' Stair), the Hollow (a cave in the cliff below it), Mirrormere with its pier, the Sallow Marsh, the raided farm, a goblin
-  camp on the river bank, and the gorge lookout.
+  watch post up the Pilgrims' Stair), the Hollow (a cave in the cliff below it),
+  Mirrormere with its pier, the Sallow Marsh, the raided farm, a goblin camp on the
+  river bank, and the gorge lookout.
 - **Moon Shards**: three are hidden: by still water, behind old stone, above a long
   drop. All three give an extra heart. A cracked wall breaks to a heavy blow (finisher,
   full spin, dash strike or plunge).
@@ -73,8 +75,14 @@ outline when trees, walls or roofs hide them from the camera.
 The **journal** in the pause menu lists your quests; the current step of the main quest
 shows at the top right.
 
-Unexplored land stays under mist (fog of war) until you walk near it. Progress saves on this
-device; **New journey** on the title screen starts over.
+Unexplored land stays under mist (fog of war) until you walk near it.
+
+**Saving.** Progress saves on this device (browser storage) whenever something changes
+and when you close or switch away from the tab. It keeps: your coins, flasks and sword,
+the last moonfire you rested at, chests opened, walls broken, shards, the relic, quests,
+explored land, and which placed foes you have defeated: **a cleared area stays cleared**.
+Foes that were only wounded heal and go back to their posts when you fall. **New journey**
+on the title screen starts over.
 
 There are no invisible walls. Past the old map edge the land goes on until something
 real stops you: mountain cliffs to the north and west, a gorge east of Blackpine (fall in
@@ -91,13 +99,19 @@ src/
   world/     map grid and collision, terrain and water meshes, grass, props,
              realm1.ts (the whole map, its people, foes and objects),
              outskirts.ts (the landscape beyond the map edges)
-  game/      game.ts (states, camera, events, boss, saving), player, enemies,
-             models.ts (3D characters and their animations), objects, combat
+  game/      game.ts (states, camera, events, boss, saving), player.ts (the knight's
+             moveset and riding), enemies.ts (AI), models.ts (3D characters and their
+             animations), objects.ts (chests, moonfires, doors, the cave wall...),
+             combat.ts (arrows, waves, pickups, power-ups), mount.ts (the warhorse),
+             trial.ts (the Seven Stones), hazards.ts (arrow slits, chandeliers),
+             critters.ts (chickens, rabbits), quests.ts, save.ts, fow.ts (fog of war),
+             reach.ts (the reachability check)
   audio/     sound effects and ambience (synthesized), generative music
   ui/        HUD, dialog, menus, touch controls
 public/audio/samples/   instrument samples used by the music
-tools/       shot.mjs (headless screenshots), extract-samples.mjs
-tests/       scripts for shot.mjs that drive the game (fights, phone flow, death)
+tools/       shot.mjs (headless screenshots), test-all.mjs (runs every check),
+             extract-samples.mjs
+tests/       scripts for shot.mjs that drive the game
 ```
 
 ## Testing shortcuts
@@ -112,16 +126,28 @@ Add these to the URL while the dev server runs:
   moves and lists anything unreachable and any spot where he could leave the world
   (`__reach(false)` checks before the drawbridge is lowered).
 
-Screenshots from the command line (uses the installed Microsoft Edge):
+**Automated checks.** With the dev server running, `npm test` drives the game in headless
+Microsoft Edge through every scripted check and prints what each one found: reachability,
+controls, the full moveset, a fight, death and respawn, riding, the cracked wall, the
+trial, the Warden's quest, saved kills, the boss fight and the phone flow. Screenshots
+land in `shots/` (not kept).
+
+One screenshot from the command line:
 
 ```
 node tools/shot.mjs "shot&play&at=94,31" shots/camp.png 3000
-node tools/shot.mjs "shot&play&at=86,40" shots/fight.png 9000 1280x720 tests/fight.js
-node tools/shot.mjs "shot&play&at=80,63" shots/controls.png 2800 1280x720 tests/controls.js
-node tools/shot.mjs "shot&play" shots/reach.png 1500 1280x720 tests/reach.js
-node tools/shot.mjs "shot&play&at=80,63" shots/moves.png 6200 1280x720 tests/moves.js
 MOBILE=1 node tools/shot.mjs "shot" shots/phone.png 9000 844x390 tests/mobileflow.js
 ```
+
+## Known limits
+
+- **Sound has never been heard during development.** The headless test browser is muted,
+  so effects, ambience and music are untested by ear. Volumes are in the pause menu.
+- **Phones were tested in an emulator only.** Touch controls and layout work there;
+  real-device feel and frame rate are unknown. Phones get lighter settings (fewer lights,
+  a smaller shadow map, less grass, a coarser pixel grid).
+- **Balance is tuned by feel, not playtested**: damage, enemy counts, prices and the boss.
+- The **title menu** is mouse, touch or gamepad; there is no keyboard navigation there.
 
 ## Credits
 
