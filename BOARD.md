@@ -10,6 +10,29 @@ _Nothing right now._
 
 ## Backlog
 
+Found in the review of 2026-09-28. "Confirmed" = reproduced in a live game (`tests/review2.js`); the rest are from reading the code.
+
+**Bugs**
+- [ ] Poison can't be cured at full health: the flask only works below full hearts, but darts poison without costing one. The tip and the README both say "a flask cures it". (Confirmed)
+- [ ] A flask drunk on horseback heals but doesn't cure maim, poison or burn; on foot it does. (Confirmed)
+- [ ] Timers keep running while paused: Tam's thank-you dialog, the hall-door cutscene, the victory screen, respawns and fall recovery can all fire behind the pause menu. (Confirmed)
+- [ ] Phones never see warning prompts: the cracked wall's hint, "strike the cage to break the lock" and "Enemies are near" at a moonfire exist only in the desktop prompt, and no button shows either. A phone player gets no clue at all. (Confirmed for the wall and the cage)
+- [ ] Phones: the wayshrine tip says "Light the moonfire with E".
+- [ ] "New journey" on the title screen erases the save at once, with no confirmation.
+- [ ] The victory screen's "foes defeated" only counts kills since the page last loaded (the count isn't saved).
+
+**Exploits and balance**
+- [ ] Endless coins from the Seven Stones: die mid-trial and it resets, but you keep the coins from the foes you killed; wave 1 can be farmed forever.
+- [ ] Killing a thief bat returns its stolen coins multiplied by the combo bonus (up to ×4).
+- [ ] Heart pickups are used up at full health. (Confirmed)
+- [ ] An arrow that hits the horse can still maim the knight.
+
+**Minor**
+- [ ] The Seven Stones journal says "Strike its altar"; the altar is actually used with the interact button ("Face the trial").
+- [ ] The cracked wall chips from any swing within reach, even one aimed away from it.
+- [ ] Aim-line meshes of dead archers are never removed (one more per trial run).
+- [ ] The title menu can't be used from the keyboard (Tab and Space are swallowed), and the pause menu can't be used from a gamepad (Start only opens and closes it).
+
 Found in the review of 2026-09-27 (see the chat for details).
 
 **Bugs**
@@ -25,7 +48,7 @@ Found in the review of 2026-09-27 (see the chat for details).
 - [ ] The game's own code takes 4.6–7.5 ms per frame on a fast laptop, likely too slow for 60 fps on phones. All ~58 foes animate every frame even far away; particles process all 4,500 slots every frame. Skip far foes, process only live particles, warm up shaders at load, then re-measure.
 
 **Minor**
-- [ ] Dropped coins vanish after 40 s, while the chest they came from is already marked opened.
+- [ ] Dropped coins vanish after 40 s, while the chest they came from is already marked opened. The same happens if the tab is closed before they're picked up.
 - [ ] Mouse released outside the window can leave the attack "held" (charging a spin) until the next click.
 - [ ] Key names in tips assume QWERTY (keys are physical positions: on AZERTY "Q" is the key labelled A).
 - [ ] Tam walks through fences and trees on his way home after the rescue.
