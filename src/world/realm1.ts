@@ -1,10 +1,14 @@
 import * as THREE from 'three';
 import { K } from '../engine/materials';
+import { P } from '../engine/particles';
 import { mulberry32, rand, fbm, type Rng } from '../engine/util';
 import { Builder, GLOW, PAL, type Structure } from './builder';
 import { Grid, S, T, NONE } from './grid';
 import { Painter, insidePoly, distLine, sdPoly, type Pt } from './paint';
-import type { CritterDef } from '../game/critters';
+import type { CritterDef, CritterKind } from '../game/critters';
+import { MOBILE } from '../config';
+import { OUTSKIRT_ROAD } from './outskirts';
+import * as D from './details';
 
 // ---------------------------------------------------------------------------
 // Realm 1: the Moonlit Keep.
@@ -94,7 +98,7 @@ const VILLAGE: Pt[] = [[54, 46], [100, 44], [108, 56], [104, 66], [96, 71], [86,
 const WOODS: Pt[] = [[58, 0], [120, 0], [120, 58], [110, 56], [102, 48], [90, 45], [76, 43], [62, 42], [58, 36]];
 const PLATEAU: Pt[] = [[0, 0], [63, 0], [63, 36], [60, 44], [56, 50], [44, 53], [26, 55], [10, 56], [0, 57]];
 const STREAM: Pt[] = [[122, 63], [106, 72], [96, 78], [88, 79], [80, 86], [72, 98], [66, 110], [62, 122]];
-const ROAD_IN: Pt[] = [[119, 119], [110, 110], [104, 102], [98, 92], [93.5, 85], [93, 78], [93, 72], [89, 67], [80, 64]];
+const ROAD_IN: Pt[] = [[119, 119], [110, 110], [104, 102], [98, 92], [93.5, 85], [93, 78], [93, 72], [92, 70.6], [88.5, 70.4], [85, 70.2]];
 const ROAD_WEST: Pt[] = [[76, 65], [66, 66], [58, 67.5], [52, 67.5], [44, 71], [42, 76]];
 const ROAD_NORTH: Pt[] = [[80, 62], [84.5, 59], [86, 52], [85.5, 46], [86, 40], [89, 34], [93, 29]];
 const ROAD_CAMP_WEST: Pt[] = [[93, 27], [84, 22], [76, 18], [68, 15.5], [62, 15]];
@@ -123,7 +127,23 @@ const LANE_FIELDS: Pt[] = [
 ];
 const LANE_PIER: Pt[] = [[48.4, 85], [41, 87.8], [31, 91.5], [21, 96.8], [14, 99.3], [9.6, 99.5]];
 const LANE_STAIR: Pt[] = [[48, 69.3], [42, 66.8], [30, 65.5], [20, 62.6], [10, 60.6], [6.2, 59.8], [6, 58.3]];
-const LANES = [LANE_HOME, LANE_STONES, LANE_RIVER, LANE_FARM, LANE_FIELDS, LANE_PIER, LANE_STAIR];
+const LANE_CHAPEL: Pt[] = [[86.2, 54.2], [91.5, 54.6], [95.9, 54.2]];
+const LANE_BACK: Pt[] = [[85, 62.8], [89, 63.1], [94, 63.1], [98.5, 63.3]];
+const LANE_SW: Pt[] = [[61, 67.3], [62.6, 71], [63.3, 76.9]];
+const LANES = [LANE_HOME, LANE_STONES, LANE_RIVER, LANE_FARM, LANE_FIELDS, LANE_PIER, LANE_STAIR, LANE_CHAPEL, LANE_BACK, LANE_SW];
+// Inside the graveyard: from the gate to the crypt door.
+const GRAVE_PATH: Pt[] = [[42.5, 76], [37.5, 75.6], [34.4, 75.1]];
+// The old burial mounds that gave the Barrow Fields their name (doorway at local +x), and a dolmen by the lane.
+const BARROWS = [
+  { x: 19.5, z: 72.5, len: 6, wid: 3.6, rot: 0 },
+  { x: 16.5, z: 80.5, len: 5, wid: 3.4, rot: -Math.PI / 2 },
+];
+const DOLMEN = { x: 24, z: 68.4 };
+// A great glowing stone arch among the barrows.
+const ARCH = { x: 23.6, z: 77.6 };
+// What the raiders left of the farm's barn; the rail where the warhorse is tied.
+const BARN = { x: 105.5, z: 116 };
+const HITCH = { x: 104.9, z: 109 };
 
 export function buildRealm1(builder: Builder): RealmData {
   const grid = builder.grid;
@@ -166,6 +186,8 @@ export function buildRealm1(builder: Builder): RealmData {
   p.rect(90, 74, 96, 76, { h: 0 });
   p.ramp(91, 71, 95, 74, 3, 0, 1, true, T.Cobble);
   p.rect(88, 66, 97, 71, { h: 1 });
+  // The street from the ramp top to the square: level ground.
+  p.rect(84, 69, 91, 72, { h: 1 });
   p.rect(70, 57, 86, 71, { h: 1 });
   p.rect(72, 58, 85, 71, { t: T.Cobble, noGrass: true });
   p.path(ROAD_IN, 2.6, T.Path, 0.6, 3);
@@ -291,6 +313,7 @@ export function buildRealm1(builder: Builder): RealmData {
 
   // Footpaths (after the ground they cross). The farm lane is a cart track.
   LANES.forEach((l, k) => p.path(l, l === LANE_FARM ? 2 : 1.7, T.Path, 0.4, 20 + k, false));
+  p.path(GRAVE_PATH, 1.4, T.Path, 0.3, 31, false);
 
   // ---------- props ----------
   const b = builder;
@@ -335,8 +358,10 @@ export function buildRealm1(builder: Builder): RealmData {
     if (inKnoll(x, z)) continue;
     if (distLine(STREAM, x, z) < 4) continue;
     if (x > 34 && x < 48 && z > 88 && z < 102) continue;
+    if (BARROWS.some((m) => Math.hypot(x - m.x, z - m.z) < m.len / 2 + 2) || Math.hypot(x - DOLMEN.x, z - DOLMEN.z) < 3 || Math.hypot(x - ARCH.x, z - ARCH.z) < 3.5) continue;
     const k = r();
-    if (k < 0.3) b.oak(x, z, 0.9 + r() * 0.5);
+    if (k < 0.18) b.oak(x, z, 0.9 + r() * 0.5);
+    else if (k < 0.3) D.birch(b, x, z, 0.9 + r() * 0.4);
     else if (k < 0.6) b.bush(x, z, 0.8 + r() * 0.5);
     else if (k < 0.75) b.rock(x, z, 0.5 + r() * 0.6);
     else b.deadTree(x, z, 0.8 + r() * 0.4);
@@ -344,10 +369,16 @@ export function buildRealm1(builder: Builder): RealmData {
   // ---------- the Old Warden's homestead ----------
   {
     const H = HOME;
-    b.house(H.x, H.z, 5, 4, { doorSide: 0, roof: 'thatch', lit: 1, name: 'warden house' });
+    b.house(H.x, H.z, 5, 4, { doorSide: 0, roof: 'thatch', lit: 1, name: 'warden house', flowers: true });
     // Yard fence with a gate facing the road.
     b.fence([[H.x + 4.8, H.z - 1.2], [H.x + 4.8, H.z - 4.8], [H.x - 5, H.z - 4.8], [H.x - 5, H.z + 4.5], [H.x + 4.8, H.z + 4.5], [H.x + 4.8, H.z + 1.4]]);
-    b.lamp(H.x + 5.4, H.z + 1.8);
+    // Torches either side of the gate.
+    b.standingTorch(H.x + 5.4, H.z - 1.8);
+    b.standingTorch(H.x + 5.4, H.z + 2.2);
+    // A carpenter's bench against the fence behind the house, flowers along the yard.
+    D.workbench(b, H.x + 1.1, H.z + 3.9, 0);
+    D.wildflowers(b, H.x + 6.6, H.z + 5.5, 12, 1.2);
+    D.wildflowers(b, H.x - 6.2, H.z + 7.6, 10, 1.1, 'yellow');
     // Vegetable rows.
     for (let x = H.x - 4.2; x < H.x - 1.2; x += 0.75) for (let z = H.z + 2.6; z < H.z + 4.1; z += 0.7) b.bush(x, z, 0.26, x % 1.5 < 0.75 ? '#4a6a30' : '#5a7a34');
     // Chicken coop.
@@ -406,8 +437,10 @@ export function buildRealm1(builder: Builder): RealmData {
     if (nearRoad(x, z, 3.2) || !flatAround(x, z, 0.6) || distLine(STREAM, x, z) < 4) continue;
     if (Math.abs(x - HOME.x) < 10 && z > HOME.z - 7 && z < HOME.z + 14) continue;
     if (Math.hypot(x - 106, z - 99) < 4) continue;
+    if (Math.hypot(x - BARN.x, z - BARN.z) < 5.5 || Math.hypot(x - HITCH.x, z - HITCH.z) < 2.2) continue;
     const k = r();
-    if (k < 0.4) b.oak(x, z, 0.9 + r() * 0.4);
+    if (k < 0.25) b.oak(x, z, 0.9 + r() * 0.4);
+    else if (k < 0.4) D.birch(b, x, z, 0.9 + r() * 0.4);
     else if (k < 0.7) b.bush(x, z, 0.8 + r() * 0.4);
     else b.rock(x, z, 0.5 + r() * 0.5);
   }
@@ -435,6 +468,14 @@ export function buildRealm1(builder: Builder): RealmData {
   b.drystone([[88, 111.5], [100.5, 111.5]]);
   b.drystone([[100.5, 111.5], [100.5, 117]]);
   for (const [x, z, rot] of [[76, 115, 0.3], [93, 115.5, 1.2], [79, 117, 2]] as [number, number, number][]) b.hay(x, z, rot);
+  // The raid: crops trampled and burned in patches, the barn a smoking shell, a stew pot on the go.
+  const COOK = { x: 96.5, z: 117.4 };
+  const burned = (x: number, z: number) =>
+    fbm(x * 0.35, z * 0.35, 2, 97) > 0.6 || ([[76, 115], [93, 115.5], [79, 117], [81.8, 116.9], [80.5, 115.2], [77.6, 116.8], [82.8, 117.8], [COOK.x, COOK.z]] as Pt[]).some(([hx, hz]) => Math.hypot(x - hx, z - hz) < 1.4);
+  D.crops(b, 70.3, 112, 83.7, 119.9, 'wheat', burned);
+  D.crops(b, 88.3, 112, 100.1, 119.9, 'cabbage', burned);
+  D.cauldron(b, COOK.x, COOK.z);
+  D.burnedBarn(b, BARN.x, BARN.z);
   // East: an old stone circle on the meadow.
   for (let i = 0; i < 7; i++) {
     const a = (i / 7) * Math.PI * 2 + 0.3;
@@ -451,6 +492,8 @@ export function buildRealm1(builder: Builder): RealmData {
   }
   b.reeds(FORD.x - 2.5, FORD.z + 2, 6);
   b.reeds(FORD.x + 2.4, FORD.z - 2.2, 6);
+  // Lily pads on still water: the lake's edge, the marsh pools, the slow stretch below the ford.
+  for (const [lx, lz, n] of [[5.5, 90, 9], [4.5, 106, 9], [3.5, 95.5, 6], [22.5, 110.5, 6], [27.5, 113.5, 6], [43.5, 118.5, 5], [51.5, 115.5, 6], [64.5, 113, 5], [75.5, 92.5, 4]] as [number, number, number][]) D.lilyPads(b, lx, lz, n, 1.4);
 
   // Rocks along the stream.
   for (let i = 0; i < 40; i++) {
@@ -506,30 +549,37 @@ export function buildRealm1(builder: Builder): RealmData {
 
   // ---------- Keepsfoot (village) ----------
   const tavern = buildTavern(b, grid);
-  b.house(68, 60.5, 5, 4, { doorSide: 0, roof: 'thatch', lit: 0.8 });
+  D.hangingSign(tavern.shell, 78.6, 3.3, 57.15, 0, 'mug');
+  // Keepsfoot, in order of standing: the tavern, the Elder's hall (two storeys,
+  // stone below, facing the square), the chapel with its bell tower by the north
+  // road, the stone smithy at the top of the street from the bridge, then cottages.
+  b.house(68.2, 60.4, 4.6, 5.6, { doorSide: 0, roof: 'slate', ridgeX: false, storeys: 2, walls: 'stone', lit: 0.9, name: 'elder hall' });
   b.house(67.5, 69, 4.5, 4, { doorSide: 0, roof: 'thatch', lit: 0.6 });
-  b.house(89.5, 59.5, 5, 4, { doorSide: 2, roof: 'slate', lit: 0.8 });
-  b.house(90.5, 67.5, 5, 4, { doorSide: 2, roof: 'slate', lit: 0.5 });
-  b.house(78.5, 74.5, 6, 4, { doorSide: 3, roof: 'thatch', lit: 0.7 });
-  b.house(98.5, 60, 4, 5, { doorSide: 2, roof: 'thatch', ridgeX: false, lit: 0.6 });
-  b.house(60.5, 77, 4, 5, { doorSide: 0, roof: 'thatch', ridgeX: false, lit: 0.4 });
-  b.house(97, 51, 5, 4, { doorSide: 1, roof: 'slate', lit: 0.3 });
+  b.house(89.5, 59.5, 5, 4, { doorSide: 2, roof: 'slate', storeys: 2, lit: 0.8, tint: '#c8b89a' });
+  const smithy = b.house(90.8, 66.6, 5.2, 4.2, { doorSide: 1, roof: 'slate', walls: 'stone', lit: 0.6, name: 'smithy' });
+  b.house(78.5, 74.5, 6, 4, { doorSide: 3, roof: 'thatch', lit: 0.7, shed: 0 });
+  b.house(98.5, 60, 4, 5, { doorSide: 1, roof: 'thatch', ridgeX: false, lit: 0.6 });
+  b.house(60.5, 77, 4, 5, { doorSide: 0, roof: 'thatch', ridgeX: false, lit: 0.4, shed: 1 });
+  D.chapel(b, 97, 51);
   b.well(78, 64.5);
   for (const [x, z] of [[73.5, 58.8], [83.5, 60.5], [72.5, 68.5], [84.5, 68.8], [88.5, 73.5], [63, 66], [86.5, 49]] as Pt[]) b.lamp(x, z);
-  // Smithy forge beside the slate house.
+  // The smithy's open forge under a lean-to on its west side, its sign over the street.
   {
-    b.brazier(86.8, 69.5, true);
-    const x = 86.6, z = 66.9, y = grid.groundAt(x, z), g = b.g(x, z);
-    g.box(x, y, z, 0.35, 0.45, 0.3, PAL.iron, { kind: K.Metal });
-    g.box(x, y + 0.45, z, 0.7, 0.18, 0.28, PAL.iron, { kind: K.Metal });
-    grid.addCollider({ kind: 'c', x, z, r: 0.35, y0: y - 1, y1: y + 1 });
+    D.forgeLeanTo(b, smithy, 93.4, 64.6, 68.6, 1);
+    b.brazier(94.4, 67.5, true);
+    D.anvil(b, 94.4, 65.5, 0.4);
+    D.trough(b, 96.5, 66.4, Math.PI / 2);
+    D.hangingSign(smithy.core, 92.6, grid.groundAt(92.6, 68) + 2.45, 68.7, 0, 'anvil');
   }
+  // A market stall on the square, and the rail where the warhorse waits by the road.
+  D.marketStall(b, 74.8, 69.2, Math.PI / 2);
+  D.hitchingPost(b, HITCH.x, HITCH.z, 0);
   b.cart(71.5, 72.3, 0.2);
   b.hay(64.3, 72.8, 0.4);
   b.hay(65.4, 74, 1.2);
   b.bench(74.5, 62.5, Math.PI / 2);
   b.bench(81.5, 66.5, 0);
-  for (const [x, z] of [[82.8, 57.8], [83.4, 58.4], [70.8, 64.6], [93.2, 62.2], [92.9, 63]] as Pt[]) b.barrel(x, z);
+  for (const [x, z] of [[82.8, 57.8], [83.4, 58.4], [70.8, 64.6], [92.6, 60.2], [92.7, 59.4]] as Pt[]) b.barrel(x, z);
   b.crate(71, 65.4);
   b.crate(71.6, 66.2, 0.55);
   b.fence([[62, 62], [62, 57], [66, 57]]);
@@ -539,21 +589,64 @@ export function buildRealm1(builder: Builder): RealmData {
     const x = rand(r, 56, 104), z = rand(r, 46, 82);
     if (!insidePoly(VILLAGE, x, z) || nearRoad(x, z, 2.2) || !flatAround(x, z, 0.8)) continue;
     if (x > 69 && x < 88 && z > 48 && z < 78) continue;
+    let crowded = false;
+    for (let dz = -2; dz <= 2 && !crowded; dz++)
+      for (let dx = -2; dx <= 2 && !crowded; dx++) crowded = grid.collidersNear(x + dx, z + dz).some((c) => c.on && c.kind === 'b' && c.y0 < -10 && x > c.x0 - 1.5 && x < c.x1 + 1.5 && z > c.z0 - 1.5 && z < c.z1 + 1.5);
+    if (crowded) continue;
     r() < 0.4 ? b.oak(x, z, 1 + r() * 0.3) : b.bush(x, z, 0.8 + r() * 0.3);
   }
   // Vegetable patches.
-  for (let x = 62.6; x < 65.8; x += 0.8) for (let z = 58; z < 61.5; z += 0.9) b.bush(x, z, 0.28, '#4a6a30');
+  for (let x = 62.6; x < 65.2; x += 0.8) for (let z = 58; z < 61.5; z += 0.9) b.bush(x, z, 0.28, '#4a6a30');
   for (let x = 100.8; x < 103.5; x += 0.8) for (let z = 57; z < 62.5; z += 0.9) b.bush(x, z, 0.25, '#58703a');
 
   // ---------- Barrow Fields ----------
-  b.fence([[27, 69], [43, 69], [43, 74.5]]);
-  b.fence([[43, 77.5], [43, 83], [27, 83], [27, 69]]);
-  for (let gx = 30; gx <= 41; gx += 2.2)
-    for (let gz = 74.5; gz <= 81; gz += 2.4) if (r() < 0.8) b.grave(gx + (r() - 0.5) * 0.4, gz + (r() - 0.5) * 0.3, r() < 0.3 ? 1 : 0);
-  b.deadTree(29, 71.5, 1.2);
-  b.deadTree(41, 81, 1.0);
-  b.moonflowers(35, 79, 10, 3);
+  // The graveyard: a weathered picket fence, a lych-gate over the way in, stones of
+  // every age, two railed family plots, an angel, coffins above ground, a grave left open.
+  D.picketFence(b, [[27, 69], [43, 69], [43, 74.5]]);
+  D.picketFence(b, [[43, 77.5], [43, 83], [27, 83], [27, 69]]);
+  D.lychGate(b, 43, 76, 3);
   buildCrypt(b, grid, 34, 71);
+  const owlGrave = b.deadTree(29, 71.5, 1.2);
+  b.deadTree(42.3, 82.3, 0.9);
+  {
+    const kinds: D.Stone[] = ['slab', 'round', 'cross', 'celtic', 'small', 'broken', 'slab', 'round'];
+    const stone = (x: number, z: number, kind?: D.Stone, lit = false) =>
+      D.headstone(b, x + (r() - 0.5) * 0.25, z + (r() - 0.5) * 0.15, kind ?? kinds[Math.floor(r() * kinds.length)], (r() - 0.5) * 0.15, { candles: lit });
+    // North side, either side of the crypt.
+    stone(28.6, 73.0, 'cross');
+    stone(30.4, 73.3, 'round', true);
+    stone(41.9, 71.2, 'small');
+    stone(41.9, 73.2, 'broken');
+    D.ironRailing(b, 37.3, 71.2, 40.7, 73.8);
+    stone(38.2, 71.8, 'celtic', true);
+    stone(39.8, 71.8, 'slab');
+    // Two rows south of the aisle.
+    [30.2, 32.0, 33.8, 35.6, 37.4, 39.2, 41.0].forEach((x, i) => stone(x, 77.4, undefined, i % 3 === 1));
+    D.sarcophagus(b, 30.3, 80.6, 0);
+    D.openGrave(b, 33.3, 80.2, 0);
+    D.ironRailing(b, 35.7, 79.3, 39.5, 82.2);
+    stone(36.5, 80.1, 'cross');
+    stone(37.6, 80.3, 'obelisk', true);
+    stone(38.7, 80.1, 'small');
+    D.sarcophagus(b, 41.4, 80.9, Math.PI / 2, true);
+    // The angel at the end of the aisle, facing the gate; lanterns and wisps.
+    D.angelStatue(b, 29.7, 75.5, Math.PI / 2);
+    D.groundLantern(b, 30.6, 74.4);
+    D.groundLantern(b, 36.0, 73.5, false);
+    D.bones(b, 36.9, 74.1, 3);
+    for (const [wx, wz] of [[31, 78], [36, 78], [39, 72.5], [33, 81], [28.5, 75]] as Pt[]) b.fx.addEmitter({ x: wx, y: grid.groundAt(wx, wz) + 0.3, z: wz, rate: 0.35, spec: P.wisp, spread: 3, vy: 0.1 });
+    b.moonflowers(31.5, 79, 6, 1.2);
+    D.wildflowers(b, 28.3, 78.5, 8, 0.6, 'purple');
+    D.wildflowers(b, 42.2, 79.8, 6, 0.5, 'purple');
+    D.wildflowers(b, 27.8, 70.2, 6, 0.6, 'purple');
+  }
+  // The barrows, and the old dolmen by the Overlook lane.
+  for (const m of BARROWS) D.barrow(b, m.x, m.z, m.len, m.wid, m.rot);
+  D.dolmen(b, DOLMEN.x, DOLMEN.z, 0.4);
+  D.stoneArch(b, ARCH.x, ARCH.z, Math.PI / 4);
+  b.moonflowers(DOLMEN.x, DOLMEN.z + 0.3, 6, 0.8);
+  D.wildflowers(b, 21.5, 76.8, 10, 1.2);
+  D.bones(b, 22.9, 70.4, 2);
   // Scarecrow in the fields.
   {
     const x = 47, z = 84, y = grid.groundAt(x, z), g = b.g(x, z);
@@ -589,8 +682,17 @@ export function buildRealm1(builder: Builder): RealmData {
     g.box(x + 0.35, y + 1.6, z, 0.6, 0.7, 0.04, '#6a2a1a', { kind: K.Cloth, wind: 0.6 });
     grid.addCollider({ kind: 'c', x, z, r: 0.12, y0: y - 1, y1: y + 2 });
   }
+  // The war drum that beats all night, trophies, standards daubed with the red hand.
+  D.warDrum(b, 97.6, 29.4);
+  D.trophyRack(b, 86.9, 27.9, Math.PI / 2);
+  D.goblinStandard(b, 93.3, 19.4);
+  D.goblinStandard(b, 101.8, 33.6, '#5a3a2a');
+  D.spearStack(b, 100.2, 23.6);
+  D.bones(b, 88.7, 24.3, 4, true);
+  D.bones(b, 103.2, 29.6, 3);
 
   // ---------- the old hunting lodge ----------
+  let owlLodge: [number, number, number] = [113.4, 4, 14.2];
   {
     const g = b.g(LODGE.x, LODGE.z), y = 2;
     const logs = (x0: number, z0: number, x1: number, z1: number, n: number) => {
@@ -609,6 +711,7 @@ export function buildRealm1(builder: Builder): RealmData {
     for (const s of [-1, 1]) g.beam([108.5 + s * 0.15, y + 1.8, 8.25], [108.5 + s * 0.6, y + 2.3, 8.3], 0.035, '#d8d0b8');
     for (let k = 0; k < 6; k++) g.box(106.5 + r() * 4, y + 0.02, 10 + r() * 2.5, 0.35, 0.05, 0.06, '#d8d0b8');
     b.campfire(109.2, 14.8, false);
+    owlLodge = b.deadTree(113.4, 14.2, 1.1);
     b.crate(106, 12.2);
     b.barrel(106.8, 12.4);
   }
@@ -708,6 +811,51 @@ export function buildRealm1(builder: Builder): RealmData {
 
   // ---------- the keep ----------
   const hall = buildKeep(b, grid, r);
+
+  // ---------- nature: stumps, fallen logs, birches, wild flowers ----------
+  const clearOf = (x: number, z: number, rad: number) =>
+    !grid.collidersNear(x, z).some((c) => c.on && (c.kind === 'c' ? Math.hypot(x - c.x, z - c.z) < c.r + rad : x > c.x0 - rad && x < c.x1 + rad && z > c.z0 - rad && z < c.z1 + rad));
+  const room = (x: number, z: number, rad: number) => !nearRoad(x, z, rad + 1.2) && flatAround(x, z, rad) && clearOf(x, z, rad);
+  for (const [x, z, len, rot] of [[52, 60.5, 3, 0.3], [12.5, 91, 2.8, 1.2], [49, 107.5, 3.2, 0.1], [70.5, 40, 3, 0.8], [104, 44, 2.6, 2.2], [116, 85.5, 2.5, 1.9], [24.5, 88, 3, 2.6], [58, 94, 2.6, 0.5]] as [number, number, number, number][])
+    if (room(x, z, len / 2)) D.fallenLog(b, x, z, len, rot);
+  for (const [x, z] of [[66, 44.5], [72.5, 42.5], [78, 44.5], [57.5, 86.5], [26, 91.5], [110, 78.5], [100, 40.5], [64.5, 25.5], [112, 43], [18, 64.5]] as Pt[])
+    if (room(x, z, 0.5)) D.stump(b, x, z, 0.8 + r() * 0.5);
+  for (const [x, z] of [[114, 81], [117, 84.5], [104.5, 83.5], [60.5, 51], [66, 50.5], [100, 49.5], [28, 94], [12, 86]] as Pt[])
+    if (room(x, z, 0.4)) D.birch(b, x, z, 0.9 + r() * 0.3);
+  for (let i = 0; i < 70; i++) {
+    const x = rand(r, 6, 118), z = rand(r, 56, 116);
+    if (insidePoly(VILLAGE, x, z) || nearRoad(x, z, 1.8) || grid.waterAt(x, z) !== NONE || !flatAround(x, z, 0.5)) continue;
+    if ((x > 26 && x < 45 && z > 67 && z < 85) || (x > 68 && x < 101 && z > 111)) continue;
+    const k = r();
+    D.wildflowers(b, x, z, 6 + Math.floor(r() * 8), 0.6 + r() * 0.7, k < 0.5 ? 'meadow' : k < 0.8 ? 'purple' : 'yellow');
+  }
+
+  // ---------- roadsides: pebbled edges, and lanterns on the way to the village ----------
+  for (const [line, w] of [[ROAD_IN, 2.6], [ROAD_WEST, 2.4], [ROAD_NORTH, 2.2], [ROAD_CAMP_WEST, 2], [TRAIL_EAST, 1.6], [TRAIL_LODGE, 1.6], [GRAVE_PATH, 1.4], ...LANES.map((l) => [l, l === LANE_FARM ? 2 : 1.7])] as [Pt[], number][])
+    D.edgeStones(b, grid, line, w);
+  {
+    const at = (line: Pt[], s: number): [number, number, number, number] => {
+      for (let i = 0; i < line.length - 1; i++) {
+        const [ax, az] = line[i], [bx, bz] = line[i + 1], len = Math.hypot(bx - ax, bz - az);
+        if (s <= len) return [ax + ((bx - ax) * s) / len, az + ((bz - az) * s) / len, -(bz - az) / len, (bx - ax) / len];
+        s -= len;
+      }
+      const [x, z] = line[line.length - 1];
+      return [x, z, 0, 1];
+    };
+    const lanterns = (line: Pt[], stops: number[], off: number) =>
+      stops.forEach((s, i) => {
+        const [x, z, nx, nz] = at(line, s);
+        for (const side of i % 2 ? [1, -1] : [-1, 1]) {
+          const lx = x + nx * off * side, lz = z + nz * off * side;
+          if (grid.waterAt(lx, lz) !== NONE || !flatAround(lx, lz, 0.3) || !clearOf(lx, lz, 0.9)) continue;
+          D.postLantern(b, lx, lz);
+          break;
+        }
+      });
+    lanterns(ROAD_IN, [25, 33, 41], 2.1);
+    lanterns(ROAD_WEST, [28], 2);
+  }
 
   // ---------- data ----------
   const enemies: EnemySpawn[] = [
@@ -819,7 +967,7 @@ export function buildRealm1(builder: Builder): RealmData {
       shop: 'flask',
     },
     {
-      id: 'smith', look: 'smith', name: 'Garrow the Smith', x: 87.5, z: 68.3, face: 1,
+      id: 'smith', look: 'smith', name: 'Garrow the Smith', x: 94.7, z: 66.5, face: 1,
       lines: ['That blade has seen better nights.', 'Bring me coin and I will put an edge on it that goblin hide will remember.'],
       shop: 'sword',
     },
@@ -884,7 +1032,7 @@ export function buildRealm1(builder: Builder): RealmData {
     { name: 'The Old Lodge', music: 'wilds', amb: 'woods', test: (x, z) => (x - LODGE.x) ** 2 + (z - LODGE.z) ** 2 < 81 },
     { name: 'The Gorge Lookout', music: 'wilds', amb: 'woods', test: (x, z) => x > 115 && z > 24 && z < 37 },
     { name: 'Riverside', music: 'road', amb: 'road', test: (x, z) => x > 119.5 && z > 58 },
-    { name: 'The Raided Farm', music: 'road', amb: 'fields', test: (x, z) => x > 68 && x < 102 && z > 109 },
+    { name: 'The Raided Farm', music: 'road', amb: 'fields', test: (x, z) => x > 68 && x < 109 && z > 109 },
     { name: 'The Moonlit Keep', music: 'keep', amb: 'keep', test: (x, z) => x > 13 && x < 47 && z > 7 && z < 41 },
     { name: 'The Outer Bailey', music: 'keep', amb: 'keep', test: (x, z, y) => x > 50 && x < 63 && z < 47 && y > 3.5 },
     { name: "Gnasher's Camp", music: 'wilds', amb: 'woods', test: (x, z) => (x - CAMP.x) ** 2 + (z - CAMP.z) ** 2 < 11 * 11 },
@@ -915,17 +1063,27 @@ export function buildRealm1(builder: Builder): RealmData {
     return 0.9;
   };
 
+  const critters: CritterDef[] = [
+    ...[0, 1, 2, 3].map((k): CritterDef => ({ kind: 'chicken', x: HOME.x - 2 + k * 0.8, z: HOME.z - 3.4 + (k % 2), area: [HOME.x - 4.5, HOME.z - 4.3, HOME.x + 4.3, HOME.z - 2.2] })),
+    ...[0, 1].map((k): CritterDef => ({ kind: 'chicken', x: HOME.x + 1 + k, z: HOME.z + 3.4, area: [HOME.x - 0.5, HOME.z + 2.5, HOME.x + 4.3, HOME.z + 4] })),
+    ...([[84, 104], [80, 98], [104, 94], [30, 90], [24, 86], [44, 104], [112, 92]] as Pt[]).map(([x, z]): CritterDef => ({ kind: 'rabbit', x, z, area: [x - 5, z - 5, x + 5, z + 5] })),
+    ...([[86, 106], [68, 21], [55, 87]] as Pt[]).map(([x, z]): CritterDef => ({ kind: 'squirrel', x, z, area: [x - 4, z - 3, x + 4, z + 3] })),
+    { kind: 'fox', x: 18, z: 89, area: [12, 85, 24, 94] },
+    { kind: 'fox', x: 52, z: 105.5, area: [46, 103.5, 58, 108] },
+    { kind: 'deer', x: 114, z: 78, area: [110, 74, 119, 83] },
+    { kind: 'deer', x: 116.5, z: 80.5, area: [110, 74, 119, 83] },
+    { kind: 'deer', x: 108, z: 38, area: [104, 34, 114, 44] },
+    { kind: 'owl', x: owlGrave[0], z: owlGrave[2], perch: owlGrave[1], area: [0, 0, 0, 0] },
+    { kind: 'owl', x: owlLodge[0], z: owlLodge[2], perch: owlLodge[1], area: [0, 0, 0, 0] },
+  ];
+
   return {
     grid,
     builder,
     start: { x: 105.5, z: 105 },
     horse: { x: 103.2, z: 107.2 },
     trial: { x: 111.5, z: 88 },
-    critters: [
-      ...[0, 1, 2, 3].map((k): CritterDef => ({ kind: 'chicken', x: HOME.x - 2 + k * 0.8, z: HOME.z - 3.4 + (k % 2), area: [HOME.x - 4.5, HOME.z - 4.3, HOME.x + 4.3, HOME.z - 2.2] })),
-      ...[0, 1].map((k): CritterDef => ({ kind: 'chicken', x: HOME.x + 1 + k, z: HOME.z + 3.4, area: [HOME.x - 0.5, HOME.z + 2.5, HOME.x + 4.3, HOME.z + 4] })),
-      ...([[84, 104], [80, 98], [104, 94], [30, 90], [20, 78], [44, 104], [112, 92]] as Pt[]).map(([x, z]): CritterDef => ({ kind: 'rabbit', x, z, area: [x - 5, z - 5, x + 5, z + 5] })),
-    ],
+    critters,
     afterOutskirts: (g: Grid, bb: Builder) => {
       // The island in Mirrormere, reached by the hidden shallows.
       for (let z = 96; z < 105; z++)
@@ -964,6 +1122,55 @@ export function buildRealm1(builder: Builder): RealmData {
       const fx = bb.g(121.8, 95.5), fy = g.groundAt(121.8, 95.5);
       fx.box(121.8, fy, 95.5, 0.08, 1.4, 0.08, PAL.woodDark);
       fx.beam([121.8, fy + 1.3, 95.5], [123.6, fy + 0.4, 95.2], 0.025, PAL.woodDark);
+
+      // ---- detail everywhere, not just at the landmarks ----
+      const posts = [...(objects.filter((o) => 'x' in o) as unknown as { x: number; z: number }[]), ...npcs, ...enemies];
+      const fits = (x: number, z: number, kind: 'soft' | 'solid' | 'tree') => {
+        const inRealm = x >= 0 && z >= 0 && x < MAP_W && z < MAP_D;
+        const gap = kind === 'tree' ? 3.5 : 1.6;
+        if (inRealm ? nearRoad(x, z, gap) : OUTSKIRT_ROAD.some((l) => distLine(l, x, z) < gap + 0.6)) return false;
+        if (kind === 'tree' && (insidePoly(VILLAGE, x, z) || Math.hypot(x - ARCH.x, z - ARCH.z) < 4)) return false;
+        if (Math.hypot(x - 111.5, z - 88) < 7.5) return false; // the trial ring
+        if (x > 26 && x < 45 && z > 67 && z < 85) return false; // the graveyard is dressed by hand
+        if (x > 68 && x < 101 && z > 111 && z < 121) return false; // the crops
+        if (BARROWS.some((m) => Math.hypot(x - m.x, z - m.z) < m.len / 2 + 1.5)) return false;
+        // Nothing solid by people, doors, chests or where foes stand.
+        return kind === 'soft' || !posts.some((o) => Math.hypot(x - o.x, z - o.z) < (kind === 'tree' ? 4 : 3));
+      };
+      D.dressWorld(bb, g, r, MOBILE ? 0.5 : 1, fits);
+      for (const l of OUTSKIRT_ROAD) D.edgeStones(bb, g, l, 2.6);
+      // Lily pads on all the still water: the lake, the marsh pools, the moat.
+      for (let z = g.oz; z < g.oz + g.d; z += 3)
+        for (let x = g.ox; x < g.ox + g.w; x += 3) {
+          const px = x + r() * 3, pz = z + r() * 3, roll = r();
+          const still = (px < 14 && pz > 76 && pz < 124) || (pz > 104 && px < 62) || (px > 46 && px < 52 && pz < 47);
+          if (!still || roll > (MOBILE ? 0.12 : 0.22) || g.waterAt(px, pz) === NONE) continue;
+          D.lilyPads(bb, px, pz, 3 + Math.floor(r() * 3), 0.9);
+        }
+      // Wildlife all over the realm, not only where it was put by hand.
+      const wild: [CritterKind, number, number[]][] = [
+        ['rabbit', 10, [T.Grass]],
+        ['squirrel', 6, [T.DarkGrass]],
+        ['deer', 4, [T.Grass, T.DarkGrass]],
+        ['fox', 3, [T.Grass, T.Mud, T.Reeds]],
+      ];
+      for (const [kind, n, ground] of wild) {
+        let placed = 0;
+        for (let tries = 0; tries < 500 && placed < n; tries++) {
+          const x = 4 + r() * (MAP_W - 8), z = 4 + r() * (MAP_D - 8);
+          if (!ground.includes(g.typeAt(x, z)) || g.waterAt(x, z) !== NONE || insidePoly(VILLAGE, x, z) || !fits(x, z, 'solid')) continue;
+          if (critters.some((c) => c.kind === kind && Math.hypot(c.x - x, c.z - z) < 20)) continue;
+          critters.push({ kind, x, z, area: [x - 4, z - 4, x + 4, z + 4] });
+          placed++;
+        }
+      }
+      // An owl on some of the dead trees, well apart.
+      for (const [px, py, pz] of bb.perches) {
+        const owls = critters.filter((c) => c.kind === 'owl');
+        if (owls.length >= 6) break;
+        if (px < 2 || pz < 2 || px > MAP_W - 2 || pz > MAP_D - 2 || owls.some((o) => Math.hypot(o.x - px, o.z - pz) < 22)) continue;
+        critters.push({ kind: 'owl', x: px, z: pz, perch: py, area: [0, 0, 0, 0] });
+      }
     },
     enemies,
     npcs,
@@ -1034,13 +1241,31 @@ function buildTavern(b: Builder, grid: Grid): Structure {
   shell.pop();
   core.box(x0 + 0.9, y, 53.5, 1.4, H + 3.6, 1.6, PAL.stoneDark, { kind: K.Brick });
   b.fx.addEmitter({ x: x0 + 0.9, y: y + H + 3.8, z: 53.5, rate: 1.5, spec: { color: [0.09, 0.09, 0.12], color2: [0.05, 0.05, 0.07], size: 3, size2: 8, life: 5, gravity: -0.35, drag: 0.4, wobble: 0.35, alpha: 0.35, fadeIn: 0.2 }, spread: 0.3, vy: 0.5 });
-  // Hanging sign.
-  shell.box(78.6, y + 2.3, z1 + 0.5, 0.06, 0.06, 0.9, PAL.iron);
-  shell.box(78.6, y + 1.7, z1 + 0.85, 0.08, 0.55, 0.7, PAL.woodLight, { kind: K.Wood });
-  s.shellGlow.box(78.64, y + 1.72, z1 + 0.85, 0.02, 0.16, 0.18, [2.6, 2.2, 0.8], {});
+  // A porch over the door on two posts, lanterns either side.
+  for (const px of [75.9, 78.1]) {
+    shell.box(px, y, z1 + 1.05, 0.16, 2.35, 0.16, T0, { kind: K.Wood });
+    grid.addCollider({ kind: 'c', x: px, z: z1 + 1.05, r: 0.12, y0: 0, y1: 4 });
+    shell.beam([px, y + 1.9, z1 + 0.05], [px, y + 2.3, z1 + 0.7], 0.04, T0, { kind: K.Wood });
+    shell.box(px, y + 1.55, z1 + 1.2, 0.2, 0.26, 0.2, PAL.iron, { kind: K.Metal });
+    s.shellGlow.box(px, y + 1.58, z1 + 1.2, 0.14, 0.2, 0.14, GLOW.window, { kind: 1 });
+  }
+  shell.push().translate(77, y + 2.55, z1 + 0.62).rotateX(0.35);
+  shell.box(0, 0, 0, 2.8, 0.08, 1.4, PAL.slate2, { kind: K.Slate });
+  shell.pop();
+  // Dormer windows in the south slope: rooms to let upstairs.
+  for (const dx of [74.2, 80.2]) {
+    const dy = y + H + 0.8, dz = z1 - 0.6;
+    shell.box(dx, dy, dz - 0.5, 1.2, 1.0, 1.2, PAL.plaster, { kind: K.Plaster });
+    shell.push().translate(dx, dy + 1.0, dz - 0.5).rotateY(Math.PI / 2);
+    shell.gable(0, 0, 0, 1.5, 1.5, 0.6, PAL.slate2, PAL.plaster, { kind: K.Slate });
+    shell.pop();
+    s.shellGlow.box(dx, dy + 0.25, dz + 0.11, 0.5, 0.5, 0.04, dx > 77 ? GLOW.windowDim : [0.03, 0.035, 0.06], {});
+    shell.box(dx, dy + 0.2, dz + 0.12, 0.62, 0.06, 0.06, T0, { kind: K.Wood });
+  }
+  b.bench(80.6, 57.8, 0);
   // Windows: back walls in core glow, front walls in shell glow.
-  for (const wx of [73.5, 75, 79.5, 81]) s.shellGlow.box(wx, y + 1.1, z1 + 0.02, 0.55, 0.6, 0.06, GLOW.window, {});
-  for (const wz of [51.8, 55.2]) s.shellGlow.box(x1 + 0.02, y + 1.1, wz, 0.06, 0.6, 0.55, GLOW.window, {});
+  for (const [wx, on] of [[73.5, 0], [75, 1], [79.5, 0], [81, 1]]) s.shellGlow.box(wx, y + 1.1, z1 + 0.02, 0.55, 0.6, 0.06, on ? GLOW.window : [0.03, 0.035, 0.06], {});
+  for (const [wz, on] of [[51.8, 0], [55.2, 1]]) s.shellGlow.box(x1 + 0.02, y + 1.1, wz, 0.06, 0.6, 0.55, on ? GLOW.windowDim : [0.03, 0.035, 0.06], {});
   for (const wx of [75, 79]) s.glow.box(wx, y + 1.1, z0 - 0.02, 0.55, 0.6, 0.06, GLOW.windowDim, {});
   b.lights.add(77, y + 1.2, z1 + 1.2, 0xffa050, 4, 5, 0.06);
   b.lights.add(x1 + 1.2, y + 1.2, 53.5, 0xffa050, 4, 5, 0.06);
@@ -1150,6 +1375,12 @@ function buildCrypt(b: Builder, grid: Grid, x: number, z: number) {
   g.box(x, y + 0.2, z + 0.82, 1.1, 1.6, 0.05, '#0a0a12');
   b.gl(x, z).box(x, y + 1.9, z + 0.86, 0.3, 0.3, 0.02, GLOW.rune, {});
   b.lights.add(x, y + 1.5, z + 1.6, 0x6aa0ff, 3, 4, 0.1);
+  g.box(x + 2.0, y + 3.5, z - 0.3, 0.1, 0.6, 0.1, PAL.stone, { kind: K.Rock });
+  g.box(x + 2.0, y + 3.85, z - 0.3, 0.1, 0.1, 0.4, PAL.stone, { kind: K.Rock });
+  g.blob(x - 0.8, y + 2.95, z + 0.4, 0.7, 0.14, 0.5, '#4a5e3a', 41, { kind: K.Leaves });
+  g.blob(x + 1.1, y + 2.75, z + 0.7, 0.4, 0.1, 0.3, '#4a5e3a', 43, { kind: K.Leaves });
+  D.candles(b, x - 0.7, y + 0.05, z + 1.45, 3);
+  D.candles(b, x + 0.8, y + 0.05, z + 1.45, 2);
   grid.addCollider({ kind: 'b', x0: x - 1.9, z0: z - 1.5, x1: x + 1.9, z1: z + 0.85, y0: -5, y1: 8 });
   for (const px of [x - 1.3, x + 1.3]) grid.addCollider({ kind: 'c', x: px, z: z + 1.1, r: 0.2, y0: -5, y1: 8 });
 }
@@ -1165,7 +1396,24 @@ function buildWinchHut(b: Builder, grid: Grid, x: number, z: number) {
   g.beam([x - 2, y + 2, z + 0.5], [x - 5.5, y + 1.4, z + 6], 0.04, PAL.iron);
   b.gl(x, z).box(x + 1.2, y + 1.2, z + 1.52, 0.4, 0.4, 0.04, GLOW.windowDim, {});
   b.torch(x - 1.2, y + 1.6, z + 1.7);
+  // Shuttered window, a stone string course, stores stacked by the wall.
+  for (const sg of [-1, 1]) g.box(x + 1.2 + sg * 0.34, y + 1.0, z + 1.54, 0.2, 0.62, 0.04, '#4a3424', { kind: K.Wood });
+  g.box(x, y + 2.35, z + 1.55, 4.1, 0.14, 0.1, PAL.stoneDark, { kind: K.Brick });
+  for (const [bx, bz] of [[x + 2.4, z + 0.9], [x + 2.5, z + 0.2]] as Pt[]) b.barrel(bx, bz);
+  b.crate(x + 2.5, z - 0.6, 0.6);
   grid.addCollider({ kind: 'b', x0: x - 2, z0: z - 1.5, x1: x + 2, z1: z + 1.5, y0: -5, y1: 10 });
+}
+
+/** A torch in an iron bracket on a wall, drawn into the wall's structure so it fades with it. */
+function wallTorch(b: Builder, s: Structure, x: number, y: number, z: number, nx: number, nz: number) {
+  s.core.beam([x - nx * 0.25, y - 0.4, z - nz * 0.25], [x, y - 0.15, z], 0.03, PAL.iron, { kind: K.Metal });
+  s.core.box(x, y - 0.35, z, 0.07, 0.45, 0.07, PAL.woodDark, { kind: K.Wood });
+  s.core.box(x, y - 0.02, z, 0.13, 0.1, 0.13, PAL.iron);
+  s.glow.box(x, y + 0.08, z, 0.1, 0.16, 0.1, GLOW.flame, { kind: 1 });
+  b.fx.addEmitter({ x, y: y + 0.12, z, rate: 14, spec: P.flame, spread: 0.08, vy: 0.4 });
+  b.fx.addEmitter({ x, y: y + 0.2, z, rate: 0.8, spec: P.ember, spread: 0.1, vy: 0.5 });
+  b.lights.add(x + nx * 0.3, y + 0.3, z + nz * 0.3, 0xff9a40, 10, 8, 0.3);
+  b.fires.push({ x, y, z, big: false });
 }
 
 function buildKeep(b: Builder, grid: Grid, r: Rng): Structure {
@@ -1178,14 +1426,40 @@ function buildKeep(b: Builder, grid: Grid, r: Rng): Structure {
       new THREE.Vector3(Math.max(x0, x1) + (alongX ? 0 : 1), base + H + 0.6, Math.max(z0, z1) + (alongX ? 1 : 0)),
     );
     const s = b.structure(name, bx);
-    b.wall(s, x0, z0, x1, z1, base, H, 1.6, { slits: true, outerSign: outer });
+    b.wall(s, x0, z0, x1, z1, base, H, 1.6, { slits: true, outerSign: outer, litSlits: outer === 1 });
     return s;
   };
   wall('wallN', 16, 8, 44, 8, -1);
   wall('wallW', 14, 10, 14, 38, -1);
-  wall('wallS1', 16, 40, 44, 40, 1);
-  wall('wallE1', 46, 10, 46, 21, 1);
-  wall('wallE2', 46, 28, 46, 38, 1);
+  const wS = wall('wallS1', 16, 40, 44, 40, 1);
+  const wE1 = wall('wallE1', 46, 10, 46, 21, 1);
+  const wE2 = wall('wallE2', 46, 28, 46, 38, 1);
+  // Long red banners down the outer walls, torches between them. Drawn into the
+  // walls so they fade with them when the knight is behind.
+  for (const bx of [21, 30, 39]) b.banner(bx, base + 0.4, 40.83, 0, PAL.cloth, 3.8, wS.core);
+  b.banner(46.83, base + 0.4, 15, Math.PI / 2, PAL.cloth, 3.8, wE1.core);
+  b.banner(46.83, base + 0.4, 33, Math.PI / 2, PAL.cloth, 3.8, wE2.core);
+  for (const tx of [25.5, 34.5]) wallTorch(b, wS, tx, base + 2.8, 41.0, 0, 1);
+  wallTorch(b, wE1, 47.0, base + 2.8, 11.5, 1, 0);
+  wallTorch(b, wE2, 47.0, base + 2.8, 36.5, 1, 0);
+  // A corbelled parapet along the outer faces: a projecting band on a row of stone brackets.
+  const corbels = (s: Structure, x0: number, z0: number, x1: number, z1: number) => {
+    const alongX = z0 === z1, len = alongX ? x1 - x0 : z1 - z0;
+    s.core.box(alongX ? (x0 + x1) / 2 : x0 + 0.1, base + H - 0.3, alongX ? z0 + 0.1 : (z0 + z1) / 2, alongX ? len : 0.3, 0.25, alongX ? 0.3 : len, PAL.stoneDark, { kind: K.Brick });
+    for (let t = 0.3; t < len; t += 0.6) s.core.box(alongX ? x0 + t : x0 + 0.05, base + H - 0.75, alongX ? z0 + 0.05 : z0 + t, alongX ? 0.22 : 0.22, 0.45, 0.22, PAL.stoneDark, { kind: K.Brick });
+  };
+  corbels(wS, 16, 40.8, 44, 40.8);
+  corbels(wE1, 46.8, 10, 46.8, 19);
+  corbels(wE2, 46.8, 30, 46.8, 38);
+  // Buttresses between the slits on the south wall, stepping in as they rise.
+  for (const bx of [23.5, 32.5, 41.5]) {
+    wS.core.box(bx, base - 1, 41.1, 0.7, 2.6, 0.7, PAL.stoneDark, { kind: K.Brick });
+    wS.core.box(bx, base + 1.6, 40.95, 0.6, 1.4, 0.4, PAL.stoneDark, { kind: K.Brick });
+    wS.core.push().translate(bx, base + 3.0, 40.95).rotateX(-0.6);
+    wS.core.box(0, 0, 0, 0.6, 0.12, 0.55, PAL.stone, { kind: K.Brick });
+    wS.core.pop();
+    grid.addCollider({ kind: 'b', x0: bx - 0.35, z0: 40.75, x1: bx + 0.35, z1: 41.45, y0: base - 5, y1: base + 3 });
+  }
   // Gatehouse arch over the passage.
   {
     const s = b.structure('gatehouse', new THREE.Box3(new THREE.Vector3(44.5, base, 21), new THREE.Vector3(47.5, base + H + 1.5, 28)));
@@ -1193,13 +1467,24 @@ function buildKeep(b: Builder, grid: Grid, r: Rng): Structure {
     g.box(46, base + 3.2, 24.5, 1.8, H - 3.2 + 0.4, 5.4, PAL.stone, { kind: K.Brick });
     for (let i = 0; i < 4; i++) g.box(46, base + H + 0.4, 22.6 + i * 1.3, 1.8, 0.5, 0.6, PAL.stone, { kind: K.Brick });
     s.glow.box(46.95, base + 4.2, 24.5, 0.04, 0.5, 0.5, GLOW.sinister, {});
+    // Dressed stones round the opening, and the portcullis teeth showing under the arch.
+    for (let i = 0; i < 7; i++) {
+      const a = (i / 6) * Math.PI, rz = 1.55, ry = 0.5;
+      g.box(46.93, base + 2.7 + Math.sin(a) * ry, 24.5 - Math.cos(a) * rz, 0.1, 0.34, 0.42, '#a8a4b0', { kind: K.Rock });
+    }
+    for (const jz of [23.0, 26.0]) for (let q = 0; q < 4; q++) g.box(46.93, base + q * 0.7, jz, 0.1, 0.34, q % 2 ? 0.3 : 0.4, '#a8a4b0', { kind: K.Rock });
+    for (let pz = 23.25; pz < 25.9; pz += 0.28) {
+      g.box(46.35, base + 2.75, pz, 0.07, 0.45, 0.07, PAL.iron, { kind: K.Metal });
+      g.pyramid(46.35, base + 2.62, pz, 0.08, 0.08, -0.14, PAL.iron);
+    }
+    g.box(46.35, base + 2.95, 24.5, 0.06, 0.07, 2.9, PAL.iron, { kind: K.Metal });
     b.banner(47.0, base + 1.2, 22.4, Math.PI / 2, PAL.cloth, 1.8);
     b.banner(47.0, base + 1.2, 26.6, Math.PI / 2, PAL.cloth, 1.8);
   }
   // Towers.
   const tower = (name: string, x: number, z: number, rad: number, h: number, banner = true) => {
     const s = b.structure(name, new THREE.Box3(new THREE.Vector3(x - rad, base - 2, z - rad), new THREE.Vector3(x + rad, base + h + rad * 2.4, z + rad)));
-    b.roundTower(s, x, z, rad, base, h, { banner: banner ? PAL.cloth : undefined, windows: 3 });
+    b.roundTower(s, x, z, rad, base, h, { banner: banner ? PAL.cloth : undefined, windows: 5 });
     return s;
   };
   tower('towerNE', 46, 8, 2.2, 7.5);

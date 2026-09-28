@@ -87,7 +87,9 @@ Every number here (health, speed, wind-ups, chances, durations) is in `src/confi
 - **The King's Road**: where you arrive, with the warhorse. The Old Warden's homestead
   stands in the meadow by the road (he has a job for you: raiders on the southern fields).
   Light the moonfire at the wayshrine; if you fall, you rise at the last moonfire you lit.
-- **Keepsfoot**: the village. The innkeeper sells Moon Flasks, the smith sharpens your sword.
+- **Keepsfoot**: the village. The road from the bridge climbs into a short street past the
+  smithy's open forge to the square: the tavern (the innkeeper sells Moon Flasks), the Elder's
+  hall, the smith (he sharpens your sword), the market stall, and the chapel by the north road.
 - **Blackpine Wood and Gnasher's Camp**: someone is locked in a cage there.
 - **The Outer Bailey**: the winch that lowers the drawbridge (arrow slits watch it).
 - **The Moonlit Keep**: clear the courtyard garrison to open the great hall and the
@@ -178,6 +180,8 @@ One screenshot from the command line:
 ```
 node tools/shot.mjs "shot&play&at=94,31" shots/camp.png 3000
 MOBILE=1 node tools/shot.mjs "shot" shots/phone.png 9000 844x390 tests/mobileflow.js
+PORT=5174 node tools/shot.mjs "shot&play" shots/other.png   # a dev server on another port
+node tools/shot.mjs "shot&play&god" shots/village.png 1500 924x700 tests/villagemap.js   # top-down plan of Keepsfoot
 ```
 
 ## Known limits

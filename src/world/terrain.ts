@@ -11,7 +11,7 @@ const TOP: Record<number, [string, number]> = {
   [T.Grass]: ['#4f7a3c', K.Grass],
   [T.DarkGrass]: ['#3d6334', K.Grass],
   [T.Dirt]: ['#76603f', K.Dirt],
-  [T.Path]: ['#8a7550', K.Dirt],
+  [T.Path]: ['#8a7550', K.Path],
   [T.Cobble]: ['#77737e', K.Cobble],
   [T.Flag]: ['#7c7888', K.Flag],
   [T.Sand]: ['#a69a78', K.Sand],

@@ -1178,6 +1178,165 @@ export function makeRabbit(): Model {
   }, 0.35);
 }
 
+export function makeSquirrel(): Model {
+  const r = new Rig({ shadow: 0.22 });
+  r.joint('body', 'root', 0, 0.08, 0);
+  r.joint('tail', 'body', 0, 0.02, -0.1);
+  const fur = '#8a4a28', light = '#c8a080';
+  r.part('body', (g, gl) => {
+    g.box(0, -0.04, 0, 0.1, 0.1, 0.18, fur);
+    g.box(0, 0.03, 0.09, 0.08, 0.08, 0.08, fur);
+    g.box(-0.025, 0.1, 0.08, 0.025, 0.04, 0.02, fur);
+    g.box(0.025, 0.1, 0.08, 0.025, 0.04, 0.02, fur);
+    g.box(0, -0.03, 0.06, 0.06, 0.05, 0.08, light);
+    gl.box(0.035, 0.07, 0.13, 0.01, 0.015, 0.01, [0.25, 0.2, 0.2]);
+  });
+  r.part('tail', (g) => {
+    g.box(0, 0, -0.04, 0.08, 0.1, 0.08, '#a05a30');
+    g.box(0, 0.1, -0.08, 0.1, 0.12, 0.08, '#a05a30');
+    g.box(0, 0.2, -0.04, 0.09, 0.08, 0.08, '#b8703a');
+  });
+  return new Model(r, (rig, a) => {
+    const hop = a.speed > 0.05 ? Math.abs(Math.sin(a.phase)) : 0;
+    rig.j('body').position.y += hop * 0.1;
+    rig.j('body').rotation.x = hop * -0.3;
+    rig.j('tail').rotation.x = -0.2 + Math.sin(a.time * 3) * 0.1 + hop * 0.4;
+    if (a.name === 'peck') rig.j('body').rotation.x = -0.5 + Math.sin(a.t * 10) * 0.05;
+  }, 0.3);
+}
+
+/** Four-legged critters share a trot: diagonal legs swing together. */
+function quadGait(rig: Rig, a: Anim, swing: number) {
+  const s = Math.sin(a.phase), k = Math.min(1, a.speed * 2) * swing;
+  rig.j('legFL').rotation.x = s * k;
+  rig.j('legBR').rotation.x = s * k;
+  rig.j('legFR').rotation.x = -s * k;
+  rig.j('legBL').rotation.x = -s * k;
+}
+
+export function makeFox(): Model {
+  const r = new Rig({ shadow: 0.45 });
+  r.joint('body', 'root', 0, 0.3, 0);
+  r.joint('head', 'body', 0, 0.06, 0.24);
+  r.joint('tail', 'body', 0, 0.02, -0.24);
+  for (const [n, x, z] of [['legFL', 0.06, 0.15], ['legFR', -0.06, 0.15], ['legBL', 0.06, -0.15], ['legBR', -0.06, -0.15]] as [string, number, number][]) r.joint(n, 'root', x, 0.26, z);
+  const fur = '#b8582a', white = '#e8e2d4', dark = '#2a2020';
+  r.part('body', (g) => {
+    g.box(0, -0.08, 0, 0.18, 0.16, 0.46, fur);
+    g.box(0, -0.09, 0.08, 0.12, 0.05, 0.25, white);
+  });
+  r.part('head', (g, gl) => {
+    g.box(0, -0.06, 0, 0.16, 0.14, 0.14, fur);
+    g.box(0, -0.07, 0.11, 0.08, 0.07, 0.12, white);
+    g.box(0, -0.05, 0.17, 0.03, 0.03, 0.02, dark);
+    for (const s of [-1, 1]) g.box(s * 0.05, 0.08, -0.02, 0.05, 0.08, 0.03, fur);
+    gl.box(0.045, 0.0, 0.07, 0.015, 0.015, 0.01, [1.8, 1.4, 0.4]);
+    gl.box(-0.045, 0.0, 0.07, 0.015, 0.015, 0.01, [1.8, 1.4, 0.4]);
+  });
+  r.part('tail', (g) => {
+    g.box(0, -0.06, -0.14, 0.1, 0.1, 0.3, fur);
+    g.box(0, -0.05, -0.32, 0.09, 0.09, 0.08, white);
+  });
+  const leg = (g: Geo) => g.box(0, -0.26, 0, 0.04, 0.26, 0.04, dark);
+  for (const n of ['legFL', 'legFR', 'legBL', 'legBR']) r.part(n, leg);
+  return new Model(r, (rig, a) => {
+    quadGait(rig, a, a.name === 'flee' ? 0.9 : 0.55);
+    rig.j('body').position.y += Math.abs(Math.cos(a.phase)) * 0.03 * Math.min(1, a.speed * 2);
+    rig.j('tail').rotation.x = -0.25 + Math.sin(a.time * 2.5) * 0.08;
+    rig.j('tail').rotation.y = Math.sin(a.time * 1.7) * 0.25;
+    if (a.name === 'peck') rig.j('head').rotation.x = 0.6 + Math.sin(a.t * 6) * 0.1;
+  }, 0.55);
+}
+
+export function makeDeer(): Model {
+  const r = new Rig({ shadow: 0.7 });
+  r.joint('body', 'root', 0, 0.72, 0);
+  r.joint('neck', 'body', 0, 0.08, 0.34);
+  r.joint('head', 'neck', 0, 0.36, 0.08);
+  for (const [n, x, z] of [['legFL', 0.1, 0.3], ['legFR', -0.1, 0.3], ['legBL', 0.1, -0.3], ['legBR', -0.1, -0.3]] as [string, number, number][]) r.joint(n, 'root', x, 0.68, z);
+  const fur = '#7a5a3a', dark = '#4a3424', white = '#d8ccb8', antler = '#c8b890';
+  r.part('body', (g) => {
+    g.box(0, -0.16, 0, 0.3, 0.32, 0.8, fur);
+    g.box(0, -0.12, -0.41, 0.2, 0.18, 0.04, white);
+    g.box(0, -0.02, -0.43, 0.06, 0.1, 0.05, white);
+  });
+  r.part('neck', (g) => {
+    g.push().rotateX(-0.45);
+    g.box(0, 0, 0, 0.14, 0.42, 0.16, fur);
+    g.pop();
+  });
+  r.part('head', (g, gl) => {
+    g.box(0, -0.05, 0.03, 0.14, 0.14, 0.2, fur);
+    g.box(0, -0.06, 0.16, 0.09, 0.08, 0.1, dark);
+    for (const s of [-1, 1]) {
+      g.box(s * 0.09, 0.07, -0.02, 0.07, 0.05, 0.03, fur);
+      g.beam([s * 0.04, 0.08, 0], [s * 0.2, 0.42, -0.05], 0.018, antler);
+      g.beam([s * 0.13, 0.25, -0.03], [s * 0.1, 0.4, 0.08], 0.015, antler);
+      g.beam([s * 0.17, 0.35, -0.04], [s * 0.3, 0.48, -0.02], 0.014, antler);
+    }
+    gl.box(0.07, 0.02, 0.08, 0.012, 0.015, 0.01, [0.4, 0.4, 0.45]);
+    gl.box(-0.07, 0.02, 0.08, 0.012, 0.015, 0.01, [0.4, 0.4, 0.45]);
+  });
+  const leg = (g: Geo) => {
+    g.box(0, -0.4, 0, 0.07, 0.4, 0.08, fur);
+    g.box(0, -0.68, 0, 0.045, 0.3, 0.045, dark);
+  };
+  for (const n of ['legFL', 'legFR', 'legBL', 'legBR']) r.part(n, leg);
+  return new Model(r, (rig, a) => {
+    const fleeing = a.name === 'flee';
+    quadGait(rig, a, fleeing ? 0.8 : 0.4);
+    // Bounding when it bolts.
+    if (fleeing && a.speed > 0.2) {
+      const b = Math.abs(Math.sin(a.phase * 0.5));
+      rig.j('body').position.y += b * 0.18;
+      rig.j('body').rotation.x = Math.sin(a.phase * 0.5) * 0.15;
+    }
+    rig.j('neck').rotation.x = a.name === 'peck' ? 1.15 : fleeing ? -0.1 : 0.05 * Math.sin(a.time * 0.7);
+    if (a.name === 'peck') rig.j('head').rotation.x = 0.3 + Math.sin(a.t * 3) * 0.08;
+    if (a.name === 'idle') rig.j('head').rotation.y = Math.sin(a.time * 0.5) * 0.5;
+  }, 0.9);
+}
+
+export function makeOwl(): Model {
+  const r = new Rig({ shadow: 0.25 });
+  r.joint('body', 'root', 0, 0.0, 0);
+  r.joint('head', 'body', 0, 0.28, 0);
+  r.joint('wingL', 'body', 0.1, 0.24, -0.02);
+  r.joint('wingR', 'body', -0.1, 0.24, -0.02);
+  const brown = '#6a5a48', chest = '#a89478', dark = '#3a3028';
+  r.part('body', (g) => {
+    g.box(0, 0, 0, 0.2, 0.28, 0.18, brown);
+    g.box(0, 0.03, 0.08, 0.14, 0.2, 0.03, chest);
+    g.box(0, -0.05, -0.1, 0.1, 0.1, 0.06, dark);
+    g.box(-0.04, -0.02, 0.07, 0.03, 0.04, 0.04, '#c8a040');
+    g.box(0.04, -0.02, 0.07, 0.03, 0.04, 0.04, '#c8a040');
+  });
+  r.part('head', (g, gl) => {
+    g.box(0, 0, 0, 0.19, 0.16, 0.17, brown);
+    g.box(0, 0.02, 0.085, 0.15, 0.11, 0.02, chest);
+    for (const s of [-1, 1]) g.box(s * 0.07, 0.16, -0.01, 0.04, 0.07, 0.04, brown);
+    g.box(0, 0.02, 0.1, 0.025, 0.04, 0.03, dark);
+    gl.box(0.04, 0.06, 0.098, 0.035, 0.035, 0.01, [3.0, 2.3, 0.4]);
+    gl.box(-0.04, 0.06, 0.098, 0.035, 0.035, 0.01, [3.0, 2.3, 0.4]);
+  });
+  const wing = (s: number) => (g: Geo) => g.box(s * 0.02, -0.22, 0, 0.04, 0.24, 0.16, dark);
+  r.part('wingL', wing(1));
+  r.part('wingR', wing(-1));
+  return new Model(r, (rig, a) => {
+    if (a.name === 'fly') {
+      const f = Math.sin(a.time * 22);
+      rig.j('wingL').rotation.z = 1.2 + f * 0.9;
+      rig.j('wingR').rotation.z = -1.2 - f * 0.9;
+      rig.j('body').rotation.x = 0.5;
+    } else {
+      // Perched: the head turns to watch (v = head yaw), with the odd blink-bob.
+      rig.j('head').rotation.y = a.v ?? 0;
+      rig.j('head').rotation.z = Math.sin(a.time * 0.8) * 0.12;
+      rig.j('body').position.y += Math.sin(a.time * 1.3) * 0.005;
+    }
+  }, 1);
+}
+
 // ---------- villagers ----------
 
 export function makeVillager(lookName: string): Model {

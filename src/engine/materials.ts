@@ -32,6 +32,7 @@ export const K = {
   Metal: 14,
   Cloth: 15,
   Furrow: 16,
+  Path: 17,
 } as const;
 
 const PATTERN = /* glsl */ `
@@ -106,9 +107,22 @@ float pattern(float k, vec3 p, vec3 n) {
     m = 0.9 + 0.2 * pn(s * 6.0);
   } else if (k < 15.5) { // cloth
     m = 0.9 + 0.12 * pn(s * vec2(2.0, 8.0));
-  } else { // furrowed field: dark soil rows with green crop lines
+  } else if (k < 16.5) { // furrowed field: dark soil rows with green crop lines
     float row = fract((p.x + p.z * 0.02) * 1.6);
     m = row < 0.45 ? 0.7 + 0.15 * pn(t * 3.0) : 1.35 + 0.2 * ph(floor(t * 6.0));
+  } else { // trodden path: packed earth with pebbles pressed into it
+    float b = ph(floor(t * 8.0));
+    m = 0.9 + 0.14 * pn(t * 1.7) - step(b, 0.06) * 0.12;
+    if (top) {
+      vec2 q = t * 2.6, c = floor(q), f = fract(q);
+      if (ph(c + 7.1) > 0.55) {
+        vec2 o = vec2(ph(c + 1.3), ph(c + 2.9)) * 0.5 + 0.25;
+        vec2 dv = (f - o) / (0.2 + 0.14 * ph(c + 5.7));
+        float d = length(dv);
+        // A pale stone, shadowed on the side away from the moon.
+        if (d < 1.0) m = dot(dv, vec2(0.7, -0.7)) > 0.45 ? 0.68 : 1.16 + 0.22 * ph(c + 9.3);
+      }
+    } else m = 0.8 + 0.25 * pn(s * vec2(2.0, 5.0));
   }
   return m;
 }

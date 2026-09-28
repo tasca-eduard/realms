@@ -44,6 +44,8 @@ export interface PSpec {
   alpha?: number;
   /** Firefly-style blinking. */
   blink?: boolean;
+  /** Draw blended (smoke, dust), not glowing. */
+  soft?: boolean;
 }
 
 class Pool {
@@ -165,6 +167,8 @@ export const P = {
   leaf: { color: [0.2, 0.26, 0.08], color2: [0.16, 0.14, 0.05], size: 1, life: 6, gravity: 0.5, drag: 1.5, wobble: 0.8 },
   splash: { color: [0.5, 0.65, 0.9], size: 1, life: 0.5, gravity: 10, drag: 1 },
   mote: { color: [0.8, 0.85, 1.2], size: 1, life: 6, wobble: 0.2, gravity: -0.03, alpha: 0.6, fadeIn: 0.3 },
+  /** Grave wisps: slow cold lights drifting over the dead. */
+  wisp: { color: [1.2, 2.2, 4.2], color2: [0.3, 0.7, 1.8], size: 2, size2: 1, life: 5, wobble: 0.45, gravity: -0.08, drag: 0.8, fadeIn: 0.25 },
   drip: { color: [0.55, 0.05, 0.05], size: 1, life: 0.6, gravity: 9, fadeIn: 0.01 },
   bubble: { color: [0.5, 1.6, 0.3], color2: [0.2, 0.7, 0.1], size: 1, size2: 2, life: 0.9, gravity: -1, wobble: 0.3 },
   heal2: { color: [0.4, 2.8, 0.6], color2: [0.2, 1.2, 0.3], size: 1, life: 1, gravity: -1.8, wobble: 0.3 },
@@ -200,7 +204,7 @@ export class Particles {
   }
 
   private poolFor(s: PSpec) {
-    return s === P.dust || s === P.smoke || s === P.puff ? this.soft : this.glow;
+    return s.soft || s === P.dust || s === P.smoke || s === P.puff ? this.soft : this.glow;
   }
 
   emit(s: PSpec, x: number, y: number, z: number, vx = 0, vy = 0, vz = 0, lifeMul = 1) {

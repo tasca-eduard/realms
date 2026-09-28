@@ -30,6 +30,12 @@ const LAKE = { x: -11, z: 100, rx: 21, rz: 27 };
 const lakeD = (gx: number, gz: number) =>
   Math.hypot((gx - LAKE.x) / LAKE.rx, (gz - LAKE.z) / LAKE.rz) + (fbm(gx * 0.11, gz * 0.11, 3, 61) - 0.5) * 0.5;
 
+/** The King's Road beyond the realm: to the broken bridge, and on past the river. */
+export const OUTSKIRT_ROAD: Pt[][] = [
+  [[119, 119], [118.5, 123.5]],
+  [[118.5, 133], [121, 140], [125, 146]],
+];
+
 /** Where the King's Road leaves the realm over the (broken) Mirrow bridge. */
 export const BRIDGE = { x: 118, z0: 123.2, z1: 133.5, breakZ0: 126.6, breakZ1: 130.2 };
 
@@ -123,10 +129,7 @@ export function paintOutskirts(grid: Grid, W: number, D: number) {
       }
     }
   // The King's Road runs to the broken bridge and on beyond the river.
-  const road: Pt[][] = [
-    [[119, 119], [118.5, 123.5]],
-    [[118.5, 133], [121, 140], [125, 146]],
-  ];
+  const road = OUTSKIRT_ROAD;
   for (const seg of road)
     for (let gz = 118; gz < grid.oz + grid.d; gz++)
       for (let gx = 110; gx < 132; gx++) {

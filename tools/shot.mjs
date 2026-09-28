@@ -1,6 +1,6 @@
 // Headless screenshot of the running dev server, for checking visuals.
 // Usage: node tools/shot.mjs [query] [out.png] [waitMs] [WxH] [script.js]
-//   query:  e.g. "shot&at=78,64"  (appended to http://localhost:5173/?)
+//   query:  e.g. "shot&at=78,64"  (appended to http://localhost:5173/?; PORT=<n> for another server)
 //   script: optional JS file evaluated in the page after load (drive the game).
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
@@ -25,7 +25,7 @@ const logs = [];
 page.on('console', (m) => logs.push(`[${m.type()}] ${m.text()}`));
 page.on('response', (r) => { if (r.status() >= 400) logs.push('[404] ' + r.url()); });
 page.on('pageerror', (e) => logs.push(`[pageerror] ${e.message}\n${e.stack ?? ''}`));
-await page.goto(`http://localhost:5173/?${query}`, { waitUntil: 'load' });
+await page.goto(`http://localhost:${process.env.PORT ?? 5173}/?${query}`, { waitUntil: 'load' });
 try {
   await page.waitForFunction(() => window.__ready === true, null, { timeout: 20000 });
 } catch {

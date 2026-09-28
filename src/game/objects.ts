@@ -553,7 +553,8 @@ export class Npc implements Interactable {
     return this.def.name;
   }
   prompt() {
-    return this.visible ? `Talk to ${this.def.name.split(' ')[0]}` : null;
+    const n = this.def.name.split(' ');
+    return this.visible ? `Talk to ${n[0] === 'Old' ? n.slice(0, 2).join(' ') : n[0]}` : null;
   }
   interact(g: Game) {
     g.talkTo(this);
