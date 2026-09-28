@@ -107,6 +107,7 @@ kbd { display: inline-block; min-width: 20px; padding: 0 5px; margin-right: 8px;
 #title .l2 { font-size: clamp(54px, 9vw, 110px); letter-spacing: 6px; }
 #title .sub { margin-top: 14px; font-family: var(--serif); font-size: clamp(16px, 2vw, 22px); letter-spacing: 6px; color: var(--gold); text-shadow: 0 2px 8px #000; }
 #title .menu { margin-top: 46px; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+#title .menu .note { font-family: var(--serif); font-size: 19px; color: #f0e6cc; text-shadow: 0 2px 8px #000; margin-bottom: 6px; max-width: 90vw; }
 .btn { font-family: var(--serif); font-size: 19px; letter-spacing: 3px; color: var(--ink); background: rgba(10, 9, 22, 0.55); border: 1px solid var(--panel-edge); padding: 9px 30px; min-width: 240px; cursor: pointer; border-radius: 2px; transition: border-color 0.2s, background 0.2s; }
 .btn:hover, .btn.sel { border-color: var(--gold-dim); background: rgba(60, 45, 20, 0.45); color: #fff; }
 #title .foot { position: absolute; bottom: 18px; font-size: 13px; color: #6d668e; }
@@ -131,6 +132,8 @@ kbd { display: inline-block; min-width: 20px; padding: 0 5px; margin-right: 8px;
 .keys { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 15px; color: var(--ink-dim); }
 .keys b { color: var(--ink); font-weight: 400; }
 #pause .btns { display: flex; flex-direction: column; gap: 8px; align-items: center; margin-top: 18px; }
+/* Resume stays in reach however long the sheet (phones scroll the rest under it). */
+#pause .btns { position: sticky; bottom: -22px; margin: 18px -26px -22px; padding: 12px 0 16px; background: #0c0b18; box-shadow: 0 -10px 14px #0c0b18; border-top: 1px solid var(--panel-edge); }
 #victory { background: radial-gradient(ellipse at center, rgba(40, 25, 10, 0.1), rgba(10, 6, 2, 0.6)); text-align: center; opacity: 0; transition: opacity 2s; }
 #victory.on { opacity: 1; }
 #victory .t { font-family: var(--deco); font-size: clamp(34px, 5vw, 62px); color: #ffe6b0; text-shadow: 0 4px 20px rgba(0, 0, 0, 0.8); letter-spacing: 4px; }
@@ -166,7 +169,18 @@ kbd { display: inline-block; min-width: 20px; padding: 0 5px; margin-right: 8px;
 .tb.act { right: max(16px, env(safe-area-inset-right)); bottom: 224px; border-radius: 6px; padding: 9px 16px; font-family: var(--font); font-size: 16px; background: rgba(60, 45, 20, 0.75); border-color: var(--gold-dim); color: #fff; max-width: 60vw; }
 .tb.act.hidden { display: none; }
 .tb.pause { top: max(10px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); width: 42px; height: 42px; border-radius: 6px; }
-body.touch #flaskKey, body.touch #prompt { display: none; }
+body.touch #flaskKey, body.touch #prompt:not(.warn) { display: none; }
+/* On phones a warning shows as a banner above the knight (the buttons do the rest). */
+body.touch #prompt.warn { bottom: auto; top: 27%; white-space: normal; width: max-content; max-width: min(70vw, 440px); text-align: center; line-height: 1.35; }
+#hint { pointer-events: none; }
+/* Tips wrap and stay between the stick and the buttons. */
+body.touch #hint { white-space: normal; text-align: center; width: max-content; max-width: min(90vw, calc(100vw - 500px)); line-height: 1.35; }
+@media (orientation: portrait) {
+  body.touch #hint { max-width: 88vw; bottom: 250px; }
+  #area { top: 24%; }
+  #area .name { font-size: 24px; letter-spacing: 3px; }
+  body.touch #prompt.warn { top: 34%; max-width: 86vw; }
+}
 @media (max-height: 500px) {
   #hud { top: 10px; left: 12px; }
   #hearts svg { width: 21px; height: 18px; }
@@ -213,10 +227,10 @@ body.touch #flaskKey, body.touch #prompt { display: none; }
 .quest.done b { text-decoration: line-through; }
 @media (max-height: 500px) { #objective { top: 38px; font-size: 12px; } }
 
-.keys.tch { display: none; }
-body.touch .keys.tch { display: grid; }
-body.touch .keys.desk { display: none; }
-@media (max-height: 500px) { #questNote { top: 64px; font-size: 16px; } }
+.keys.tch, .keys.pad { display: none; }
+body.touch .keys.tch, body.pad .keys.pad { display: grid; }
+body.touch .keys.desk, body.pad .keys.desk { display: none; }
+@media (max-height: 500px) { #questNote { top: 62px; left: auto; right: 14px; transform: none; text-align: right; font-size: 15px; } }
 
 #effects { display: flex; flex-direction: column; gap: 3px; margin-top: 3px; }
 #effects .fx { position: relative; display: flex; align-items: center; gap: 5px; font-family: var(--px); font-size: 10px; text-shadow: 0 1px 0 #000; padding-bottom: 3px; width: 96px; }

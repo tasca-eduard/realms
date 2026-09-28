@@ -54,9 +54,53 @@ function blobTexture() {
   return blobTex;
 }
 
+/** Materials and frame quads shared by every "shared" sprite on a sheet (coins, alerts). */
+const sharedMats = new Map<string, { mat: THREE.Material; depth: THREE.MeshDepthMaterial }>();
+const sharedQuads = new Map<string, THREE.BufferGeometry>();
+let emptyQuad: THREE.BufferGeometry | null = null;
+let blobShared: { geo: THREE.PlaneGeometry; mat: THREE.MeshBasicMaterial } | null = null;
+
+function quad() {
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(12), 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(8), 2));
+  geo.setAttribute('normal', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1], 3));
+  geo.setIndex([0, 1, 2, 0, 2, 3]);
+  return geo;
+}
+
+/** Shape a quad to show one frame, feet at the origin. */
+function frameQuad(geo: THREE.BufferGeometry, tex: THREE.Texture, f: Frame, flip: boolean) {
+  const ppu = VIEW.ppu;
+  const ax = flip ? f.w - f.ax : f.ax;
+  const l = -ax / ppu, r = (f.w - ax) / ppu;
+  const b = -(f.h - f.ay) / (ppu * COS_EL), t = f.ay / (ppu * COS_EL);
+  const P = geo.getAttribute('position') as THREE.BufferAttribute;
+  P.setXYZ(0, l, b, 0);
+  P.setXYZ(1, r, b, 0);
+  P.setXYZ(2, r, t, 0);
+  P.setXYZ(3, l, t, 0);
+  P.needsUpdate = true;
+  const img = tex.image as { width: number; height: number };
+  let u0 = f.x / img.width, u1 = (f.x + f.w) / img.width;
+  const v0 = 1 - (f.y + f.h) / img.height, v1 = 1 - f.y / img.height;
+  if (flip) [u0, u1] = [u1, u0];
+  const U = geo.getAttribute('uv') as THREE.BufferAttribute;
+  U.setXY(0, u0, v0);
+  U.setXY(1, u1, v0);
+  U.setXY(2, u1, v1);
+  U.setXY(3, u0, v1);
+  U.needsUpdate = true;
+  geo.computeBoundingSphere();
+}
+
 /**
  * A camera-facing, upright billboard that shows one frame of a sprite sheet at
  * exactly one texel per render pixel. Position is the feet.
+ *
+ * A "shared" sprite (many short-lived copies: coins, alert marks) reuses one material
+ * and one quad per frame instead of making its own, so spawning a handful costs
+ * almost nothing; it can't flash, tint or have a silhouette of its own.
  */
 export class SpriteActor {
   mesh: THREE.Mesh;
@@ -69,36 +113,53 @@ export class SpriteActor {
   private tintU: { value: THREE.Color };
   private tex: THREE.Texture;
   private frameKey = '';
+  private shared: boolean;
   shadowSize = 0.7;
   lift = 0;
 
-  constructor(tex: THREE.Texture, opts: { silhouette?: boolean; glow?: number; shadowSize?: number } = {}) {
+  constructor(tex: THREE.Texture, opts: { silhouette?: boolean; glow?: number; shadowSize?: number; shared?: boolean } = {}) {
     this.tex = tex;
-    this.geo = new THREE.BufferGeometry();
-    this.geo.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(12), 3));
-    this.geo.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(8), 2));
-    this.geo.setAttribute('normal', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1], 3));
-    this.geo.setIndex([0, 1, 2, 0, 2, 3]);
-    const { mat, flash, tint } = spriteMaterial(tex, opts.glow ?? 0.22);
-    this.flashU = flash;
-    this.tintU = tint;
+    this.shared = !!opts.shared;
+    // A shared sprite shows the empty quad until its first frame is set.
+    this.geo = this.shared ? (emptyQuad ??= quad()) : quad();
+    const glow = opts.glow ?? 0.22;
+    let mat: THREE.Material, depth: THREE.MeshDepthMaterial;
+    if (this.shared) {
+      const key = `${tex.uuid}:${glow}`;
+      let s = sharedMats.get(key);
+      if (!s) {
+        s = { mat: spriteMaterial(tex, glow).mat, depth: new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: tex, alphaTest: 0.5 }) };
+        sharedMats.set(key, s);
+      }
+      ({ mat, depth } = s);
+      // Its own (unused) uniforms, so setting flash or tint can't touch the others.
+      this.flashU = { value: 0 };
+      this.tintU = { value: new THREE.Color(1, 1, 1) };
+    } else {
+      const m = spriteMaterial(tex, glow);
+      mat = m.mat;
+      this.flashU = m.flash;
+      this.tintU = m.tint;
+      depth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: tex, alphaTest: 0.5 });
+    }
     this.mesh = new THREE.Mesh(this.geo, mat);
     this.mesh.rotation.y = (VIEW.yaw * Math.PI) / 180;
     this.mesh.castShadow = true;
-    this.mesh.customDepthMaterial = new THREE.MeshDepthMaterial({
-      depthPacking: THREE.RGBADepthPacking,
-      map: tex,
-      alphaTest: 0.5,
-    });
+    this.mesh.customDepthMaterial = depth;
     this.mesh.frustumCulled = false;
 
-    const sm = new THREE.MeshBasicMaterial({ map: blobTexture(), transparent: true, depthWrite: false });
-    this.shadow = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.6), sm);
+    if (this.shared) {
+      blobShared ??= { geo: new THREE.PlaneGeometry(1, 0.6), mat: new THREE.MeshBasicMaterial({ map: blobTexture(), transparent: true, depthWrite: false }) };
+      this.shadow = new THREE.Mesh(blobShared.geo, blobShared.mat);
+    } else {
+      const sm = new THREE.MeshBasicMaterial({ map: blobTexture(), transparent: true, depthWrite: false });
+      this.shadow = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.6), sm);
+    }
     this.shadow.rotation.x = -Math.PI / 2;
     this.shadow.renderOrder = 2;
     this.shadowSize = opts.shadowSize ?? 0.7;
 
-    if (opts.silhouette) {
+    if (opts.silhouette && !this.shared) {
       const m = new THREE.MeshBasicMaterial({
         map: tex,
         alphaTest: 0.5,
@@ -123,6 +184,7 @@ export class SpriteActor {
 
   dispose(scene: THREE.Object3D) {
     this.removeFrom(scene);
+    if (this.shared) return;
     this.geo.dispose();
     (this.mesh.material as THREE.Material).dispose();
     this.mesh.customDepthMaterial?.dispose();
@@ -147,27 +209,19 @@ export class SpriteActor {
     const key = `${f.x},${f.y},${f.w},${f.h},${flip}`;
     if (key === this.frameKey) return;
     this.frameKey = key;
-    const ppu = VIEW.ppu;
-    const ax = flip ? f.w - f.ax : f.ax;
-    const l = -ax / ppu, r = (f.w - ax) / ppu;
-    const b = -(f.h - f.ay) / (ppu * COS_EL), t = f.ay / (ppu * COS_EL);
-    const P = this.geo.getAttribute('position') as THREE.BufferAttribute;
-    P.setXYZ(0, l, b, 0);
-    P.setXYZ(1, r, b, 0);
-    P.setXYZ(2, r, t, 0);
-    P.setXYZ(3, l, t, 0);
-    P.needsUpdate = true;
-    const img = this.tex.image as { width: number; height: number };
-    let u0 = f.x / img.width, u1 = (f.x + f.w) / img.width;
-    const v0 = 1 - (f.y + f.h) / img.height, v1 = 1 - f.y / img.height;
-    if (flip) [u0, u1] = [u1, u0];
-    const U = this.geo.getAttribute('uv') as THREE.BufferAttribute;
-    U.setXY(0, u0, v0);
-    U.setXY(1, u1, v0);
-    U.setXY(2, u1, v1);
-    U.setXY(3, u0, v1);
-    U.needsUpdate = true;
-    this.geo.computeBoundingSphere();
+    if (this.shared) {
+      // One quad per frame of the sheet, made the first time that frame is shown.
+      const k = `${this.tex.uuid}:${key}`;
+      let q = sharedQuads.get(k);
+      if (!q) {
+        q = quad();
+        frameQuad(q, this.tex, f, flip);
+        sharedQuads.set(k, q);
+      }
+      this.mesh.geometry = q;
+      return;
+    }
+    frameQuad(this.geo, this.tex, f, flip);
   }
 
   /** Place at feet position; groundY is where the shadow goes. */

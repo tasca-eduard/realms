@@ -4,6 +4,49 @@
 
 export type Action = 'attack' | 'guard' | 'jump' | 'special' | 'interact' | 'pause' | 'heal';
 
+let layout: Map<string, string> | null = null;
+/** Ask the browser how this keyboard labels its keys (Chrome and Edge can tell). */
+export function loadKeyLayout(onReady: () => void) {
+  const kb = (navigator as Navigator & { keyboard?: { getLayoutMap?: () => Promise<Map<string, string>> } }).keyboard;
+  kb?.getLayoutMap?.()
+    .then((m) => {
+      layout = m;
+      onReady();
+    })
+    .catch(() => {});
+}
+/** The label on the key at a physical position, e.g. keyName('KeyQ') is "A" on AZERTY. */
+export function keyName(code: string) {
+  const k = layout?.get(code);
+  return k && k.trim() ? k.toUpperCase() : code.replace(/^Key|^Digit/, '');
+}
+/** The four movement keys, in W A S D order. */
+export const moveKeys = () => ['KeyW', 'KeyA', 'KeyS', 'KeyD'].map(keyName).join('');
+
+/** Gamepad buttons, named as on an Xbox pad (the README's names). */
+const PAD_LABEL: Record<Action | 'move' | 'aim', string> = {
+  move: 'Left stick',
+  aim: 'Right stick',
+  attack: 'X',
+  guard: 'B',
+  jump: 'A',
+  special: 'RB',
+  interact: 'Y',
+  heal: 'LB',
+  pause: 'Start',
+};
+const KEY_LABEL: Record<Action | 'move' | 'aim', () => string> = {
+  move: moveKeys,
+  aim: () => 'Mouse',
+  attack: () => 'Left click',
+  guard: () => 'Right click',
+  jump: () => 'Space',
+  special: () => keyName('KeyF'),
+  interact: () => keyName('KeyE'),
+  heal: () => keyName('KeyQ'),
+  pause: () => 'Esc',
+};
+
 const KEYMAP: Record<string, Action> = {
   Space: 'jump',
   KeyE: 'interact',
@@ -54,6 +97,10 @@ export class Input {
     el.addEventListener('mousemove', (e) => {
       this.mouseX = e.clientX;
       this.mouseY = e.clientY;
+      if (!this.usingTouch) {
+        if (!(e.buttons & 1)) this.release('attack');
+        if (!(e.buttons & 2)) this.release('guard');
+      }
     });
     el.addEventListener('mousedown', (e) => {
       if (this.usingTouch) return;
@@ -92,6 +139,23 @@ export class Input {
     this.actReleased.add(a);
   }
 
+  /** What to press for an action on the device in use: a key or mouse button, or a pad button. */
+  label(a: Action | 'move' | 'aim') {
+    return this.usingPad ? PAD_LABEL[a] : KEY_LABEL[a]();
+  }
+
+  /** Which device is in use, for text that names buttons. */
+  get device() {
+    return this.usingPad ? 'pad' : this.usingTouch ? 'touch' : 'keys';
+  }
+
+  /** A menu, dialog or reading used this frame's presses: gameplay mustn't act on them too. */
+  swallow() {
+    this.pressed.clear();
+    this.actPressed.clear();
+    this.anyPressed = false;
+  }
+
   key(code: string) {
     return this.down.has(code);
   }
@@ -111,10 +175,10 @@ export class Input {
   /** Movement in screen space: x right, y up. Length 0..1. */
   move() {
     let x = 0, y = 0;
-    if (this.key('KeyA')) x -= 1;
-    if (this.key('KeyD')) x += 1;
-    if (this.key('KeyW')) y += 1;
-    if (this.key('KeyS')) y -= 1;
+    if (this.key('KeyA') || this.key('ArrowLeft')) x -= 1;
+    if (this.key('KeyD') || this.key('ArrowRight')) x += 1;
+    if (this.key('KeyW') || this.key('ArrowUp')) y += 1;
+    if (this.key('KeyS') || this.key('ArrowDown')) y -= 1;
     const l = Math.hypot(x, y);
     if (l > 0) return { x: x / l, y: y / l };
     const tl = Math.hypot(this.touchMove.x, this.touchMove.y);

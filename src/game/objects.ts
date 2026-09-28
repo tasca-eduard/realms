@@ -440,7 +440,7 @@ export class CrackedWall implements Interactable {
     if (g.time - this.chipT > 2.5) {
       this.chipT = g.time;
       g.pop(this, 'the stone cracks... strike harder!', '#b8d8ff');
-      g.ui.hint(g.input.usingTouch ? 'Heavy blows break walls: the third hit of a combo, a full charged spin, a dash strike or a plunge.' : 'Heavy blows break walls: the third hit of a combo, a full charged spin (hold click), a dash strike or plunge (F).', 6);
+      g.ui.hint(g.input.usingTouch ? 'Heavy blows break walls: the third hit of a combo, a full charged spin, a dash strike or a plunge.' : `Heavy blows break walls: the third hit of a combo, a full charged spin (hold ${g.input.label('attack')}), a dash strike or plunge (${g.input.label('special')}).`, 6);
     }
   }
   smash(g: Game, instant = false) {
@@ -537,6 +537,8 @@ export class Npc implements Interactable {
   model: Model;
   visible: boolean;
   walkTo: { x: number; z: number } | null = null;
+  /** Further stops after walkTo, followed in order. */
+  route: { x: number; z: number }[] = [];
   fx = 0.7;
   fz = 0.7;
   t = 0;
@@ -564,7 +566,7 @@ export class Npc implements Interactable {
     const p = g.player;
     if (this.walkTo) {
       const dx = this.walkTo.x - this.x, dz = this.walkTo.z - this.z, d = Math.hypot(dx, dz);
-      if (d < 0.2) this.walkTo = null;
+      if (d < 0.2) this.walkTo = this.route.shift() ?? null;
       else {
         this.x += (dx / d) * 3.2 * dt;
         this.z += (dz / d) * 3.2 * dt;
@@ -577,6 +579,7 @@ export class Npc implements Interactable {
       this.fx = dx / d;
       this.fz = dz / d;
     }
+    this.model.rig.setCastShadow(Math.hypot(p.x - this.x, p.z - this.z) < 16);
     const caged = this.def.id === 'brother' && g.cage && !g.cage.open;
     const name = caged ? 'captive' : g.talking === this ? 'talk' : g.victory ? 'cheer' : 'idle';
     const rig = this.model.rig;

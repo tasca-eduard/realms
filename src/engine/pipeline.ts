@@ -286,7 +286,7 @@ export class Pipeline {
     this.renderer.domElement.style.width = window.innerWidth + 'px';
     this.renderer.domElement.style.height = window.innerHeight + 'px';
     const lines = Number(new URLSearchParams(location.search).get('lines')) || (MOBILE ? 250 : VIEW.targetLines);
-    this.scale = Math.max(1, Math.round(H / lines));
+    this.scale = Math.max(1, Math.round(Math.min(W, H) / lines));
     this.innerW = Math.ceil(W / this.scale);
     this.innerH = Math.ceil(H / this.scale);
     this.w = this.innerW + 2;
@@ -309,6 +309,14 @@ export class Pipeline {
     u.uSrcSize.value.set(this.w, this.h);
     u.uScreenSize.value.set(W, H);
     u.uScale.value = this.scale;
+  }
+
+  /** Compile every material in the scene for the target it's drawn into (no frame is drawn). */
+  compile(scene: THREE.Scene, camera: THREE.OrthographicCamera) {
+    const r = this.renderer;
+    r.setRenderTarget(this.sceneRT);
+    r.compile(scene, camera);
+    r.setRenderTarget(null);
   }
 
   render(scene: THREE.Scene, camera: THREE.OrthographicCamera) {

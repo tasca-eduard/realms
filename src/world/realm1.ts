@@ -868,12 +868,12 @@ export function buildRealm1(builder: Builder): RealmData {
     { type: 'goblin', x: 24, z: 99 },
     // Road into the woods
     { type: 'goblin', x: 88, z: 38 },
-    { type: 'archer', x: 91, z: 36 },
+    { type: 'archer', x: 91.4, z: 35.6 },
     // Goblin camp
     { type: 'brute', x: 93, z: 23, group: 'camp' },
     { type: 'goblin', x: 98, z: 26, group: 'camp' },
     { type: 'shield', x: 92, z: 29, group: 'camp', elite: true },
-    { type: 'archer', x: 100, z: 20, group: 'camp' },
+    { type: 'archer', x: 101, z: 19.4, group: 'camp' },
     { type: 'archer', x: 90, z: 32.5, group: 'camp' },
     { type: 'boar', x: 97, z: 31, group: 'camp' },
     // Woods west trail
@@ -902,15 +902,15 @@ export function buildRealm1(builder: Builder): RealmData {
     { type: 'bat', x: 51, z: 110 },
     // Raiders on the southern fields
     { type: 'goblin', x: 78.5, z: 114, group: 'farm' },
-    { type: 'bomber', x: 83.5, z: 117.5, group: 'farm' },
+    { type: 'bomber', x: 83, z: 116.6, group: 'farm' },
     { type: 'archer', x: 87, z: 115.5, group: 'farm' },
-    { type: 'bomber', x: 93, z: 114.5, group: 'farm' },
+    { type: 'bomber', x: 93.5, z: 114.3, group: 'farm' },
     // A goblin fishing camp on the Mirrow's bank
-    { type: 'goblin', x: 121, z: 97.5 },
-    { type: 'bomber', x: 121.6, z: 101 },
+    { type: 'goblin', x: 119, z: 97 },
+    { type: 'bomber', x: 119.5, z: 100.8 },
     // Patrols in the western fields
     { type: 'goblin', x: 13, z: 73 },
-    { type: 'goblin', x: 15, z: 66 },
+    { type: 'goblin', x: 14.6, z: 65.6 },
     { type: 'bat', x: 17, z: 88 },
     // Courtyard garrison: the hall stays barred until they fall.
     { type: 'goblin', x: 40, z: 22, group: 'courtyard' },
@@ -930,7 +930,7 @@ export function buildRealm1(builder: Builder): RealmData {
     { type: 'darter', x: 41, z: 112.5 },
     { type: 'shaman', x: 26, z: 36.5, group: 'courtyard' },
     { type: 'bomber', x: 44, z: 35, group: 'courtyard', off: true },
-    { type: 'darter', x: 47, z: 113.5, guard: true },
+    { type: 'darter', x: 47.9, z: 113.9, guard: true },
   ];
 
   const npcs: NpcDef[] = [
@@ -1064,7 +1064,7 @@ export function buildRealm1(builder: Builder): RealmData {
   };
 
   const critters: CritterDef[] = [
-    ...[0, 1, 2, 3].map((k): CritterDef => ({ kind: 'chicken', x: HOME.x - 2 + k * 0.8, z: HOME.z - 3.4 + (k % 2), area: [HOME.x - 4.5, HOME.z - 4.3, HOME.x + 4.3, HOME.z - 2.2] })),
+    ...[0, 1, 2, 3].map((k): CritterDef => ({ kind: 'chicken', x: HOME.x - 2 + k * 0.8, z: HOME.z - 3.9 + (k % 2) * 0.5, area: [HOME.x - 4.5, HOME.z - 4.3, HOME.x + 4.3, HOME.z - 2.2] })),
     ...[0, 1].map((k): CritterDef => ({ kind: 'chicken', x: HOME.x + 1 + k, z: HOME.z + 3.4, area: [HOME.x - 0.5, HOME.z + 2.5, HOME.x + 4.3, HOME.z + 4] })),
     ...([[84, 104], [80, 98], [104, 94], [30, 90], [24, 86], [44, 104], [112, 92]] as Pt[]).map(([x, z]): CritterDef => ({ kind: 'rabbit', x, z, area: [x - 5, z - 5, x + 5, z + 5] })),
     ...([[86, 106], [68, 21], [55, 87]] as Pt[]).map(([x, z]): CritterDef => ({ kind: 'squirrel', x, z, area: [x - 4, z - 3, x + 4, z + 3] })),
@@ -1072,7 +1072,7 @@ export function buildRealm1(builder: Builder): RealmData {
     { kind: 'fox', x: 52, z: 105.5, area: [46, 103.5, 58, 108] },
     { kind: 'deer', x: 114, z: 78, area: [110, 74, 119, 83] },
     { kind: 'deer', x: 116.5, z: 80.5, area: [110, 74, 119, 83] },
-    { kind: 'deer', x: 108, z: 38, area: [104, 34, 114, 44] },
+    { kind: 'deer', x: 107.2, z: 39.4, area: [104, 34, 114, 44] },
     { kind: 'owl', x: owlGrave[0], z: owlGrave[2], perch: owlGrave[1], area: [0, 0, 0, 0] },
     { kind: 'owl', x: owlLodge[0], z: owlLodge[2], perch: owlLodge[1], area: [0, 0, 0, 0] },
   ];
@@ -1154,12 +1154,19 @@ export function buildRealm1(builder: Builder): RealmData {
         ['deer', 4, [T.Grass, T.DarkGrass]],
         ['fox', 3, [T.Grass, T.Mud, T.Reeds]],
       ];
-      for (const [kind, n, ground] of wild) {
+      const clear = (x: number, z: number, r: number) => {
+        const body = { x, y: g.groundAt(x, z), z, r };
+        g.resolve(body, 0.3, true);
+        return Math.hypot(body.x - x, body.z - z) < 0.01;
+      };
+      for (const [kind, n0, ground] of wild) {
+        // Phones get fewer: each animal is several draw calls.
+        const n = MOBILE ? Math.ceil(n0 * 0.5) : n0;
         let placed = 0;
         for (let tries = 0; tries < 500 && placed < n; tries++) {
           const x = 4 + r() * (MAP_W - 8), z = 4 + r() * (MAP_D - 8);
           if (!ground.includes(g.typeAt(x, z)) || g.waterAt(x, z) !== NONE || insidePoly(VILLAGE, x, z) || !fits(x, z, 'solid')) continue;
-          if (critters.some((c) => c.kind === kind && Math.hypot(c.x - x, c.z - z) < 20)) continue;
+          if (critters.some((c) => c.kind === kind && Math.hypot(c.x - x, c.z - z) < 20) || !clear(x, z, kind === 'deer' ? 0.5 : 0.3)) continue;
           critters.push({ kind, x, z, area: [x - 4, z - 4, x + 4, z + 4] });
           placed++;
         }
@@ -1167,7 +1174,7 @@ export function buildRealm1(builder: Builder): RealmData {
       // An owl on some of the dead trees, well apart.
       for (const [px, py, pz] of bb.perches) {
         const owls = critters.filter((c) => c.kind === 'owl');
-        if (owls.length >= 6) break;
+        if (owls.length >= (MOBILE ? 4 : 6)) break;
         if (px < 2 || pz < 2 || px > MAP_W - 2 || pz > MAP_D - 2 || owls.some((o) => Math.hypot(o.x - px, o.z - pz) < 22)) continue;
         critters.push({ kind: 'owl', x: px, z: pz, perch: py, area: [0, 0, 0, 0] });
       }

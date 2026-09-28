@@ -71,10 +71,16 @@ function blobTexture() {
  * A character made of rigid low-poly parts in a joint hierarchy.
  * The root sits at the feet and turns to face the move/aim direction.
  * Local forward is +z; the right hand is on -x.
+ *
+ * The parts are merged into one skinned mesh once the model is built (plus one for
+ * glowing bits, and one for the see-through silhouette): each vertex follows its
+ * joint rigidly, so a character costs a draw call or two instead of one per part.
  */
 export class Rig {
   root = new THREE.Group();
-  joints: Record<string, THREE.Group> = {};
+  /** Parts hung on "root" follow this bone (the root group itself isn't a bone). */
+  private rootBone = new THREE.Bone();
+  joints: Record<string, THREE.Object3D> = {};
   rest: Record<string, { p: THREE.Vector3; r: THREE.Euler }> = {};
   yaw = 0;
   private flashU: { value: number };
@@ -85,6 +91,10 @@ export class Rig {
   meshes: THREE.Mesh[] = [];
   silMat: THREE.MeshBasicMaterial | null = null;
   silMeshes: THREE.Mesh[] = [];
+  skeleton: THREE.Skeleton | null = null;
+  private parts: { joint: string; solid: Geo; glow: Geo }[] = [];
+  private solidGeo: THREE.BufferGeometry | null = null;
+  private sphere = new THREE.Sphere();
   /** Extra lift (jumps), in world units. */
   lift = 0;
   scale = 1;
@@ -101,13 +111,14 @@ export class Rig {
     this.shadow.renderOrder = 2;
     const s = opts.shadow ?? 0.8;
     this.shadow.scale.set(s, s * 0.8, 1);
-    this.joints.root = this.root;
+    this.root.add(this.rootBone);
+    this.joints.root = this.rootBone;
     this.root.rotation.order = 'YXZ';
   }
 
   /** Add a joint under a parent at a local offset. */
   joint(name: string, parent: string, x: number, y: number, z: number) {
-    const j = new THREE.Group();
+    const j = new THREE.Bone();
     j.position.set(x, y, z);
     j.rotation.order = 'YXZ';
     this.joints[parent].add(j);
@@ -116,21 +127,79 @@ export class Rig {
     return j;
   }
 
-  /** Attach geometry built in the joint's local space. */
+  /** Attach geometry built in the joint's local space (merged in build()). */
   part(joint: string, build: (g: Geo, glow: Geo) => void) {
     const g = new Geo(), gl = new Geo(true);
     build(g, gl);
-    const j = this.joints[joint];
-    if (g.count) {
-      const geo = g.build();
-      const m = new THREE.Mesh(geo, this.mat);
+    this.parts.push({ joint, solid: g, glow: gl });
+  }
+
+  /** Merge all parts into skinned meshes bound to the joints. Called once, when the model is complete. */
+  build() {
+    if (this.skeleton) return;
+    // Bind in the rest pose, with the root at the origin.
+    this.root.position.set(0, 0, 0);
+    this.root.rotation.set(0, 0, 0);
+    this.root.scale.setScalar(1);
+    this.root.updateMatrixWorld(true);
+    const bones = Object.values(this.joints) as THREE.Bone[];
+    const index = new Map<THREE.Object3D, number>(bones.map((b, i) => [b, i]));
+    const merge = (glow: boolean) => {
+      const out = new Geo(glow);
+      const skin: number[] = [];
+      const v = new THREE.Vector3(), nm = new THREE.Matrix3();
+      for (const part of this.parts) {
+        const src = glow ? part.glow : part.solid;
+        if (!src.count) continue;
+        const bone = this.joints[part.joint];
+        const m = bone.matrixWorld;
+        nm.getNormalMatrix(m);
+        const bi = index.get(bone)!;
+        for (let i = 0; i < src.count; i++) {
+          v.set(src.p[i * 3], src.p[i * 3 + 1], src.p[i * 3 + 2]).applyMatrix4(m);
+          out.p.push(v.x, v.y, v.z);
+          v.set(src.n[i * 3], src.n[i * 3 + 1], src.n[i * 3 + 2]).applyMatrix3(nm).normalize();
+          out.n.push(v.x, v.y, v.z);
+          out.c.push(src.c[i * 3], src.c[i * 3 + 1], src.c[i * 3 + 2]);
+          out.k.push(src.k[i]);
+          out.w.push(src.w[i]);
+          skin.push(bi);
+        }
+      }
+      if (!out.count) return null;
+      const geo = out.build();
+      geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(skin.flatMap((b) => [b, 0, 0, 0]), 4));
+      geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(skin.flatMap(() => [1, 0, 0, 0]), 4));
+      return geo;
+    };
+    this.skeleton = new THREE.Skeleton(bones);
+    this.solidGeo = merge(false);
+    const glowGeo = merge(true);
+    this.parts = [];
+    if (this.solidGeo) {
+      // Culling uses a sphere padded for swinging limbs (the rest pose is smaller than an attack).
+      this.sphere.copy(this.solidGeo.boundingSphere!);
+      this.sphere.radius = this.sphere.radius * 1.5 + 0.3;
+      const m = this.skin(this.solidGeo, this.mat);
       m.castShadow = true;
       m.receiveShadow = true;
-      j.add(m);
       this.meshes.push(m);
-      if (this.silMat) this.addSil(m);
+      if (this.silMat) this.addSil();
     }
-    if (gl.count) j.add(new THREE.Mesh(gl.build(), this.glow));
+    if (glowGeo) this.skin(glowGeo, this.glow);
+  }
+
+  private skin(geo: THREE.BufferGeometry, mat: THREE.Material) {
+    const m = new THREE.SkinnedMesh(geo, mat);
+    this.root.add(m);
+    m.bind(this.skeleton!);
+    m.boundingSphere = this.sphere.clone();
+    return m;
+  }
+
+  /** Hide a joint and everything hung on it (a broken shield): it shrinks to nothing. */
+  hide(joint: string) {
+    this.joints[joint].scale.setScalar(1e-4);
   }
 
   /**
@@ -143,14 +212,24 @@ export class Rig {
     this.mat.stencilRef = ref;
     this.mat.stencilFunc = THREE.AlwaysStencilFunc;
     this.mat.stencilZPass = THREE.ReplaceStencilOp;
-    for (const m of this.meshes) this.addSil(m);
+    if (this.solidGeo) this.addSil();
   }
 
-  private addSil(m: THREE.Mesh) {
-    const s = new THREE.Mesh(m.geometry, this.silMat!);
+  private addSil() {
+    const s = this.skin(this.solidGeo!, this.silMat!);
     s.renderOrder = 10;
-    m.parent!.add(s);
     this.silMeshes.push(s);
+  }
+
+  private castOn = true;
+  /**
+   * Real (moon) shadows only near the knight; further off the blob shadow does the job
+   * and each part saves a draw call in the shadow pass.
+   */
+  setCastShadow(on: boolean) {
+    if (on === this.castOn) return;
+    this.castOn = on;
+    for (const m of this.meshes) m.castShadow = on;
   }
 
   showSilhouette(on: boolean) {
@@ -189,6 +268,7 @@ export class Rig {
     this.mat.dispose();
     this.glow.dispose();
     this.silMat?.dispose();
+    this.skeleton?.dispose();
     this.shadow.geometry.dispose();
     this.shadow.material.dispose();
   }

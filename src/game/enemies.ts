@@ -193,6 +193,10 @@ export class Enemy {
   }
 
   update(dt: number, g: Game) {
+    if (this.state === 'idle' || this.state === 'sleep') {
+      const fx = g.cam.focus.x - this.x, fz = g.cam.focus.z - this.z;
+      if (fx * fx + fz * fz > 45 * 45 && Math.hypot(g.player.x - this.x, g.player.z - this.z) > 45) return;
+    }
     this.t += dt;
     this.animT += dt;
     this.flashT = Math.max(0, this.flashT - dt);
@@ -261,6 +265,7 @@ export class Enemy {
       this.seen = this.alive && p.alive && d < 18 && g.grid.lineClear(p.x, p.z, this.x, this.z, Math.max(p.y, this.y - (this.flying ? 1.3 : 0)) + 0.6);
     }
     rig.showSilhouette(this.seen);
+    rig.setCastShadow(this.type === 'king' || Math.hypot(g.player.x - this.x, g.player.z - this.z) < 16);
     if (rig.silMat) {
       const tel = this.telegraph > 0 ? 0.5 + 0.5 * Math.sin(g.time * 40) : 0;
       rig.silMat.color.setRGB(0.85 + tel * 1.6, 0.12 + tel * 1.3, 0.08 + tel * 0.3);
@@ -794,7 +799,7 @@ export class Enemy {
       if (front > 0.25) {
         if (finisher) {
           this.shieldUp = false;
-          this.model.rig.j('handL').visible = false;
+          this.model.rig.hide('handL');
           g.audio.sfx('shieldBreak', this.x, this.z);
           g.fx.burst(P.splinter, this.x, this.y + 0.8, this.z, 16, 4, 3);
           this.vx = dx * kb;
@@ -896,7 +901,7 @@ export class Enemy {
   get coinDrop() {
     const [a, b] = this.spec.coins;
     const n = a + Math.floor(Math.random() * (b - a + 1));
-    return (this.golden ? n * 10 : this.elite ? n * 3 : n) + this.loot;
+    return this.golden ? n * 10 : this.elite ? n * 3 : n;
   }
 }
 

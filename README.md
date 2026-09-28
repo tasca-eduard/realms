@@ -15,7 +15,8 @@ Open http://localhost:5173.
 
 **On your phone:** keep the dev server running and put the phone on the same Wi-Fi.
 Vite prints a `Network:` address when it starts (something like `http://192.168.1.20:5173`).
-Open that on the phone. The game goes fullscreen and asks for landscape when you press Begin.
+Open that on the phone. The game goes fullscreen and asks for landscape when you press Begin
+(held upright it still plays, with a taller view).
 
 `npm run build` makes a static copy in `dist/` that any web host can serve.
 
@@ -23,7 +24,7 @@ Open that on the phone. The game goes fullscreen and asks for landscape when you
 
 | Action | Desktop | Phone |
 | --- | --- | --- |
-| Move | WASD | Left thumb (the stick stays where you first touch) |
+| Move | WASD or the arrow keys | Left thumb (the stick stays where you first touch) |
 | Aim | Mouse (attacks, rolls and blocks go where you point) | Automatic: the nearest foe roughly where you push |
 | Attack | Left click; click again to combo (the third hit breaks shields) | Red sword button |
 | Charged spin | Hold left click, release; blue means full (two hits, breaks shields) | Hold the sword button |
@@ -31,7 +32,7 @@ Open that on the phone. The game goes fullscreen and asks for landscape when you
 | Guard | Right click: **tap** to roll, **hold** to block, press just before a hit to **parry**; in the air, a dodge | Shield button (same) |
 | Jump | Space (up onto ledges about a metre high) | Blue arrow button |
 | Special | F, costs half the blue bar: **dash strike** when moving, **sword wave** when still, **plunge** in the air | Star button |
-| Talk, open, rest, read, ride | E | Gold button that appears with the prompt |
+| Talk, open, rest, read, ride | E (Enter or Space also page through a talk) | Gold button that appears with the prompt |
 | Drink a Moon Flask | Q | Flask button |
 | Pause, settings, journal | Esc | Pause button at the top |
 
@@ -59,10 +60,10 @@ remembered on this device). Effects hold still while you read, talk or watch a c
 
 | Effect | What it does | How to deal with it |
 | --- | --- | --- |
-| **Maimed** | 40% slower on foot for 3 s | Drink a flask, or rest |
+| **Maimed** | 40% slower on foot for 3 s | Drink a flask (works at full health and on horseback), or rest |
 | **Dazed** | Can't act for about a second (knocked down: a little longer, flat on your back) | Parry the blow, or roll clear of the charge. Once dazed, you can't be dazed again until 3 s after it ends, even if a hit cuts it short |
 | **Burning** | Costs a heart after 1.5 s. The count pauses while you're dazed, so you always get your chance to roll | Roll, or step (or ride) into water, before then |
-| **Poisoned** | Stamina refills at half speed for 6 s | Drink a flask, or rest |
+| **Poisoned** | Stamina refills at half speed for 6 s | Drink a flask (works at full health and on horseback), or rest |
 
 | Foe | Where | What to know |
 | --- | --- | --- |
@@ -94,8 +95,9 @@ Every number here (health, speed, wind-ups, chances, durations) is in `src/confi
 - **The Outer Bailey**: the winch that lowers the drawbridge (arrow slits watch it).
 - **The Moonlit Keep**: clear the courtyard garrison to open the great hall and the
   Goblin King. His crashes can bring the chandeliers down, on you or on him.
-- **Off the road**: the Seven Stones (a three-wave trial for the Knight's Crest relic; the
-  last wave is a brute, a shaman, a goblin and an elite boar), the
+- **Off the road**: the Seven Stones (a three-wave trial for the Knight's Crest relic and 90
+  coins; its foes drop nothing, and falling resets it; the last wave is a brute, a shaman, a
+  goblin and an elite boar), the
   Old Lodge (an elite beast), the Barrow Fields and its graveyard, the Overlook (a ruined
   watch post up the Pilgrims' Stair), the Hollow (a cave in the cliff below it),
   Mirrormere with its pier, the Sallow Marsh, the raided farm, a goblin camp on the
@@ -169,11 +171,19 @@ Add these to the URL while the dev server runs:
 
 **Automated checks.** With the dev server running, `npm test` drives the game in headless
 Microsoft Edge through every scripted check and prints what each one found: reachability,
-controls, the full moveset, a fight, death and respawn, riding, the cracked wall, the
-trial, the Warden's quest, saved kills, the status effects, thief bats, each new foe in a
-live encounter, effects pausing in dialogs, no stun-locks, foes walking home, fire on
-horseback, the trial's waves, a light-leak soak, the boss fight and the phone flow. Screenshots
-land in `shots/` (not kept).
+spawn spots (nothing starts inside a tent, a rock or a fire), controls, the full moveset,
+a fight, death and respawn, riding, the cracked wall, the trial, the Warden's quest, saved
+kills, the status effects, thief bats, flasks and hearts, pause and focus (timers,
+cutscenes, leaving the window, the victory screen, the music), the economy, menus and
+talks by keyboard, a (faked) gamepad, each new foe in a live encounter (these depend on
+chance: a run can miss an effect), effects pausing in dialogs, no stun-locks, foes walking
+home, fire on horseback, the trial's waves, a light-leak soak, the merged character
+meshes, the boss fight and the phone flow. `npm test -- talk pad` runs only the named
+checks. Screenshots land in `shots/` (not kept).
+
+Two longer checks are left out of `npm test`: `tests/monkey.js` (two minutes of random
+play all over the map, flagging errors, NaN positions, falls through the ground and stuck
+states) and `tests/tour.js` (frame rate and draw calls at 25 stops).
 
 One screenshot from the command line:
 
@@ -182,6 +192,7 @@ node tools/shot.mjs "shot&play&at=94,31" shots/camp.png 3000
 MOBILE=1 node tools/shot.mjs "shot" shots/phone.png 9000 844x390 tests/mobileflow.js
 PORT=5174 node tools/shot.mjs "shot&play" shots/other.png   # a dev server on another port
 node tools/shot.mjs "shot&play&god" shots/village.png 1500 924x700 tests/villagemap.js   # top-down plan of Keepsfoot
+node tools/shot.mjs "shot&play" shots/monkey.png 124000 1280x720 tests/monkey.js      # random-play soak
 ```
 
 ## Known limits
@@ -192,7 +203,7 @@ node tools/shot.mjs "shot&play&god" shots/village.png 1500 924x700 tests/village
   real-device feel and frame rate are unknown. Phones get lighter settings (fewer lights,
   a smaller shadow map, less grass, a coarser pixel grid).
 - **Balance is tuned by feel, not playtested**: damage, enemy counts, prices and the boss.
-- The **title menu** is mouse, touch or gamepad; there is no keyboard navigation there.
+- **Gamepads were only tested with a faked pad** (buttons named as on an Xbox pad).
 
 ## Credits
 

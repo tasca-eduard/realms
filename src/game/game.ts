@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { FOES, MOBILE, VIEW, WORLD } from '../config';
 import { Pipeline } from '../engine/pipeline';
 import { IsoCamera } from '../engine/camera';
-import { Input } from '../engine/input';
+import { Input, loadKeyLayout } from '../engine/input';
 import { LightPool } from '../engine/lights';
 import { Particles, P } from '../engine/particles';
 import { shared, worldMaterial } from '../engine/materials';
@@ -186,6 +186,11 @@ export class Game {
       }
     });
     this.touch = new TouchControls(uiRoot, this.input);
+    this.ui.keyLabel = (a) => this.input.label(a);
+    loadKeyLayout(() => {
+      this.screens.refreshKeys();
+      this.ui.refreshKeys();
+    });
     this.touch.onPause = () => this.setPaused(!this.paused);
     this.screens.onPauseAction((a) => {
       if (a === 'resume') this.setPaused(false);
@@ -302,6 +307,7 @@ export class Game {
       this.interactables.push(n);
     }
     this.spawnEnemies();
+    this.warmShaders();
 
     window.addEventListener('resize', () => this.pipe.resize());
     const saveNow = () => {
@@ -309,9 +315,60 @@ export class Game {
     };
     window.addEventListener('beforeunload', saveNow);
     window.addEventListener('pagehide', saveNow);
-    document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && saveNow());
+    // Switching to another app or tab (or a phone's home screen) pauses the game.
+    const autoPause = () => {
+      if (this.state === 'play' && !this.paused && !this.ui.dialogOpen && !this.ui.loreOpen) this.setPaused(true);
+    };
+    window.addEventListener('blur', autoPause);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        saveNow();
+        autoPause();
+        this.audio.sleep(true);
+      } else this.audio.sleep(false);
+    });
     (window as unknown as { __game: Game }).__game = this;
     (window as unknown as { __reach: (p?: boolean) => unknown }).__reach = (progress = true) => reachability(this, progress);
+  }
+
+  /**
+   * Firepots, target rings, power orbs, sword arcs and pickup sprites each use a shader
+   * nothing else does; compiled on first use they froze a frame for ~170 ms. Compile
+   * them now, against the same target the scene renders to.
+   */
+  private warmShaders() {
+    const probes: THREE.Object3D[] = [];
+    const at = (o: THREE.Object3D) => {
+      o.position.set(this.realm.start.x, 1, this.realm.start.z);
+      this.scene.add(o);
+      probes.push(o);
+    };
+    at(new THREE.Mesh(new THREE.IcosahedronGeometry(0.16, 0), new THREE.MeshLambertMaterial({ color: 0x8a5a3a, emissive: new THREE.Color(0.4, 0.15, 0.02) })));
+    at(new THREE.Mesh(new THREE.IcosahedronGeometry(0.2, 0), new THREE.MeshBasicMaterial({ color: 0xffffff })));
+    const ring = this.combat.markTarget(this.realm.start.x, this.realm.start.z);
+    const n = this.swooshes.length;
+    this.swoosh(this.player, 0);
+    this.swoosh(this.player, 4);
+    const sprite = new SpriteActor(this.assets.pickups, { glow: 0.9, shadowSize: 0.25, shared: true });
+    sprite.addTo(this.scene);
+    sprite.setFrame(ALERT_FRAME, false);
+    sprite.place(this.cam, this.realm.start.x, 1, this.realm.start.z, 0, true);
+    this.pipe.compile(this.scene, this.cam.cam);
+    // One real frame (hidden behind the loading screen) also builds the shadow-pass
+    // variants, which compile() leaves out, and uploads the textures.
+    this.pipe.render(this.scene, this.cam.cam);
+    for (const o of probes) {
+      this.scene.remove(o);
+      const m = o as THREE.Mesh;
+      m.geometry.dispose();
+      (m.material as THREE.Material).dispose();
+    }
+    this.combat.clearMark(ring);
+    for (const s of this.swooshes.splice(n)) {
+      this.scene.remove(s.mesh);
+      s.mesh.geometry.dispose();
+    }
+    sprite.dispose(this.scene);
   }
 
   private spawnEnemies() {
@@ -331,7 +388,7 @@ export class Game {
 
   /** Reading, talking or watching a cutscene: foes, arrows and effects all wait. */
   get worldFrozen() {
-    return this.ui.dialogOpen || this.ui.loreOpen || !!this.cutscene;
+    return this.ui.dialogOpen || this.ui.loreOpen || !!this.cutscene || this.state === 'victory';
   }
 
   get controlsEnabled() {
@@ -345,20 +402,28 @@ export class Game {
     this.applySave();
     this.state = 'title';
     this.screens.hideLoading();
-    const items: { label: string; act: () => void }[] = [];
-    if (this.save.exists) items.push({ label: 'Continue', act: () => this.beginPlay(false) });
-    items.push({
-      label: this.save.exists ? 'New journey' : 'Begin',
-      act: () => {
-        if (this.save.exists) {
-          this.save.reset();
-          location.search.includes('shot') ? this.beginPlay(true) : (localStorage.setItem('realms-new', '1'), location.reload());
-          return;
-        }
-        this.beginPlay(true);
-      },
-    });
-    this.screens.showTitle(items);
+    const mainMenu = () => {
+      const items: { label: string; act: () => void }[] = [];
+      if (this.save.exists) items.push({ label: 'Continue', act: () => this.beginPlay(false) });
+      items.push({ label: this.save.exists ? 'New journey' : 'Begin', act: () => (this.save.exists ? askFirst() : this.beginPlay(true)) });
+      this.screens.showTitle(items);
+    };
+    // Starting over wipes the save: ask first, with "keep it" as the default.
+    const askFirst = () =>
+      this.screens.showTitle(
+        [
+          { label: 'No, keep my journey', act: mainMenu },
+          {
+            label: 'Yes, start over',
+            act: () => {
+              this.save.reset();
+              location.search.includes('shot') ? this.beginPlay(true) : (localStorage.setItem('realms-new', '1'), location.reload());
+            },
+          },
+        ],
+        'Start a new journey? Your saved progress will be lost.',
+      );
+    mainMenu();
     this.ui.hudVisible(false);
     try {
       if (localStorage.getItem('realms-new')) {
@@ -405,7 +470,8 @@ export class Game {
       this.state = 'story';
       this.screens.showStory(STORY, () => {
         this.enterWorld();
-        this.ui.hint(this.input.usingTouch ? 'Left thumb moves. Shield button: tap to roll, hold to block.' : '<kbd>WASD</kbd>move &nbsp; <kbd>Mouse</kbd>aim &nbsp; <kbd>Left click</kbd>attack &nbsp; <kbd>Right click</kbd>tap roll, hold block &nbsp; <kbd>Space</kbd>jump', 9);
+        const k = (a: Parameters<Input['label']>[0]) => `<kbd>${this.input.label(a)}</kbd>`;
+        this.ui.hint(this.input.usingTouch ? 'Left thumb moves. Shield button: tap to roll, hold to block.' : `${k('move')}move &nbsp; ${k('aim')}aim &nbsp; ${k('attack')}attack &nbsp; ${k('guard')}tap roll, hold block &nbsp; ${k('jump')}jump`, 9);
       });
     } else this.enterWorld();
   }
@@ -625,13 +691,13 @@ export class Game {
 
   alert(e: Enemy) {
     this.audio.sfx('alert', e.x, e.z);
-    const s = new SpriteActor(this.assets.pickups, { glow: 1.2 });
+    const s = new SpriteActor(this.assets.pickups, { glow: 1.2, shared: true });
     s.mesh.castShadow = false;
     s.shadow.visible = false;
     this.scene.add(s.mesh);
     this.alerts.push({ s, e, t: 0 });
     if (this.settings.hints && this.firstTime('fight')) {
-      this.ui.hint(this.input.usingTouch ? 'Enemies flash before they strike. Tap the shield to roll through, hold it to block.' : 'Enemies flash before they strike. Tap <kbd>Right click</kbd> to roll through, hold it to block', 7);
+      this.ui.hint(this.input.usingTouch ? 'Enemies flash before they strike. Tap the shield to roll through, hold it to block.' : `Enemies flash before they strike. Tap <kbd>${this.input.label('guard')}</kbd> to roll through, hold it to block`, 7);
     }
   }
 
@@ -716,7 +782,7 @@ export class Game {
     const res = this.player.hurt(1, a.x - a.vx, a.z - a.vz, this, { kb: 4 });
     this.afterPlayerHit(res, a.x, a.z, null);
     // Arrows can lodge in a leg.
-    if (res === 'hit' && a.from && this.player.alive && Math.random() < FOES.archer.maimChance) this.player.afflict('maim', this);
+    if (res === 'hit' && a.from && this.player.alive && !this.player.riding && Math.random() < FOES.archer.maimChance) this.player.afflict('maim', this);
     return res;
   }
 
@@ -750,12 +816,12 @@ export class Game {
   effectTip(kind: string) {
     if (!this.firstTime('fx-' + kind)) return;
     const touch = this.input.usingTouch;
-    const roll = touch ? 'tap the shield' : 'tap <kbd>Right click</kbd>';
-    const drink = touch ? 'the flask' : '<kbd>Q</kbd>';
+    const roll = touch ? 'tap the shield' : `tap <kbd>${this.input.label('guard')}</kbd>`;
+    const drink = touch ? 'the flask button' : `<kbd>${this.input.label('heal')}</kbd>`;
     const tips: Record<string, string> = {
       burn: `<b>Burning</b>: ${roll} to roll, or step into water, before it costs a heart.`,
-      maim: `<b>Maimed</b>: you move slower for a while. A flask (${drink}) cures it.`,
-      poison: `<b>Poisoned</b>: stamina comes back at half speed. A flask (${drink}) cures it.`,
+      maim: `<b>Maimed</b>: you move slower for a while. Drink a flask (${drink}) to cure it, even at full health.`,
+      poison: `<b>Poisoned</b>: stamina comes back at half speed. Drink a flask (${drink}) to cure it, even at full health.`,
       daze: `<b>Dazed</b>: the brute's maul and charges knock the wits out of you. A parry turns them back.`,
     };
     this.ui.hint(tips[kind] ?? '', 7);
@@ -882,13 +948,16 @@ export class Game {
 
   onEnemyDeath(e: Enemy) {
     this.kills++;
+    this.save.data.kills++;
     if (e.spawnId !== undefined && !this.save.data.killed.includes(e.spawnId)) this.save.data.killed.push(e.spawnId);
     this.audio.sfx('enemyDie', e.x, e.z);
     this.fx.burst(P.puff, e.x, e.y + 0.5, e.z, 8, 2);
     if (e.type !== 'king') {
-      const n = e.coinDrop * this.comboMult;
+      // The trial's foes carry nothing (the stones pay once, when it's won), so dying and
+      // retrying can't farm them. A thief bat's loot comes back as it was, never multiplied.
+      const n = (e.group === 'trial' ? 0 : e.coinDrop * this.comboMult) + e.loot;
       if (n) this.combat.coins(e.x, e.y + 0.5, e.z, n);
-      if (this.comboMult > 1) this.pop(e, `x${this.comboMult} coins`, '#feae34');
+      if (this.comboMult > 1 && e.group !== 'trial') this.pop(e, `x${this.comboMult} coins`, '#feae34');
       if (Math.random() < 0.12 && this.player.hp < this.player.maxHp) this.combat.spawnPickup('heart', e.x, e.y + 0.5, e.z);
       if (e.elite) {
         this.combat.powerOrb(e.x, e.y + 0.8, e.z);
@@ -958,8 +1027,10 @@ export class Game {
         this.save.data.rescued = true;
         this.quest('tam', 1);
         this.writeSave();
-        tam.walkTo = { x: 88, z: 36 };
-        this.after(3.5, () => {
+        // Out of the cage, down the camp's road north toward the village.
+        tam.walkTo = { x: 97.5, z: 27.6 };
+        tam.route = [{ x: 93.2, z: 29.2 }, { x: 89.2, z: 33.8 }, { x: 86.3, z: 39.5 }];
+        this.after(5.5, () => {
           tam.visible = false;
           this.npc('tamhome')!.visible = true;
         });
@@ -988,8 +1059,10 @@ export class Game {
 
   openChest(c: Chest) {
     this.audio.sfx('chestOpen', c.x, c.z);
+    // Counted now (and saved with the open chest below), so nothing can be lost.
+    this.player.coins += c.coins;
     this.after(0.35, () => {
-      this.combat.coins(c.x, c.y + 0.6, c.z, c.coins);
+      this.combat.coins(c.x, c.y + 0.6, c.z, c.coins, true);
       if (c.power || Math.random() < 0.35) this.combat.powerOrb(c.x, c.y + 0.9, c.z, c.power);
       this.fx.burst(P.coinGlint, c.x, c.y + 0.7, c.z, 20, 2, 3);
       const l = this.lights.add(c.x, c.y + 1, c.z, 0xffc060, 8, 5, 0.1);
@@ -1260,7 +1333,7 @@ export class Game {
       const mins = Math.floor(d.playTime / 60);
       this.screens.showVictory(
         'The Goblin King has fallen, and dawn breaks over Keepsfoot.<br>The first of eight realms is free.',
-        `${this.kills} foes defeated &middot; ${this.player.coins} coins &middot; ${d.deaths} falls &middot; ${mins} min`,
+        `${d.kills} foes defeated &middot; ${this.player.coins} coins &middot; ${d.deaths} falls &middot; ${mins} min`,
       );
       this.state = 'victory';
       this.victoryT = 0;
@@ -1408,7 +1481,9 @@ export class Game {
     }
     if (this.paused) dt = 0;
 
-    for (const t of this.timers) t.t -= real;
+    // Timers (delayed dialogs, cutscenes, respawns) wait while the game is paused.
+    const tdt = this.paused ? 0 : real;
+    for (const t of this.timers) t.t -= tdt;
     const due = this.timers.filter((t) => t.t <= 0);
     this.timers = this.timers.filter((t) => t.t > 0);
     due.forEach((t) => t.fn());
@@ -1423,16 +1498,21 @@ export class Game {
   private handleMenus(real: number) {
     const inp = this.input;
     if (this.state === 'title' && this.screens.titleOpen) {
+      if (inp.keyPressed('ArrowUp') || inp.keyPressed('KeyW')) this.screens.titleKey('up');
+      if (inp.keyPressed('ArrowDown') || inp.keyPressed('KeyS')) this.screens.titleKey('down');
+      if (inp.keyPressed('Enter') || inp.keyPressed('Space') || inp.keyPressed('KeyE')) this.screens.titleKey('ok');
       if (inp.usingPad) {
         const y = inp.padMove.y;
         if (Math.abs(y) > 0.6 && !this.padHeld) this.screens.titleKey(y > 0 ? 'up' : 'down');
         this.padHeld = Math.abs(y) > 0.6;
         if (inp.hit('attack') || inp.hit('interact') || inp.hit('jump')) this.screens.titleKey('ok');
       }
+      inp.swallow();
       return;
     }
     if (this.state === 'story') {
       if (inp.anyPressed) this.screens.storyKey();
+      inp.swallow();
       return;
     }
     if (this.state === 'dead') {
@@ -1441,26 +1521,47 @@ export class Game {
         this.deadT = -99;
         this.respawn();
       }
+      inp.swallow();
       return;
     }
     if (inp.hit('pause')) {
       if (this.ui.loreOpen) this.ui.closeLore();
       else if (!this.ui.dialogOpen) this.setPaused(!this.paused);
     }
-    if (this.paused) return;
+    if (this.paused) {
+      if (inp.keyPressed('ArrowUp') || inp.keyPressed('KeyW')) this.screens.pauseKey('up');
+      if (inp.keyPressed('ArrowDown') || inp.keyPressed('KeyS')) this.screens.pauseKey('down');
+      if (inp.keyPressed('Enter') || inp.keyPressed('KeyE')) this.screens.pauseKey('ok');
+      if (inp.usingPad) {
+        const y = inp.padMove.y;
+        if (Math.abs(y) > 0.6 && !this.padHeld) this.screens.pauseKey(y > 0 ? 'up' : 'down');
+        this.padHeld = Math.abs(y) > 0.6;
+        if (inp.hit('jump') || inp.hit('interact') || inp.hit('attack')) this.screens.pauseKey('ok');
+        if (inp.hit('guard')) this.setPaused(false);
+      }
+      inp.swallow();
+      return;
+    }
+    // Dialogs and reading answer the same keys as the menus (E, Enter, Space, or the pad's
+    // A, X or Y; up and down pick an answer), and the press that closes one goes no further:
+    // it mustn't start the talk again or make the knight jump. (A mouse click only counts on
+    // the dialog box itself, so a stray click can't pick a shop option.)
+    const ok = inp.hit('interact') || inp.hit('jump') || inp.keyPressed('Enter') || (inp.usingPad && inp.hit('attack'));
     if (this.ui.dialogOpen) {
-      if (inp.keyPressed('KeyW')) this.ui.dialogKey('up');
-      if (inp.keyPressed('KeyS')) this.ui.dialogKey('down');
+      if (inp.keyPressed('KeyW') || inp.keyPressed('ArrowUp')) this.ui.dialogKey('up');
+      if (inp.keyPressed('KeyS') || inp.keyPressed('ArrowDown')) this.ui.dialogKey('down');
       if (inp.usingPad) {
         const y = inp.padMove.y;
         if (Math.abs(y) > 0.6 && !this.padHeld) this.ui.dialogKey(y > 0 ? 'up' : 'down');
         this.padHeld = Math.abs(y) > 0.6;
       }
-      if (inp.hit('interact')) this.ui.dialogKey('ok');
+      if (ok) this.ui.dialogKey('ok');
+      inp.swallow();
       return;
     }
     if (this.ui.loreOpen) {
-      if (inp.hit('interact') && this.ui.closeLore()) this.audio.sfx('ui');
+      if (ok && this.ui.closeLore()) this.audio.sfx('ui');
+      inp.swallow();
       return;
     }
     if (this.state === 'victory') {
@@ -1468,6 +1569,7 @@ export class Game {
       if (this.victoryT > 4 && (inp.anyPressed || this.victoryT > 12)) {
         this.screens.hideVictory();
         this.state = 'play';
+        inp.swallow();
       }
     }
     if (this.debug) this.debugKeys();
@@ -1480,7 +1582,7 @@ export class Game {
       this.ui.toast(this.godMode ? 'God mode on' : 'God mode off');
     }
     if (inp.keyPressed('KeyT') && this.mouseGround) this.player.place(this.mouseGround.x, this.mouseGround.z, this);
-    const spots: Record<string, [number, number]> = { Digit1: [111, 110], Digit2: [78, 66], Digit3: [40, 78], Digit4: [92, 32], Digit5: [58, 16], Digit6: [40, 26], Digit7: [31, 18.5] };
+    const spots: Record<string, [number, number]> = { Digit1: [105.5, 105], Digit2: [78, 66], Digit3: [40, 78], Digit4: [92, 32], Digit5: [58, 16], Digit6: [40, 26], Digit7: [31, 18.5] };
     for (const [k, v] of Object.entries(spots)) if (inp.keyPressed(k)) this.player.place(v[0], v[1], this);
   }
 
@@ -1524,7 +1626,7 @@ export class Game {
     for (const s of this.slits) s.update(hdt, this);
     for (const c of this.chandeliers) c.update(dt, this);
     this.chandelierCd -= dt;
-    this.trial.update(this.ui.dialogOpen || this.cutscene ? 0 : dt, this);
+    this.trial.update(this.worldFrozen ? 0 : dt, this);
     for (const v of this.viewerModels) {
       const t = this.viewerT ?? (this.time % 1.2);
       v.m.animate(0, v.x, v.z, this.viewerAnim, t, this.time, { dur: 0.4 });
@@ -1620,12 +1722,18 @@ export class Game {
 
     // First steps: point the way.
     if (this.state === 'play' && this.settings.hints && !this.hintsShown.has('road') && this.tutorialT > 12 && !this.save.data.lit.length && Math.hypot(p.x - 105.5, p.z - 99.5) < 22 && this.firstTime('road')) {
-      this.ui.hint('Light the <b>moonfire</b> at the wayshrine with <kbd>E</kbd>. If you fall, you will rise there.', 7);
+      this.ui.hint(this.input.usingTouch ? 'Light the <b>moonfire</b> at the wayshrine with the gold button. If you fall, you will rise there.' : `Light the <b>moonfire</b> at the wayshrine with <kbd>${this.input.label('interact')}</kbd>. If you fall, you will rise there.`, 7);
     }
   }
 
+  private lastDevice = '';
   private checkInteract() {
     document.body.classList.toggle('touch', this.input.usingTouch);
+    document.body.classList.toggle('pad', this.input.usingPad);
+    if (this.input.device !== this.lastDevice) {
+      this.lastDevice = this.input.device;
+      this.ui.refreshKeys();
+    }
     this.touch.show(this.input.usingTouch && (this.state === 'play' || this.state === 'victory') && !this.paused && !this.ui.dialogOpen && !this.ui.loreOpen && !this.cutscene);
     if (!this.controlsEnabled) {
       this.ui.prompt(null);
@@ -1647,7 +1755,7 @@ export class Game {
       }
     }
     if (this.cage && !this.cage.open && Math.hypot(this.cage.x - p.x, this.cage.z - p.z) < 2.4) {
-      this.ui.prompt('Strike the cage to break the lock', 'Click');
+      this.ui.prompt(this.input.usingTouch ? '!Strike the cage with your sword to break the lock' : 'Strike the cage to break the lock', this.input.label('attack'));
       this.touch.setInteract(null);
       return;
     }
@@ -1713,7 +1821,7 @@ export class Game {
       this.cam.focus.copy(f);
     } else if (this.cutscene) {
       const c = this.cutscene;
-      c.t += real;
+      if (!this.paused) c.t += real;
       f.set(c.x, c.y, c.z);
       this.cam.focus.x = damp(this.cam.focus.x, f.x, 3, real);
       this.cam.focus.y = damp(this.cam.focus.y, f.y, 3, real);

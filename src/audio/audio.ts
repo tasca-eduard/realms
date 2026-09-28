@@ -71,6 +71,13 @@ export class Audio {
   }
 
   /** Must be called from a user gesture. */
+  /** Stop the audio clock while the page is hidden (nothing piles up for the return). */
+  sleep(on: boolean) {
+    if (!this.ctx) return;
+    if (on && this.ctx.state === 'running') this.ctx.suspend();
+    else if (!on && this.ctx.state === 'suspended') this.ctx.resume();
+  }
+
   unlock() {
     if (this.ctx) {
       if (this.ctx.state === 'suspended') this.ctx.resume();

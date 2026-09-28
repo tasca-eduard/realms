@@ -34,7 +34,7 @@ export const QUESTS: QuestDef[] = [
   {
     id: 'stones',
     title: 'The Seven Stones',
-    steps: ['A stone circle stands east of the King\'s Road. Strike its altar and face the trial.', 'The Knight\'s Crest is yours: blocking costs less stamina.'],
+    steps: ['A stone circle stands east of the King\'s Road. Stand at its altar and face the trial.', 'The Knight\'s Crest is yours: blocking costs less stamina.'],
   },
   {
     id: 'shards',

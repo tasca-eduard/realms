@@ -31,7 +31,9 @@ export class Model {
   speed = 0;
   private lx = NaN;
   private lz = NaN;
-  constructor(public rig: Rig, private poseFn: PoseFn, private stride = 1.1) {}
+  constructor(public rig: Rig, private poseFn: PoseFn, private stride = 1.1) {
+    rig.build();
+  }
 
   animate(dt: number, x: number, z: number, name: string, t: number, time: number, extra: Partial<Anim> = {}) {
     if (!Number.isNaN(this.lx) && dt > 0) {

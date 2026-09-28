@@ -8,8 +8,13 @@ const tick = () => { frames++; requestAnimationFrame(tick); };
 requestAnimationFrame(tick);
 const next = () => {
   if (i > 0) {
-    const info = g.pipe.renderer.info;
-    out.push([stops[i-1].join(','), Math.round(frames / ((performance.now() - t0) / 1000)), info.render.calls, Math.round(info.render.triangles / 1000) + 'k']);
+    // The pipeline renders in several passes, each resetting the counters: count one whole frame.
+    const r = g.pipe.renderer;
+    r.info.autoReset = false;
+    r.info.reset();
+    g.pipe.render(g.scene, g.cam.cam);
+    r.info.autoReset = true;
+    out.push([stops[i-1].join(','), Math.round(frames / ((performance.now() - t0) / 1000)), r.info.render.calls, Math.round(r.info.render.triangles / 1000) + 'k']);
   }
   if (i >= stops.length) return;
   const [x, z] = stops[i++];

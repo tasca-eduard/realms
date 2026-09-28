@@ -65,6 +65,7 @@ export class Critter {
   update(dt: number, g: Game) {
     // Only animate near the camera.
     if (Math.abs(this.x - g.cam.focus.x) + Math.abs(this.z - g.cam.focus.z) > 40) return;
+    this.model.rig.setCastShadow(Math.hypot(g.player.x - this.x, g.player.z - this.z) < 10);
     if (this.def.kind === 'owl') return this.owl(dt, g);
     const k = KIND[this.def.kind];
     this.t -= dt;

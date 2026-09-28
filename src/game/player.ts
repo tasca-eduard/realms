@@ -141,6 +141,28 @@ export class Player {
     const s = this.state;
     return s !== 'idle' && s !== 'run' && s !== 'block';
   }
+  /** A flask helps: hurt, or carrying something it cures. */
+  get needsFlask() {
+    const e = this.effects;
+    return this.hp < this.maxHp || e.maim > 0 || e.poison > 0 || e.burn > 0;
+  }
+  /** Drink effects shared by foot and saddle: two hearts back, maim, poison and burn gone. */
+  private quaff(g: Game) {
+    this.flasks--;
+    this.hp = Math.min(this.maxHp, this.hp + 2);
+    const e = this.effects;
+    if (e.maim > 0 || e.poison > 0 || e.burn > 0) g.pop(this, 'cured', '#8ef0a0');
+    e.maim = e.poison = e.burn = 0;
+    g.audio.sfx('heal');
+    g.ui.pulseHearts();
+  }
+  private noNeedT = -9;
+  /** Pressed the flask with nothing to heal or cure: say so instead of doing nothing. */
+  private noNeed(g: Game) {
+    if (g.time - this.noNeedT < 1.5) return;
+    this.noNeedT = g.time;
+    g.pop(this, this.flasks > 0 ? 'not hurt' : 'no flasks left', '#b9b3dc');
+  }
   powerOn(k: PowerKind) {
     return !!this.power && this.power.kind === k && this.power.t > 0;
   }
@@ -225,10 +247,12 @@ export class Player {
           if (inp.hit('special')) this.trySpecial(g, moving, moveDir());
           else if (inp.hit('jump')) this.jump(g);
           else if (inp.hit('attack')) this.startSwing(0, g);
-          else if (inp.hit('heal') && this.flasks > 0 && this.hp < this.maxHp) {
-            this.setState('drink');
-            this.healed = false;
-            g.audio.sfx('drink');
+          else if (inp.hit('heal')) {
+            if (this.flasks > 0 && this.needsFlask) {
+              this.setState('drink');
+              this.healed = false;
+              g.audio.sfx('drink');
+            } else this.noNeed(g);
           }
         }
       } else if (!this.onGround && (free || this.state === 'stab')) {
@@ -479,13 +503,8 @@ export class Player {
       case 'drink': {
         if (!this.healed && this.t > 0.55) {
           this.healed = true;
-          this.flasks--;
-          this.hp = Math.min(this.maxHp, this.hp + 2);
-          if (this.effects.maim > 0 || this.effects.poison > 0 || this.effects.burn > 0) g.pop(this, 'cured', '#8ef0a0');
-          this.effects.maim = this.effects.poison = this.effects.burn = 0;
+          this.quaff(g);
           g.fx.burst(P.heal, this.x, this.y + 0.8, this.z, 18, 1.2, 1.5);
-          g.audio.sfx('heal');
-          g.ui.pulseHearts();
         }
         if (this.t > 0.9) this.setState('idle');
         break;
@@ -740,12 +759,11 @@ export class Player {
         this.onGround = false;
         this.y += 0.02;
         g.audio.sfx('jump');
-      } else if (inp.hit('heal') && this.flasks > 0 && this.hp < this.maxHp) {
-        this.flasks--;
-        this.hp = Math.min(this.maxHp, this.hp + 2);
-        g.fx.burst(P.heal, this.x, this.y + 1.6, this.z, 18, 1.2, 1.5);
-        g.audio.sfx('heal');
-        g.ui.pulseHearts();
+      } else if (inp.hit('heal')) {
+        if (this.flasks > 0 && this.needsFlask) {
+          this.quaff(g);
+          g.fx.burst(P.heal, this.x, this.y + 1.6, this.z, 18, 1.2, 1.5);
+        } else this.noNeed(g);
       }
     }
 
@@ -1025,7 +1043,9 @@ export class Player {
     }
     for (const w of g.crackedWalls) {
       if (w.broken || o.set.has(w)) continue;
-      if (Math.hypot(w.x - o.cx, w.z - o.cz) > o.reach + 1.2 || Math.abs(w.y - this.y) > 1.5) continue;
+      const wdx = w.x - o.cx, wdz = w.z - o.cz, wd = Math.hypot(wdx, wdz);
+      if (wd > o.reach + 1.2 || Math.abs(w.y - this.y) > 1.5) continue;
+      if (o.arc > -1 && wd > 0.6 && (wdx * this.fx + wdz * this.fz) / wd < o.arc - 0.35) continue;
       o.set.add(w);
       if (o.breaks) g.breakWall(w);
       else w.chip(g, this.fx, this.fz);

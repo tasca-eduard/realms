@@ -97,6 +97,8 @@ export interface Pickup {
   t: number;
   value: number;
   dead: boolean;
+  /** Already paid (a chest's coins): flies straight to the knight, worth nothing on arrival. */
+  home?: boolean;
 }
 
 export interface SwordWave {
@@ -176,21 +178,24 @@ export class Combat {
     this.waves.push({ mesh, x, y, z, r: 0.4, max, speed, hit: false });
   }
 
-  coins(x: number, y: number, z: number, total: number) {
+  coins(x: number, y: number, z: number, total: number, paid = false) {
     let left = total;
     while (left > 0) {
       const v = left >= 25 ? 5 : 1;
       left -= v;
-      this.spawnPickup('coin', x, y, z, v);
+      const k = this.spawnPickup('coin', x, y, z, paid ? 0 : v);
+      k.home = paid;
     }
   }
 
   spawnPickup(kind: 'coin' | 'heart', x: number, y: number, z: number, value = 1) {
-    const sprite = new SpriteActor(this.g.assets.pickups, { glow: 0.9, shadowSize: 0.25 });
+    const sprite = new SpriteActor(this.g.assets.pickups, { glow: 0.9, shadowSize: 0.25, shared: true });
     sprite.mesh.castShadow = false;
     sprite.addTo(this.g.scene);
     const a = Math.random() * Math.PI * 2, s = 1 + Math.random() * 2.2;
-    this.pickups.push({ kind, sprite, x, y: y + 0.4, z, vx: Math.cos(a) * s, vy: 4 + Math.random() * 3, vz: Math.sin(a) * s, t: 0, value, dead: false });
+    const k: Pickup = { kind, sprite, x, y: y + 0.4, z, vx: Math.cos(a) * s, vy: 4 + Math.random() * 3, vz: Math.sin(a) * s, t: 0, value, dead: false };
+    this.pickups.push(k);
+    return k;
   }
 
   /** The sword wave special: a crescent that flies forward and cuts through foes. */
@@ -408,7 +413,11 @@ export class Combat {
       return !done;
     });
     for (const [e, m] of this.aimLines) {
-      if (!this.aimSeen.has(e)) m.visible = false;
+      if (e.removed || !e.alive) {
+        g.scene.remove(m);
+        m.geometry.dispose();
+        this.aimLines.delete(e);
+      } else if (!this.aimSeen.has(e)) m.visible = false;
     }
     this.aimSeen.clear();
 
@@ -487,7 +496,8 @@ export class Combat {
       k.t += dt;
       const dx = p.x - k.x, dz = p.z - k.z, dy = p.y + 0.5 - k.y;
       const d = Math.hypot(dx, dz);
-      const magnet = k.t > 0.55 && p.alive && d < (k.kind === 'coin' ? (p.powerOn('magnet') ? 10 : 3.2) : 2);
+      const wanted = k.kind === 'coin' || p.hp < p.maxHp;
+      const magnet = wanted && k.t > 0.55 && p.alive && (k.home || d < (k.kind === 'coin' ? (p.powerOn('magnet') ? 10 : 3.2) : 2));
       if (magnet) {
         const s = 12 * Math.min(1, (k.t - 0.55) * 2);
         k.x += (dx / (d || 1)) * s * dt;

@@ -141,6 +141,12 @@ class Channel {
 
   schedule(until: number) {
     const T = this.track, m = this.m;
+    const now = m.ctx.currentTime;
+    if (this.nextT < now - 0.1) {
+      const missed = Math.ceil((now - this.nextT) / this.sd);
+      this.nextT += missed * this.sd;
+      this.step += missed;
+    }
     while (this.nextT < until) {
       const t = this.nextT;
       const n = this.steps;

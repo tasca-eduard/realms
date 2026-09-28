@@ -1,4 +1,5 @@
 import type { Audio } from '../audio/audio';
+import { keyName } from '../engine/input';
 
 function div(id: string, cls: string, html: string) {
   const e = document.createElement('div');
@@ -60,16 +61,27 @@ export class Screens {
           <b>Aim</b><span>Automatic: the nearest foe roughly where you push</span>
         </div>
         <div class="keys desk">
-          <b>WASD</b><span>Move</span>
+          <b data-keys="KeyW,KeyA,KeyS,KeyD">WASD</b><span>Move (or the arrow keys)</span>
           <b>Mouse</b><span>Aim: attacks, rolls and blocks go where you point</span>
           <b>Left click</b><span>Attack; click again to combo. Hold to charge a spin (release when it glows blue)</span>
           <b>Left click in the air</b><span>Down-stab; bounces off what it hits</span>
           <b>Right click</b><span>Guard: tap to roll, hold to block, press just before a hit to parry. In the air: dodge</span>
           <b>Space</b><span>Jump</span>
-          <b>F</b><span>Special (half the blue bar): dash strike when moving, sword wave when still, plunge in the air</span>
-          <b>E</b><span>Talk, open, rest, read, ride</span>
-          <b>Q</b><span>Drink a Moon Flask</span>
+          <b data-keys="KeyF">F</b><span>Special (half the blue bar): dash strike when moving, sword wave when still, plunge in the air</span>
+          <b data-keys="KeyE">E</b><span>Talk, open, rest, read, ride</span>
+          <b data-keys="KeyQ">Q</b><span>Drink a Moon Flask</span>
           <b>Esc</b><span>Pause</span>
+        </div>
+        <div class="keys pad">
+          <b>Left stick</b><span>Move</span>
+          <b>Right stick</b><span>Aim (or aim where you move)</span>
+          <b>X</b><span>Attack; press again to combo. Hold to charge a spin (release when it glows blue). In the air: down-stab</span>
+          <b>B</b><span>Guard: tap to roll, hold to block, press just before a hit to parry. In the air: dodge</span>
+          <b>A</b><span>Jump</span>
+          <b>RB</b><span>Special (half the blue bar): dash strike when moving, sword wave when still, plunge in the air</span>
+          <b>Y</b><span>Talk, open, rest, read, ride</span>
+          <b>LB</b><span>Drink a Moon Flask</span>
+          <b>Start</b><span>Pause (B resumes)</span>
         </div>
         <div class="btns"><button class="btn" data-a="resume">Resume</button><button class="btn" data-a="title">Quit to title</button></div>
       </div>`,
@@ -117,9 +129,9 @@ export class Screens {
     setTimeout(() => this.loading.remove(), 900);
   }
 
-  showTitle(items: { label: string; act: () => void }[]) {
+  showTitle(items: { label: string; act: () => void }[], note = '') {
     const menu = this.title.querySelector('.menu') as HTMLElement;
-    menu.innerHTML = '';
+    menu.innerHTML = note ? `<div class="note">${note}</div>` : '';
     this.titleActions = items.map((i) => i.act);
     this.titleSel = 0;
     items.forEach((it, idx) => {
@@ -193,6 +205,29 @@ export class Screens {
   setPause(on: boolean) {
     this.pauseOpen = on;
     this.pause.classList.toggle('hidden', !on);
+    this.pauseSel = 0;
+    this.syncPause();
+  }
+
+  private pauseSel = 0;
+  private syncPause() {
+    this.pause.querySelectorAll('.btns .btn').forEach((b, i) => b.classList.toggle('sel', i === this.pauseSel));
+  }
+  /** Up, down and OK from the keyboard or a pad. */
+  pauseKey(k: 'up' | 'down' | 'ok') {
+    const btns = [...this.pause.querySelectorAll<HTMLButtonElement>('.btns .btn')];
+    if (k === 'ok') {
+      btns[this.pauseSel]?.click();
+      return;
+    }
+    this.pauseSel = (this.pauseSel + (k === 'down' ? 1 : btns.length - 1)) % btns.length;
+    this.syncPause();
+    this.audio.sfx('blip');
+  }
+
+  /** Print key names as this keyboard labels them. */
+  refreshKeys() {
+    for (const b of this.pause.querySelectorAll<HTMLElement>('[data-keys]')) b.textContent = b.dataset.keys!.split(',').map(keyName).join('');
   }
 
   showVictory(sub: string, stats: string) {

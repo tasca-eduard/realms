@@ -23,6 +23,8 @@ export interface SaveData {
   quests: Record<string, number>;
   /** Placed foes that have been defeated (indexes into the realm's enemy list). */
   killed: number[];
+  /** Every foe felled on this journey (the victory screen's count). */
+  kills: number;
 }
 
 const KEY = 'realms-save';
@@ -48,6 +50,7 @@ const fresh = (): SaveData => ({
   relic: false,
   quests: {},
   killed: [],
+  kills: 0,
 });
 
 export class Save {
@@ -60,6 +63,8 @@ export class Save {
       if (!raw) return;
       const d = JSON.parse(raw);
       if (d && d.v === 1) {
+        // Saves from before the count was kept: at least the placed foes are known.
+        if (typeof d.kills !== 'number') d.kills = Array.isArray(d.killed) ? d.killed.length : 0;
         this.data = { ...fresh(), ...d };
         this.exists = true;
       }

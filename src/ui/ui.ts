@@ -1,4 +1,6 @@
 import './style.css';
+import { keyName } from '../engine/input';
+import type { Action } from '../engine/input';
 
 const HEART = `<svg viewBox="0 0 7 6" shape-rendering="crispEdges"><path class="f" fill="#e43b44" d="M1 0h2v1h1V0h2v1h1v2H6v1H5v1H4v1H3V5H2V4H1V3H0V1h1z"/><path class="s" fill="#ff9aa0" d="M1 1h1v1H1z"/></svg>`;
 const FLASK = `<svg viewBox="0 0 7 10" shape-rendering="crispEdges"><path fill="#15132a" d="M2 0h3v1H5v2h1v1h1v5H6v1H1V9H0V4h1V3h1V1H2z"/><path fill="#8a8aa0" d="M2 1h3v2H2z"/><path class="liq" fill="#5ad1ff" d="M1 5h5v4H1zM2 4h3v1H2z"/><path class="glow" fill="#c8f4ff" d="M2 5h1v2H2z"/></svg>`;
@@ -65,6 +67,12 @@ export class UI {
   private typed = 0;
   private options: DialogOption[] | null = null;
   private optSel = 0;
+  /**
+   * Time since the answers appeared or since the last key press on them. Keys only pick
+   * an answer after a short pause, so mashing through a shopkeeper's lines never buys
+   * anything (each mashed press restarts the wait). The same goes for taps.
+   */
+  private optsT = 0;
   private onDone: (() => void) | null = null;
   dialogOpen = false;
   loreOpen = false;
@@ -78,6 +86,7 @@ export class UI {
     this.dialogEl.addEventListener('pointerdown', (e) => {
       e.stopPropagation();
       if (!this.options) this.advance();
+      else this.optsT = 0; // still tapping through: the answers wait a moment
     });
     this.loreEl.addEventListener('pointerdown', () => this.closeLore());
   }
@@ -119,7 +128,7 @@ export class UI {
       this.hearts.classList.toggle('low', s.hp <= 1);
       let f = '';
       for (let i = 0; i < s.flasksMax; i++) f += i < s.flasks ? FLASK : FLASK.replace('<svg', '<svg class="used"');
-      this.flasks.innerHTML = f + '<span id="flaskKey">Q</span>';
+      this.flasks.innerHTML = f + `<span id="flaskKey">${this.keyLabel('heal')}</span>`;
       this.hurtEl.classList.toggle('low', s.hp <= 1 && s.hp > 0);
     }
     (this.stam.firstChild as HTMLElement).style.width = `${(s.stamina / s.maxStamina) * 100}%`;
@@ -205,13 +214,23 @@ export class UI {
     setTimeout(() => this.hurtEl.classList.remove('on'), 60);
   }
 
-  prompt(text: string | null, key = 'E') {
+  /** Key labels changed (the keyboard layout became known): redraw what shows them. */
+  refreshKeys() {
+    this.lastHud = '';
+  }
+
+  /** The key or button for an action on the device in use (the game hooks this up). */
+  keyLabel: (a: Action) => string = (a) => keyName(a === 'heal' ? 'KeyQ' : 'KeyE');
+
+  prompt(text: string | null, key = this.keyLabel('interact')) {
     if (!text) {
       this.promptEl.classList.remove('on');
       return;
     }
-    const html = text.startsWith('!') ? text.slice(1) : `<kbd>${key}</kbd>${text}`;
+    const warn = text.startsWith('!');
+    const html = warn ? text.slice(1) : `<kbd>${key}</kbd>${text}`;
     if (this.promptEl.innerHTML !== html) this.promptEl.innerHTML = html;
+    this.promptEl.classList.toggle('warn', warn);
     this.promptEl.classList.add('on');
   }
 
@@ -279,6 +298,11 @@ export class UI {
       if (o.disabled) b.setAttribute('disabled', '');
       b.addEventListener('pointerdown', (e) => {
         e.stopPropagation();
+        // A tap that lands on an answer the instant it appears was meant for the lines.
+        if (this.optsT < 0.4) {
+          this.optsT = 0;
+          return;
+        }
         this.optSel = i;
         this.choose();
       });
@@ -315,6 +339,7 @@ export class UI {
       this.options = this.pendingOptions;
       this.optSel = this.options.findIndex((o) => !o.disabled);
       if (this.optSel < 0) this.optSel = this.options.length - 1;
+      this.optsT = 0;
       this.renderOpts();
       return;
     }
@@ -330,7 +355,11 @@ export class UI {
       if (k === 'ok') this.advance();
       return;
     }
-    if (k === 'ok') return this.choose();
+    if (k === 'ok') {
+      if (this.optsT > 0.4) this.choose();
+      else this.optsT = 0;
+      return;
+    }
     const n = this.options.length;
     for (let i = 0; i < n; i++) {
       this.optSel = (this.optSel + (k === 'down' ? 1 : n - 1)) % n;
@@ -344,6 +373,7 @@ export class UI {
   lore(text: string, plain = false) {
     (this.loreEl.querySelector('.txt') as HTMLElement).textContent = text;
     (this.loreEl.querySelector('.glyph') as HTMLElement).style.display = plain ? 'none' : '';
+    (this.loreEl.querySelector('.hint') as HTMLElement).textContent = document.body.classList.contains('touch') ? 'Tap to close' : `Press ${this.keyLabel('interact')} to close`;
     this.loreEl.classList.add('on');
     this.loreOpen = true;
     this.loreT = 0;
@@ -394,6 +424,7 @@ export class UI {
   }
 
   update(dt: number) {
+    this.optsT += dt;
     this.comboT -= dt;
     this.questT -= dt;
     if (this.questT <= 0) this.questEl.classList.remove('on');

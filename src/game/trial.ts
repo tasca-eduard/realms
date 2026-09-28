@@ -19,6 +19,9 @@ const WAVES: { type: EnemyType; elite?: boolean }[][] = [
   [{ type: 'brute' }, { type: 'shaman' }, { type: 'goblin' }, { type: 'boar', elite: true }],
 ];
 
+/** Coins the stones pay out when the trial is won (about what its foes used to drop). */
+const TRIAL_PURSE = 90;
+
 export class Trial implements Interactable {
   y: number;
   radius = 1.8;
@@ -145,7 +148,10 @@ export class Trial implements Interactable {
     g.player.crest = true;
     g.audio.sfx('victory');
     g.fx.burst(P.bluespark, this.x, this.y + 1.2, this.z, 50, 5, 3);
-    g.ui.toast("The Knight's Crest", 'Relic won: blocking costs 30% less stamina', 4);
+    // The old pilgrims' offerings, paid once (the trial's foes drop nothing).
+    g.player.coins += TRIAL_PURSE;
+    g.combat.coins(this.x, this.y + 1, this.z, TRIAL_PURSE, true);
+    g.ui.toast("The Knight's Crest", `Relic won: blocking costs 30% less stamina. The stones give up ${TRIAL_PURSE} coins of old offerings.`, 4.5);
     g.quest('stones', 1);
   }
 }
