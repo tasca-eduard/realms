@@ -245,8 +245,10 @@ export class Lever implements Interactable {
   pulled = false;
   handle: THREE.Group;
   t = 0;
-  /** The Thorn Heart's glowing pod (look 'heart'), dimmed once it's torn out. */
+  /** The Thorn Heart's glowing pod (look 'heart'), dimmed once it's torn out; its knot of canes
+   * stops the knight until then. */
   private pod: THREE.Group | null = null;
+  private podCollider: Collider | null = null;
   constructor(public id: string, public x: number, public z: number, g: Game, public look: 'lever' | 'heart' = 'lever') {
     this.y = g.grid.groundAt(x, z);
     if (look === 'heart') {
@@ -263,7 +265,7 @@ export class Lever implements Interactable {
       this.pod.position.set(x, this.y + 0.75, z);
       g.scene.add(base, this.pod);
       this.handle = new THREE.Group();
-      g.grid.addCollider({ kind: 'c', x, z, r: 0.45, y0: this.y - 1, y1: this.y + 1.2 });
+      this.podCollider = g.grid.addCollider({ kind: 'c', x, z, r: 0.45, y0: this.y - 1, y1: this.y + 1.2 });
       return;
     }
     const base = meshOf((m) => {
@@ -286,6 +288,7 @@ export class Lever implements Interactable {
     this.t = 1;
     this.handle.rotation.x = 0.7;
     if (this.pod) this.pod.scale.setScalar(0.35);
+    if (this.podCollider) this.podCollider.on = false;
   }
   prompt() {
     if (this.pulled) return null;
@@ -294,6 +297,7 @@ export class Lever implements Interactable {
   interact(g: Game) {
     if (this.pulled) return;
     this.pulled = true;
+    if (this.podCollider) this.podCollider.on = false;
     g.audio.sfx('lever');
     g.pullLever();
   }
@@ -470,7 +474,7 @@ export class Shard {
     this.mesh.position.y = this.y + Math.sin(this.t * 2) * 0.12;
     if (Math.random() < dt * 6) g.fx.emit(P.rune, this.x + (Math.random() - 0.5) * 0.6, this.y - 0.3, this.z + (Math.random() - 0.5) * 0.6, 0, 0.5, 0);
     const p = g.player;
-    if (p.alive && Math.hypot(p.x - this.x, p.z - this.z) < 0.9 && Math.abs(p.y + 0.9 - this.y) < 1.4) g.takeShard(this);
+    if (p.alive && !g.flying && Math.hypot(p.x - this.x, p.z - this.z) < 0.9 && Math.abs(p.y + 0.9 - this.y) < 1.4) g.takeShard(this);
   }
   remove(g: Game) {
     this.taken = true;
@@ -748,9 +752,13 @@ export class Npc implements Interactable {
   fx = 0.7;
   fz = 0.7;
   t = 0;
+  private roamI = 0;
+  private roamWait = 0;
   constructor(public def: NpcDef, g: Game) {
     this.x = def.x;
     this.z = def.z;
+    if (def.heading !== undefined) [this.fx, this.fz] = [Math.cos(def.heading), Math.sin(def.heading)];
+    this.roamWait = (def.pause ?? 2) * ((def.x * 7.3 + def.z * 3.1) % 1);
     this.y = g.grid.groundAt(def.x, def.z) + (def.perch ?? 0);
     this.model = def.look === 'owl' ? makeOwl() : makeVillager(def.look);
     if (def.look === 'owl') this.model.rig.scale = 2.2;
@@ -770,17 +778,27 @@ export class Npc implements Interactable {
   }
   update(dt: number, g: Game) {
     this.t += dt;
-    const p = g.player;
-    if (this.walkTo) {
+    const p = g.player, talking = g.talking === this;
+    if (this.walkTo && !talking) {
       const dx = this.walkTo.x - this.x, dz = this.walkTo.z - this.z, d = Math.hypot(dx, dz);
       if (d < 0.2) this.walkTo = this.route.shift() ?? null;
       else {
-        this.x += (dx / d) * 3.2 * dt;
-        this.z += (dz / d) * 3.2 * dt;
-        this.y = g.grid.groundAt(this.x, this.z);
+        const v = Math.min(d, (this.def.speed ?? 3.2) * dt);
+        this.x += (dx / d) * v;
+        this.z += (dz / d) * v;
+        this.y = g.grid.groundAt(this.x, this.z) + (this.def.perch ?? 0);
         this.fx = dx / d;
         this.fz = dz / d;
       }
+    } else if (this.def.roam?.length && !talking && (this.roamWait -= dt) <= 0) {
+      // On to the next spot of its day.
+      this.roamI = (this.roamI + 1) % this.def.roam.length;
+      const [x, z] = this.def.roam[this.roamI];
+      this.walkTo = { x, z };
+      this.roamWait = (this.def.pause ?? 2) * (0.6 + Math.random() * 0.8);
+    } else if (this.def.pose && !talking && this.def.heading !== undefined) {
+      this.fx = Math.cos(this.def.heading);
+      this.fz = Math.sin(this.def.heading);
     } else if (Math.hypot(p.x - this.x, p.z - this.z) < 4.5) {
       const dx = p.x - this.x, dz = p.z - this.z, d = Math.hypot(dx, dz) || 1;
       this.fx = dx / d;
@@ -788,7 +806,7 @@ export class Npc implements Interactable {
     }
     this.model.rig.setCastShadow(Math.hypot(p.x - this.x, p.z - this.z) < 16);
     const caged = this.def.caged && g.cage && !g.cage.open;
-    const name = this.def.look === 'owl' ? 'perch' : caged ? 'captive' : g.talking === this ? 'talk' : g.victory ? 'cheer' : 'idle';
+    const name = this.def.look === 'owl' ? 'perch' : caged ? 'captive' : talking ? 'talk' : g.victory ? 'cheer' : !this.walkTo && this.def.pose ? this.def.pose : 'idle';
     const rig = this.model.rig;
     rig.face(this.fx, this.fz, dt, 6);
     this.model.animate(dt, this.x, this.z, name, this.t, g.time + this.x);

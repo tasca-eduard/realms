@@ -36,8 +36,8 @@ const at = async (x, z) => {
   // The Rook Pillar: a run at the rim (west, W + A), a jump just before the edge.
   // The east rim: walking west from the east woods, the last ground before the drop.
   let rim = 106;
-  while (rim > 90 && G.h[G.i(rim - 1, 12)] > -5) rim--;
-  await at(rim + 1.8, 12.5);
+  while (rim > 90 && G.h[G.i(rim - 1, 38)] > -5) rim--;
+  await at(rim + 1.8, 38.5);
   const jump = await run(['KeyW', 'KeyA'], 800, 180);
   out.pillar = { rim, ...jump, onPillar: jump.x < rim - 2 && jump.x > rim - 4 && Math.abs(jump.y - 2) < 0.15 };
   // The Drowned Shrine: from the lane on the south shore, north (W + D) over the stones to the island.

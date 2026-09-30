@@ -74,7 +74,7 @@ const FOREST: QuestDef[] = [
       'Hollowbough. Ask Alder the Reeve, who lives in the Heart Oak on the island in the lake, what has happened to the wood.',
       'The Reeve says the Thorn Warden holds the north-west. Cross the Rookfall bridge, north past the High Canopy.',
       'West through the Thorn Ravine, under the cliffs, to the stair by the Overhang.',
-      "Thorns bar the stair to the Warden's hold. Their heart beats on the rock spire by the stair's foot: climb its vines and tear it out.",
+      "Thorns bar the stair up to the Warden's hold, and their heart beats in them, at the top of the stair. Tear it out.",
       "The thorns have withered. Clear the Warden's garrison, and face the Thorn Warden among the roots of the Great Tree.",
       'The Old Wood is free, and dawn has come.',
     ],
@@ -99,7 +99,7 @@ const FOREST: QuestDef[] = [
     id: 'stag',
     title: 'The Bound Stag',
     steps: [
-      "A great stag is held in the Warden's thorns west of the Ring of Oaks. Cut it free.",
+      "A great stag is held in the Warden's thorns, in a hollow of the Deep Wood west of the Ring of Oaks, and his goblins keep it. Cut it free.",
       'The Thornstag is free and will carry you: it leaps twice, gores with its antlers, and fights with thorns.',
     ],
   },

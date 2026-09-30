@@ -21,6 +21,8 @@ export class IsoCamera {
   groundRight = new THREE.Vector3();
   groundUp = new THREE.Vector3();
   shakeAmp = 0;
+  /** 1 = the game's view; less zooms out (explore mode). */
+  zoom = 1;
   private shakeT = 0;
   private offsetDir = new THREE.Vector3();
 
@@ -43,7 +45,7 @@ export class IsoCamera {
   }
 
   update(p: Pipeline, dt: number, shakeEnabled = true) {
-    const ppu = VIEW.ppu;
+    const ppu = VIEW.ppu * this.zoom;
     const c = this.cam;
     c.left = -p.w / 2 / ppu;
     c.right = p.w / 2 / ppu;

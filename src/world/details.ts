@@ -702,7 +702,7 @@ export function pebbles(b: Builder, x: number, z: number, n = 3) {
  * ferns, loose stones, stumps, fallen logs and mushrooms, by what grows there.
  * ok(x, z, solid) says where things may go (solid: it has a collider).
  */
-export function dressWorld(b: Builder, grid: Grid, r: () => number, density: number, ok: (x: number, z: number, kind: 'soft' | 'solid' | 'tree') => boolean) {
+export function dressWorld(b: Builder, grid: Grid, r: () => number, density: number, ok: (x: number, z: number, kind: 'soft' | 'solid' | 'tree') => boolean, patch?: (x: number, z: number) => number) {
   const clear = (x: number, z: number, rad: number) =>
     !grid.collidersNear(x, z).some((c) => c.on && (c.kind === 'c' ? Math.hypot(x - c.x, z - c.z) < c.r + rad : x > c.x0 - rad && x < c.x1 + rad && z > c.z0 - rad && z < c.z1 + rad));
   const flat = (x: number, z: number, rad: number) => {
@@ -716,7 +716,9 @@ export function dressWorld(b: Builder, grid: Grid, r: () => number, density: num
   for (let z = grid.oz + 1; z < grid.oz + grid.d - 2; z += S)
     for (let x = grid.ox + 1; x < grid.ox + grid.w - 2; x += S) {
       // Always draw the same numbers per sample, so one change doesn't reshuffle the rest.
-      const px = x + r() * S, pz = z + r() * S, roll = r() / density, pick = r(), size = r();
+      // (patch, 0..1: where things grow thick and where the ground stays open, so the detail comes
+      // in clumps; without it, spread evenly.)
+      const px = x + r() * S, pz = z + r() * S, pick0 = r(), roll = pick0 / density / (patch ? 0.2 + 1.6 * patch(px, pz) : 1), pick = r(), size = r();
       const cx = Math.floor(px), cz = Math.floor(pz);
       if (!grid.inside(cx, cz)) continue;
       const i = grid.i(cx, cz), t = grid.t[i];

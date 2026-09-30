@@ -1323,6 +1323,16 @@ function wardenPose(r: Rig, a: Anim) {
       r.j('torso').rotation.x = -0.3;
       r.j('head').rotation.x = -0.3;
       break;
+    case 'vault': {
+      // Crouched to spring, then tucked in the air.
+      const c = a.t < 0.3 ? ease(seg(a.t, 0, 0.3)) : 1 - ease(seg(a.t, 0.55, 0.85));
+      r.j('hips').position.y -= 0.25 * c;
+      r.j('legR').rotation.x = -0.9 * c;
+      r.j('legL').rotation.x = -0.7 * c;
+      r.j('torso').rotation.x = 0.35 * c;
+      r.j('armL').rotation.x = -0.6 * c;
+      break;
+    }
     case 'stun':
       r.j('hips').position.y = 0.55;
       r.j('legR').rotation.x = -1.2;
@@ -1768,8 +1778,23 @@ export function makeVillager(lookName: string): Model {
     g.box(0, -0.46, 0, 0.1, 0.46, 0.11, L.cloth2);
     g.box(0, -0.54, 0, 0.09, 0.09, 0.09, L.skin);
   };
-  r.part('armR', arm);
-  r.part('armL', arm);
+  r.part('armR', (g) => {
+    arm(g);
+    // A fishing rod (held out and up when fishing, the arm raised), its line hanging to the water.
+    if (L.prop === 'rod') {
+      g.beam([0, -0.54, 0.02], [0, -1.58, 1.61], 0.018, '#6a4a2a');
+      g.beam([0, -1.58, 1.61], [0, -2.25, 0.36], 0.006, '#d8d8c8');
+    }
+  });
+  r.part('armL', (g) => {
+    arm(g);
+    if (L.prop === 'basket') {
+      g.box(0, -0.78, 0.04, 0.3, 0.2, 0.24, '#8a6a3a');
+      g.box(0, -0.6, 0.04, 0.03, 0.1, 0.2, '#6a4a2a');
+      g.box(0, -0.66, 0.04, 0.24, 0.05, 0.18, '#7a2a3a');
+    }
+  });
+  if (L.prop === 'sack') r.part('torso', (g) => g.box(0, 0.04, -0.24, 0.34, 0.44, 0.22, '#8a7a5a'));
   const m = new Model(r, villagerPose, 0.9);
   r.scale = L.h < 18 ? 0.72 : L.h < 20 ? 0.88 : 1;
   return m;
@@ -1789,6 +1814,34 @@ function villagerPose(r: Rig, a: Anim) {
     r.j('armR').rotation.x = -2.8;
     r.j('armL').rotation.x = -2.8;
     r.j('hips').position.y += k * 0.12;
+  }
+  // Sitting (by the fire, on the jetty): low, legs out in front.
+  if (a.name === 'sit' || a.name === 'fish') {
+    r.j('hips').position.y *= 0.52;
+    r.j('legR').rotation.x = -1.45;
+    r.j('legL').rotation.x = -1.3;
+    r.j('armR').rotation.x = -0.45;
+    r.j('armL').rotation.x = -0.4;
+    r.j('head').rotation.x = Math.sin(a.time * 0.4) * 0.08;
+  }
+  if (a.name === 'fish') {
+    r.j('armR').rotation.x = -1.1 + Math.sin(a.time * 0.7) * 0.04;
+    r.j('armL').rotation.x = -0.95;
+  }
+  // Bent to a task (washing at the shore, weeding): arms working.
+  if (a.name === 'work') {
+    const k = Math.sin(a.time * 3);
+    r.j('hips').position.y -= 0.14;
+    r.j('torso').rotation.x = 0.6 + k * 0.08;
+    r.j('armR').rotation.x = -0.9 + k * 0.5;
+    r.j('armL').rotation.x = -0.8 - k * 0.4;
+  }
+  // A child at play: hopping, arms flung up.
+  if (a.name === 'play') {
+    const k = Math.abs(Math.sin(a.time * 6));
+    r.j('hips').position.y += k * 0.16;
+    r.j('armR').rotation.x = -1.9 * k;
+    r.j('armL').rotation.x = -1.2 * (1 - k);
   }
   if (a.name === 'captive') {
     r.j('hips').position.y *= 0.62;

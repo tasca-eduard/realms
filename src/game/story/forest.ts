@@ -5,9 +5,9 @@ import type { Enemy } from '../enemies';
 import type { BossInfo, RealmStory } from './story';
 
 /**
- * Realm 2, Whisperwood. The Thorn Warden, the treehouse folk, the sister caged past
- * the river and the Thornstag come with the later groups; for now the realm only
- * has its name and its main quest.
+ * Realm 2, Whisperwood: the folk of Hollowbough, the sister caged past the river, the
+ * Thornstag bound in the Deep Wood, the Ring of Oaks, the Thorn Heart that feeds the thorns
+ * barring the Warden's hold, the garrison in the Withered Wood, and the Thorn Warden.
  */
 export class ForestStory implements RealmStory {
   title = 'II &middot; WHISPERWOOD';
@@ -19,7 +19,7 @@ export class ForestStory implements RealmStory {
     name: 'Thorn Warden',
     intro: ['The Thorn Warden', 'TYRANT OF THE OLD WOOD'],
     lines: { wake: 'The wood is mine to keep. Leave, or feed it.', enrage: 'Roots! Rise and hold him!', summon: 'To me, my thorns!', summonEnraged: 'Tear him down!', death: 'I kept... the wood...' },
-    summons: { calm: ['goblin', 'snarer'], enraged: ['shield', 'goblin'] },
+    summons: { calm: ['goblin', 'goblin'], enraged: ['shield', 'goblin'] },
   };
   private garrisonCleared = false;
   private owlHint = 0;
@@ -31,7 +31,8 @@ export class ForestStory implements RealmStory {
       g.npc('wren')!.visible = false;
       g.npc('wrenhome')!.visible = true;
     }
-    if (f.bridge) {
+    // (Saves from before the heart had its own flag called it 'bridge'.)
+    if (f.heart || f.bridge) {
       g.lever?.setPulled();
       g.thornWall?.setOpen(true, g, true);
     }
@@ -53,7 +54,7 @@ export class ForestStory implements RealmStory {
       const d = g.hallDoor;
       g.hallDoor?.setOpen(true, g);
       if (d) g.focus(d.x + 1, d.y + 1.5, d.z, 3.2);
-      g.ui.toast('The Great Tree opens', 'The Thorn Warden waits within');
+      g.ui.toast('The thorns at the roots draw back', 'The Thorn Warden waits among the roots of the Great Tree');
     });
   }
   onRegion(g: Game, r: RegionDef) {
@@ -114,7 +115,7 @@ export class ForestStory implements RealmStory {
   victoryLine(id: string) {
     const L: Record<string, string> = {
       reeve: 'The thorns are drying up already. We will come down from the trees.',
-      keeper2: 'Drinks on the house. Well, on the knoll.',
+      keeper2: 'Drinks on the house. Well, in the tree.',
       thornsmith: 'Bring that blade back any time. It has heartwood in it now.',
       ash: 'You did it! Wren says she helped.',
       wrenhome: 'Morning in the Old Wood. I had forgotten the colour of it.',
@@ -124,7 +125,7 @@ export class ForestStory implements RealmStory {
     return L[id] ?? 'The wood breathes again.';
   }
   onLever(g: Game) {
-    g.save.data.flags.bridge = true;
+    g.save.data.flags.heart = true;
     g.quest('main', 5);
     g.writeSave();
     const w = g.thornWall;

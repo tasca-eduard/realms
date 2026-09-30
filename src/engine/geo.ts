@@ -90,7 +90,11 @@ export class Geo {
     _c.set(c[0], c[1], c[2]).applyMatrix4(this.m);
     _e1.subVectors(_b, _a);
     _e2.subVectors(_c, _a);
-    _n.crossVectors(_e1, _e2).normalize();
+    _n.crossVectors(_e1, _e2);
+    // (No area, no face: its normal would be nothing, and lighting nothing makes a NaN that the
+    // bloom smears into a black square.)
+    if (_n.lengthSq() < 1e-12) return;
+    _n.normalize();
     const cc = this.col(col, o.shade ?? 1);
     const kind = o.kind ?? 0, wind = o.wind ?? 0;
     for (const v of [_a, _b, _c]) {
@@ -118,7 +122,15 @@ export class Geo {
     _d.set(d[0], d[1], d[2]).applyMatrix4(this.m);
     _e1.subVectors(_b, _a);
     _e2.subVectors(_c, _a);
-    _n.crossVectors(_e1, _e2).normalize();
+    _n.crossVectors(_e1, _e2);
+    // (A quad pinched to a triangle: its normal from the half that has an area; none, no face.)
+    if (_n.lengthSq() < 1e-12) {
+      _e1.subVectors(_c, _a);
+      _e2.subVectors(_d, _a);
+      _n.crossVectors(_e1, _e2);
+      if (_n.lengthSq() < 1e-12) return;
+    }
+    _n.normalize();
     for (let i = 0; i < 6; i++) {
       _v.set(pts[i][0], pts[i][1], pts[i][2]).applyMatrix4(this.m);
       this.p.push(_v.x, _v.y, _v.z);
@@ -212,6 +224,62 @@ export class Geo {
     this.m.multiply(new THREE.Matrix4().compose(A, q, new THREE.Vector3(1, 1, 1)));
     this.box(0, 0, 0, r * 2, len, r * 2, col, o);
     this.pop();
+  }
+
+  /**
+   * A knobbly tube swept along a path (trunks, roots, boughs, fallen logs): a ring of `seg` corners
+   * round each point, square to the path there, `rad[i]` round with each corner nudged in or out
+   * by up to `lumpy` (bark isn't round), and `squash[i]` times as tall as it is wide; the rings
+   * joined into faces, its tip closed. `col` may change from span to span. (`first`: the index of
+   * its first ring, when a tube is drawn in pieces, so the knobs match where they meet.)
+   */
+  sweep(pts: V3[], rad: number[], col: Col | ((i: number) => Col), o: ShapeOpts & { seg?: number; lumpy?: number; seed?: number; cap?: boolean; squash?: number | number[]; first?: number } = {}) {
+    const n = pts.length;
+    if (n < 2) return;
+    const seg = o.seg ?? 7, lumpy = o.lumpy ?? 0.15, seed = o.seed ?? 1, i0 = o.first ?? 0;
+    const P = pts.map((p) => new THREE.Vector3(p[0], p[1], p[2]));
+    // The rings' "up": the world's, unless the path climbs (a trunk), then the world's x.
+    const all = P[n - 1].clone().sub(P[0]).normalize();
+    const ref = Math.abs(all.y) > 0.7 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0);
+    const rings: V3[][] = [];
+    const t = new THREE.Vector3(), up = new THREE.Vector3(), side = new THREE.Vector3();
+    for (let i = 0; i < n; i++) {
+      t.copy(i === 0 ? P[1] : i === n - 1 ? P[n - 1] : P[i + 1]).sub(i === 0 ? P[0] : i === n - 1 ? P[n - 2] : P[i - 1]).normalize();
+      up.copy(ref).addScaledVector(t, -ref.dot(t));
+      if (up.lengthSq() < 1e-6) up.set(0, 0, 1).addScaledVector(t, -t.z);
+      up.normalize();
+      side.crossVectors(up, t).normalize();
+      const sq = Array.isArray(o.squash) ? o.squash[i] : o.squash ?? 1;
+      const ring: V3[] = [];
+      for (let k = 0; k < seg; k++) {
+        const an = (k / seg) * Math.PI * 2, rr = rad[i] * (1 + (hash2(k * 31 + (i + i0) * 7, (i + i0) * 13 + seed, seed) - 0.5) * 2 * lumpy);
+        const cu = Math.cos(an) * rr * sq, cs = Math.sin(an) * rr;
+        ring.push([P[i].x + up.x * cu + side.x * cs, P[i].y + up.y * cu + side.y * cs, P[i].z + up.z * cu + side.z * cs]);
+      }
+      rings.push(ring);
+    }
+    // Faces outward: check the first one's winding against the way out from the path.
+    const [a0, b0, c0] = [rings[0][0], rings[1][0], rings[1][1 % seg]];
+    const nx = (b0[1] - a0[1]) * (c0[2] - a0[2]) - (b0[2] - a0[2]) * (c0[1] - a0[1]);
+    const ny = (b0[2] - a0[2]) * (c0[0] - a0[0]) - (b0[0] - a0[0]) * (c0[2] - a0[2]);
+    const nz = (b0[0] - a0[0]) * (c0[1] - a0[1]) - (b0[1] - a0[1]) * (c0[0] - a0[0]);
+    const flip = nx * (a0[0] - pts[0][0]) + ny * (a0[1] - pts[0][1]) + nz * (a0[2] - pts[0][2]) < 0;
+    for (let i = 0; i < n - 1; i++) {
+      const c = typeof col === 'function' ? col(i) : col;
+      for (let k = 0; k < seg; k++) {
+        const j = (k + 1) % seg, a = rings[i][k], b = rings[i + 1][k], cc = rings[i + 1][j], d = rings[i][j];
+        if (flip) this.quad(a, d, cc, b, c, o);
+        else this.quad(a, b, cc, d, c, o);
+      }
+    }
+    if (o.cap !== false) {
+      const last = rings[n - 1], tip = pts[n - 1], c = typeof col === 'function' ? col(n - 2) : col;
+      for (let k = 0; k < seg; k++) {
+        const j = (k + 1) % seg;
+        if (flip) this.tri(tip, last[k], last[j], c, o);
+        else this.tri(tip, last[j], last[k], c, o);
+      }
+    }
   }
 
   append(o: Geo) {

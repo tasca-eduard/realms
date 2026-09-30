@@ -210,17 +210,30 @@ export class WardenMark {
   private hit = false;
   private ring: THREE.Mesh;
   private mat: THREE.MeshBasicMaterial;
+  /** A disc growing out to the ring as the moment comes (full: it lands). */
+  private fill: THREE.Mesh;
+  private fillMat: THREE.MeshBasicMaterial;
   private spikes: THREE.Group | null = null;
   private arrows: THREE.Mesh[] = [];
   y: number;
   constructor(public x: number, public z: number, public kind: 'rain' | 'roots', private delay: number, g: Game) {
     this.y = g.grid.groundAt(x, z);
-    this.mat = new THREE.MeshBasicMaterial({ color: kind === 'rain' ? new THREE.Color(3, 0.6, 0.3) : new THREE.Color(1.2, 2.6, 0.5), transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
-    this.ring = new THREE.Mesh(new THREE.RingGeometry(0.75, 0.95, 28), this.mat);
+    // (Drawn over everything, so a root or a trunk between it and the camera can't hide it. The
+    // ring's inside edge is where it strikes: 1 m round.)
+    const col = kind === 'rain' ? new THREE.Color(3, 0.6, 0.3) : new THREE.Color(1.2, 2.6, 0.5);
+    this.mat = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.45, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, side: THREE.DoubleSide });
+    this.ring = new THREE.Mesh(new THREE.RingGeometry(0.98, 1.16, 32), this.mat);
     this.ring.rotation.x = -Math.PI / 2;
     this.ring.position.set(x, this.y + 0.06, z);
     this.ring.renderOrder = 5;
     g.scene.add(this.ring);
+    this.fillMat = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.18, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, side: THREE.DoubleSide });
+    this.fill = new THREE.Mesh(new THREE.CircleGeometry(0.98, 28), this.fillMat);
+    this.fill.rotation.x = -Math.PI / 2;
+    this.fill.position.set(x, this.y + 0.05, z);
+    this.fill.scale.setScalar(0.01);
+    this.fill.renderOrder = 5;
+    g.scene.add(this.fill);
     if (kind === 'roots') {
       const m = new Geo();
       for (let i = 0; i < 9; i++) {
@@ -238,12 +251,18 @@ export class WardenMark {
       g.scene.add(this.spikes);
     }
   }
+  /** Its arrows have fallen, or its roots burst. */
+  get landed() {
+    return this.hit;
+  }
   update(dt: number, g: Game) {
     if (this.done) return;
     this.t += dt;
     const k = Math.min(1, this.t / this.delay);
-    this.mat.opacity = 0.2 + 0.7 * k;
-    this.ring.scale.setScalar(1.25 - 0.25 * k + Math.sin(g.time * 30) * 0.03 * k);
+    this.mat.opacity = this.hit ? Math.max(0, 0.95 - (this.t - this.delay) * 2) : 0.45 + 0.5 * k;
+    this.ring.scale.setScalar(1 + Math.sin(g.time * 24) * 0.025 * k);
+    this.fill.scale.setScalar(Math.max(0.01, k));
+    this.fillMat.opacity = this.hit ? Math.max(0, 0.4 - (this.t - this.delay) * 1.2) : 0.14 + 0.26 * k;
     if (this.kind === 'roots' && this.spikes && this.t < this.delay && Math.random() < dt * 20) g.fx.emit(P.dust, this.x + (Math.random() - 0.5), this.y + 0.1, this.z + (Math.random() - 0.5), 0, 1, 0);
     // Arrows in flight, the last moment before they land.
     if (this.kind === 'rain' && this.t > this.delay - 0.2 && !this.arrows.length) {
@@ -284,6 +303,9 @@ export class WardenMark {
     g.scene.remove(this.ring);
     this.ring.geometry.dispose();
     this.mat.dispose();
+    g.scene.remove(this.fill);
+    this.fill.geometry.dispose();
+    this.fillMat.dispose();
     if (this.spikes) g.scene.remove(this.spikes);
     for (const a of this.arrows) g.scene.remove(a);
   }

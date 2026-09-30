@@ -83,7 +83,9 @@ export function paintOutskirts(grid: Grid, W: number, D: number) {
           break;
         }
         case 'forest':
-          set(Math.round(edgeH + 1 + out * 0.3 + n * 5 - 1.5), n2 > 0.72 ? T.Rock : T.DarkGrass);
+          // Always at least 3 m over the realm's edge: too high to climb, even on the Thornstag
+          // (its leap and step-up reach 2.75 m); beyond, it rolls on as it likes.
+          set(Math.max(Math.ceil(edgeH + 3), Math.round(edgeH + 1 + out * 0.3 + n * 5 - 1.5)), n2 > 0.72 ? T.Rock : T.DarkGrass);
           break;
         case 'lake': {
           const d = lakeD(gx, gz);

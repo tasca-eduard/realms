@@ -156,6 +156,10 @@ export function buildRealm1(builder: Builder): RealmData {
 
   // Moat along the east wall of the keep, with a ruined tower sealing its south end.
   p.stream([[49, 6], [49, 46]], 4.2, 2.7, 1.4, 0, 41);
+  // Deep from wall to wall: a shallow edge under the walls would be a pit with no way out.
+  p.each((_x, _z, i) => {
+    if (grid.water[i] !== NONE) grid.h[i] = Math.min(grid.h[i], 1.9);
+  }, 46, 4, 52, 47);
   p.rect(47, 4, 51, 47, { side: S.Brick });
   p.path(BAILEY_ROAD, 2, T.Flag, 0.3, 8);
   p.path(BAILEY_ROAD2, 2.2, T.Flag, 0.3, 9);

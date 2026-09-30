@@ -25,13 +25,13 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   }, 50);
   await wait(4500); // past the intro (the camera on the Warden, then its name over the bar)
   out.started = { bossActive: g.bossActive, name: document.querySelector('#boss .bname')?.textContent ?? null };
-  await wait(12000);
+  await wait(17000); // (it takes its time between attacks: the fifth, a summons, comes late)
   const calm = { states: [...seen], volleyArrows, rain, roots, summoned, keptAway: +(dist.reduce((s, d) => s + d, 0) / dist.length).toFixed(1) };
   // Down to half: enraged.
   b.hp = b.maxHp * 0.55;
   b.takeHit(4, 1, 0, 2, false, g);
   const r0 = roots;
-  await wait(12000);
+  await wait(14000);
   out.fight = { calm, enraged: b.enraged, rootsWhenEnraged: roots - r0, heartsLost: 99 - p.hp };
   // Felled.
   b.hp = 1;

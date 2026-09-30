@@ -227,6 +227,7 @@ export class Player {
     }
     this.atkHeld = inp.held('attack') ? this.atkHeld + dt : 0;
     this.updateEffects(g.worldFrozen ? 0 : dt, g);
+    if (g.flying && this.alive) return this.updateFlying(dt, g);
     if (this.riding && this.alive) return this.updateRiding(dt, g);
 
     const controls = g.controlsEnabled;
@@ -597,12 +598,51 @@ export class Player {
       this.onGround = true;
       // Safe footing: never the floor of a gorge or chasm (landing there while the fall fades
       // out mustn't become the place you're put back).
-      if (this.state !== 'roll' && !wading && gy > -5) this.lastSafe = { x: this.x, z: this.z };
+      if (this.state !== 'roll' && !wading && gy > PLAYER.fallY) this.lastSafe = { x: this.x, z: this.z };
     }
     // Fell somewhere deep (the gorge): back to the last safe footing.
-    if (this.y < -7 && this.alive) g.fellOut();
+    if (this.y < PLAYER.fallY && this.alive) g.fellOut();
 
     this.pose(dt, g, gy);
+  }
+
+  /**
+   * Explore mode: gliding over everything a little above the ground, through walls, trees and
+   * water, fast (hold guard to go faster still). Can't be hurt; foes don't notice; a click jumps
+   * to the spot under the mouse.
+   */
+  private updateFlying(dt: number, g: Game) {
+    const inp = g.input, cam = g.cam, grid = g.grid;
+    const mv = g.controlsEnabled ? inp.move() : { x: 0, y: 0 };
+    const wx = cam.groundRight.x * mv.x + cam.groundUp.x * mv.y, wz = cam.groundRight.z * mv.x + cam.groundUp.z * mv.y;
+    const l = Math.hypot(wx, wz), moving = l > 0.1;
+    const speed = (inp.held('guard') ? 30 : 13) / Math.max(0.5, cam.zoom);
+    const k = Math.min(1, dt * 8);
+    this.vx += ((moving ? (wx / l) * speed : 0) - this.vx) * k;
+    this.vz += ((moving ? (wz / l) * speed : 0) - this.vz) * k;
+    if (moving) {
+      this.fx = wx / l;
+      this.fz = wz / l;
+    }
+    if (g.controlsEnabled && inp.hit('attack') && g.mouseGround) {
+      this.x = g.mouseGround.x;
+      this.z = g.mouseGround.z;
+      this.vx = this.vz = 0;
+      g.fx.burst(P.mote, this.x, this.y, this.z, 12, 1.2);
+    }
+    this.x = clamp(this.x + this.vx * dt, grid.ox + 2, grid.ox + grid.w - 2);
+    this.z = clamp(this.z + this.vz * dt, grid.oz + 2, grid.oz + grid.d - 2);
+    // Hover over the highest thing here: ground, a deck, water.
+    const cx = Math.floor(this.x), cz = Math.floor(this.z), i = grid.i(cx, cz);
+    const under = Math.max(grid.groundAt(this.x, this.z), grid.water[i] > -99 ? grid.water[i] : -99, grid.deck[i] > -99 ? grid.deck[i] : -99);
+    const target = under + 1.1 + Math.sin(g.time * 2.4) * 0.12;
+    this.y += (target - this.y) * Math.min(1, dt * 7);
+    this.vy = 0;
+    this.onGround = true;
+    this.state = 'idle';
+    this.iframes = 0;
+    if (Math.random() < dt * 14) g.fx.emit(P.mote, this.x + (Math.random() - 0.5) * 0.5, this.y + 0.1, this.z + (Math.random() - 0.5) * 0.5, -this.vx * 0.05, 0.3, -this.vz * 0.05);
+    this.pose(dt, g, under);
   }
 
   private pose(dt: number, g: Game, gy: number) {
@@ -953,9 +993,9 @@ export class Player {
       this.y = gy;
       this.vy = 0;
       this.onGround = true;
-      if (gy > -5) this.lastSafe = { x: this.x, z: this.z };
+      if (gy > PLAYER.fallY) this.lastSafe = { x: this.x, z: this.z };
     }
-    if (this.y < -7) {
+    if (this.y < PLAYER.fallY) {
       this.dismount(g);
       g.fellOut();
       return;
@@ -1213,7 +1253,8 @@ export class Player {
 
   /** An enemy attack reaches the knight. */
   hurt(dmg: number, fromX: number, fromZ: number, g: Game, opts: { unblockable?: boolean; kb?: number; guardCost?: number; force?: boolean } = {}): HitResult {
-    if (!this.alive || g.godMode) return 'ignored';
+    // (Explore mode: nothing can hurt him, even a foe that was already after him.)
+    if (!this.alive || g.godMode || g.flying) return 'ignored';
     if (this.iframes > 0 && !opts.force) return this.state === 'roll' || this.state === 'dash' || this.state === 'airdash' ? 'dodged' : 'ignored';
     const dx = this.x - fromX, dz = this.z - fromZ;
     const d = Math.hypot(dx, dz) || 1;
@@ -1303,6 +1344,7 @@ export class Player {
 
   /** Something bad happens to the knight. Returns false if it didn't take. */
   afflict(kind: Effect, g: Game, opts: { down?: boolean; time?: number } = {}) {
+    if (g.flying) return; // (explore mode: nothing takes hold of him)
     if (!this.alive || g.godMode) return false;
     const e = this.effects;
     if (kind === 'daze') {

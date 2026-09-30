@@ -7,7 +7,7 @@ import type { Game } from './game';
 import type { EnemyType } from '../world/realm';
 
 type St = 'idle' | 'alert' | 'chase' | 'windup' | 'strike' | 'recover' | 'hurt' | 'stun' | 'dead' | 'aim' | 'retreat' | 'swoop' | 'paw' | 'charge' | 'return'
-  | 'slam' | 'summon' | 'sleep' | 'wake' | 'jump' | 'flee' | 'chant' | 'blink' | 'windupM';
+  | 'slam' | 'summon' | 'sleep' | 'wake' | 'jump' | 'flee' | 'chant' | 'blink' | 'windupM' | 'vault';
 
 interface Spec {
   hp: number;
@@ -79,7 +79,8 @@ export class Enemy {
     this.z = z;
     this.y = g.grid.groundAt(x, z);
     this.r = this.spec.r;
-    this.hp = this.maxHp = this.spec.hp;
+    const base = this.spec.hp * (type === 'king' || type === 'warden' ? 1 : g.realm.foeHp ?? 1);
+    this.hp = this.maxHp = base;
     this.home = { x, z };
     this.shieldUp = type === 'shield';
     this.flying = type === 'bat';
@@ -104,12 +105,12 @@ export class Enemy {
     // Elites: bigger and tougher, and they carry a power-up. Golden foes: rare, rich.
     if (elite) {
       this.elite = true;
-      this.hp = this.maxHp = this.spec.hp * 3;
+      this.hp = this.maxHp = base * 3;
       this.r *= 1.3;
       this.model.rig.scale *= 1.35;
     } else if (!this.isBoss && Math.random() < 0.08) {
       this.golden = true;
-      this.hp = this.maxHp = Math.ceil(this.spec.hp * 1.5);
+      this.hp = this.maxHp = Math.ceil(base * 1.5);
     }
     // Seen through trees and walls whenever the knight has line of sight.
     this.model.rig.enableSilhouette(new THREE.Color(1.2, 0.32, 0.22), 2);
@@ -165,7 +166,7 @@ export class Enemy {
 
   private sees(g: Game, range: number) {
     const p = g.player;
-    if (!p.alive) return false;
+    if (!p.alive || g.flying) return false;
     const d = this.distTo(g);
     if (d > range) return false;
     if (Math.abs(p.y - this.y) > 3.5 && !this.flying) return false;
@@ -728,15 +729,58 @@ export class Enemy {
 
   /** Where the Warden's next moves come from (enraged it adds roots bursting underfoot). */
   private wardenMove = 0;
+  /** The volley's aim and reach: followed while it draws, then fixed a moment before it looses. */
+  private volleyAim = 0;
+  private volleyReach = 6;
+  /** Its leap back to open ground: from, to, when it last leapt, and the blows it took lately. */
+  private vaultFrom = { x: 0, z: 0 };
+  private vaultTo: { x: number; z: number } | null = null;
+  private lastVault = -9;
+  private hitTimes: number[] = [];
+  /** Where to leap: open floor about 5.5 m off, as far from the knight as it can, nothing in the
+   *  way (no root, no thorns); null when there's nowhere (then it doesn't leap). */
+  private vaultSpot(g: Game) {
+    const p = g.player, y = g.grid.groundAt(this.x, this.z), a = g.realm.arena;
+    let best: { x: number; z: number } | null = null, score = -1;
+    for (let k = 0; k < 16; k++) {
+      const th = (k / 16) * Math.PI * 2;
+      for (const L of [5.5, 4]) {
+        const x = this.x + Math.cos(th) * L, z = this.z + Math.sin(th) * L;
+        if (a && (x < a.x0 || x > a.x1 || z < a.z0 || z > a.z1)) continue;
+        if (Math.abs(g.grid.groundAt(x, z) - y) > 0.3) continue;
+        // (Clear where it lands, and half way: it leaps over the floor, not through a trunk.)
+        const clear = (px: number, pz: number) => {
+          const probe = { x: px, y, z: pz, r: this.r + 0.3 };
+          g.grid.resolve(probe, 0.45, true);
+          return Math.hypot(probe.x - px, probe.z - pz) <= 0.02;
+        };
+        if (!clear(x, z) || !clear((x + this.x) / 2, (z + this.z) / 2)) continue;
+        const s = Math.hypot(x - p.x, z - p.z) + (L === 5.5 ? 0.5 : 0);
+        if (s > score) [score, best] = [s, { x, z }];
+        break;
+      }
+    }
+    return score > 4 ? best : null;
+  }
+  /** Leaps back, if it has leapt long enough ago. */
+  private tryVault(g: Game) {
+    if (g.time - this.lastVault < 3 || this.state === 'stun' || this.state === 'vault' || !this.alive) return false;
+    this.set('vault');
+    this.vaultTo = null;
+    this.vx = this.vz = 0;
+    return true;
+  }
   /**
    * The Thorn Warden: keeps its distance and shoots (the prototype's volley, rain and summon),
    * and swipes with its bow if the knight gets too close. Enraged (half health) it moves and
-   * draws faster, looses more arrows, and makes roots burst under the knight.
+   * draws faster, looses more arrows, and makes roots burst under the knight. Everything it does
+   * is shown before it lands (the volley's lines, fixed before it looses; marked spots, filling
+   * up until they land), and it starts nothing new while marked spots are still to land.
    */
   private wardenUpdate(dt: number, g: Game, d: number) {
     const p = g.player, W = FOES.warden;
     this.telegraph = 0;
-    const sp = this.enraged ? 1.3 : 1;
+    const sp = this.enraged ? 1.2 : 1;
     switch (this.state) {
       case 'sleep':
         break;
@@ -751,10 +795,13 @@ export class Enemy {
           this.set('windupM');
           break;
         }
-        if (this.cooldown <= 0) {
+        if (this.cooldown <= 0 && !g.wardenMarks.some((m) => !m.landed)) {
           const moves = this.enraged ? ['volley', 'roots', 'rain', 'volley', 'summon', 'roots'] : ['volley', 'rain', 'volley', 'summon', 'rain'];
           let m = moves[this.wardenMove++ % moves.length];
-          if (m === 'summon' && this.summoned.filter((e) => e.alive).length >= 2) m = 'volley';
+          // (A new pair only once the last are down.)
+          if (m === 'summon' && this.summoned.some((e) => e.alive)) m = 'volley';
+          // (No volley from close by: its arrows would be on him before he could step aside.)
+          if (m === 'volley' && d < 4.5) m = 'rain';
           this.set(m === 'volley' ? 'aim' : m === 'rain' ? 'windup' : m === 'roots' ? 'slam' : 'summon');
           break;
         }
@@ -776,54 +823,97 @@ export class Enemy {
         }
         break;
       case 'strike':
-        if (this.t > 0.4) {
+        // (Then it leaps back out of reach, if it can.)
+        if (this.t > 0.4 && !this.tryVault(g)) {
           this.set('recover');
-          this.cooldown = Math.max(this.cooldown, 0.9 / sp);
+          this.cooldown = Math.max(this.cooldown, 1.1 / sp);
         }
         break;
-      case 'aim':
-        // Volley: three arrows fanned at the knight (five enraged).
+      case 'vault': {
+        // Leaps back to open ground away from the knight: a crouch (it flashes), the leap, a landing.
+        const CROUCH = 0.3, AIR = 0.55;
+        if (!this.vaultTo) {
+          this.vaultFrom = { x: this.x, z: this.z };
+          this.vaultTo = this.vaultSpot(g);
+          if (!this.vaultTo) {
+            this.set('recover');
+            break;
+          }
+        }
         this.faceTo(p.x, p.z);
-        this.telegraph = this.t > 0.3 ? 1 : 0;
-        if (this.t > 0.65 / sp) {
-          const n = this.enraged ? 5 : 3, base = Math.atan2(p.z - this.z, p.x - this.x), reach = Math.max(4, d);
+        if (this.t < CROUCH) {
+          this.telegraph = 1;
+          break;
+        }
+        const u = Math.min(1, (this.t - CROUCH) / AIR), f = this.vaultFrom, to = this.vaultTo;
+        this.x = f.x + (to.x - f.x) * u;
+        this.z = f.z + (to.z - f.z) * u;
+        this.model.rig.lift = Math.sin(u * Math.PI) * 2.2;
+        if (u >= 1) {
+          this.model.rig.lift = 0;
+          g.fx.burst(P.dust, this.x, this.y + 0.1, this.z, 12, 2.5);
+          g.audio.sfx('thud', this.x, this.z);
+          this.vaultTo = null;
+          this.lastVault = g.time;
+          this.set('recover');
+          this.cooldown = Math.max(this.cooldown, 0.7);
+        }
+        break;
+      }
+      case 'aim': {
+        // Volley: three arrows fanned at the knight (five enraged). Their lines lie on the ground
+        // while it draws, following him; then the aim is fixed (the lines brighten) and they fly
+        // along them `volleyLock` s later: time to step out of the fan, or raise the shield.
+        const n = this.enraged ? 5 : 3, lock = 0.75 / sp;
+        if (this.t < lock) {
+          this.faceTo(p.x, p.z);
+          this.volleyAim = Math.atan2(p.z - this.z, p.x - this.x);
+          this.volleyReach = Math.max(5, Math.min(15, d + 3));
+        }
+        this.telegraph = 1;
+        g.combat.aimFan(this, this.volleyAim, n, 0.16, this.volleyReach, this.t >= lock);
+        if (this.t > lock + W.volleyLock) {
+          // (Each aimed at the ground at its line's end: the line is all the way it goes.)
           for (let k = 0; k < n; k++) {
-            const a = base + (k - (n - 1) / 2) * 0.16;
-            g.combat.shoot(this, this.x + Math.cos(a) * reach, p.y + 0.9, this.z + Math.sin(a) * reach);
+            const a = this.volleyAim + (k - (n - 1) / 2) * 0.16;
+            g.combat.shoot(this, this.x + Math.cos(a) * this.volleyReach, this.y, this.z + Math.sin(a) * this.volleyReach);
           }
           this.set('recover');
-          this.cooldown = 1.1 / sp;
+          this.cooldown = 1.8 / sp;
         }
         break;
+      }
       case 'windup':
-        // Rain: arrows loosed at the sky, marked where they will fall round the knight.
+        // Rain: arrows loosed at the sky, marked where they will fall: where the knight stands and
+        // in an arc to one side of him (the other side clear), landing once the marks have filled.
         this.faceTo(p.x, p.z);
         this.telegraph = 1;
-        if (this.t > 0.55 / sp) {
+        if (this.t > 0.6 / sp) {
           g.audio.sfx('bow', this.x, this.z);
-          const n = this.enraged ? 7 : 5;
-          const ax = p.x + p.vx * 0.4, az = p.z + p.vz * 0.4;
-          for (let k = 0; k < n; k++) {
-            const a = (k / n) * Math.PI * 2 + Math.random() * 0.5, rr = k === 0 ? 0 : 1.5 + Math.random() * 1.6;
-            g.wardenMark(k === 0 ? ax : ax + Math.cos(a) * rr, k === 0 ? az : az + Math.sin(a) * rr, 'rain', W.rainDelay + k * 0.06);
+          const n = this.enraged ? 5 : 3, side = Math.random() * Math.PI * 2, arc = this.enraged ? 3.4 : 2.2;
+          const ax = p.x + p.vx * 0.25, az = p.z + p.vz * 0.25, delay = W.rainDelay / sp;
+          g.wardenMark(ax, az, 'rain', delay);
+          for (let k = 1; k < n; k++) {
+            const a = side + ((k - 1) / Math.max(1, n - 2) - 0.5) * arc, rr = 2.3 + Math.random() * 0.6;
+            g.wardenMark(ax + Math.cos(a) * rr, az + Math.sin(a) * rr, 'rain', delay + k * 0.1);
           }
           this.set('recover');
-          this.cooldown = 1.4 / sp;
+          this.cooldown = 2.2 / sp;
         }
         break;
       case 'slam':
-        // Roots (enraged only): the bow driven into the floor, roots burst under the knight and
-        // where he is heading.
+        // Roots (enraged only): the bow driven into the floor, roots burst where the knight stands,
+        // then where he's heading, then near him, each once its mark has filled.
         this.telegraph = 1;
-        if (this.t > 0.5) {
+        if (this.t > 0.85) {
           g.audio.sfx('thorns', this.x, this.z);
           g.shake(0.35);
           const ax = p.x + p.vx * 0.5, az = p.z + p.vz * 0.5;
           g.wardenMark(p.x, p.z, 'roots', W.rootDelay);
-          g.wardenMark(ax + p.vx * 0.3, az + p.vz * 0.3, 'roots', W.rootDelay + 0.25);
-          g.wardenMark(p.x + (Math.random() - 0.5) * 3, p.z + (Math.random() - 0.5) * 3, 'roots', W.rootDelay + 0.5);
+          g.wardenMark(ax + p.vx * 0.3, az + p.vz * 0.3, 'roots', W.rootDelay + 0.35);
+          g.wardenMark(p.x + (Math.random() - 0.5) * 3, p.z + (Math.random() - 0.5) * 3, 'roots', W.rootDelay + 0.7);
           this.set('recover');
-          this.cooldown = 1.3;
+          this.cooldown = 2;
         }
         break;
       case 'summon':
@@ -831,11 +921,11 @@ export class Enemy {
         if (this.t > 0.9) {
           g.bossSummon(this);
           this.set('recover');
-          this.cooldown = 1.6;
+          this.cooldown = 2;
         }
         break;
       case 'recover':
-        if (this.t > 0.5) this.set('chase');
+        if (this.t > 0.75) this.set('chase');
         break;
       case 'stun':
         if (this.t > 1.8) {
@@ -1025,6 +1115,12 @@ export class Enemy {
     }
     if (this.isBoss) {
       g.ui.bossHp(this.hp / this.maxHp);
+      // The Warden won't stand and be cut down: three blows in quick succession and it leaps away.
+      if (this.type === 'warden' && this.state !== 'stun') {
+        this.hitTimes = this.hitTimes.filter((t) => g.time - t < 2.5);
+        this.hitTimes.push(g.time);
+        if (this.hitTimes.length >= 3 && this.tryVault(g)) this.hitTimes = [];
+      }
       if (!this.enraged && this.hp < this.maxHp * 0.5) {
         this.enraged = true;
         g.bossEnrage(this);
@@ -1093,6 +1189,7 @@ export class Enemy {
   }
 
   die(g: Game) {
+    this.model.rig.lift = 0; // (felled mid-leap, it comes down)
     if (this.potRing) {
       g.combat.clearMark(this.potRing);
       this.potRing = null;

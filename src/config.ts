@@ -35,6 +35,9 @@ export const PLAYER = {
   attackReach: 1.75,
   attackArc: 0.62, // cos of half-angle
   stepUp: 0.45,
+  /** Below this height the knight has fallen into a chasm or pit: a heart lost, back on safe ground.
+   * (The lowest ground anyone walks on is about -1; chasms' floors lie below this.) */
+  fallY: -3.5,
   gravity: 26,
 };
 
@@ -91,7 +94,9 @@ export const FOES = {
   snarer: { hp: 3, r: 0.34, speed: 2.7, aggro: 10.5, reach: 8, windup: 0.85, coins: [3, 5] },
   thornback: { hp: 8, r: 0.52, speed: 2.3, aggro: 9, reach: 1.2, windup: 0.9, coins: [7, 11], prickStamina: 25 },
   // The Thorn Warden (the Old Wood's tyrant): keeps its distance and shoots. Volleys fan 3 arrows
-  // (5 enraged); rain marks 5 spots round the knight (7 enraged) that arrows hit after `rainDelay`;
-  // enraged, roots burst under the knight after `rootDelay`. Close in and it swipes.
-  warden: { hp: 54, r: 0.8, speed: 2.7, aggro: 30, reach: 2.4, windup: 0.5, coins: [0, 0], keepAway: 4.8, rainDelay: 0.95, rootDelay: 0.8 },
+  // (5 enraged) along lines it shows, fixed `volleyLock` s before they fly; rain marks the knight's
+  // spot and 2 more to one side of him (4 enraged) that arrows hit after `rainDelay`; enraged, roots
+  // burst under the knight after `rootDelay`. Close in and it swipes, then leaps back out of reach
+  // (as it does after three blows in quick succession). One attack at a time.
+  warden: { hp: 54, r: 0.8, speed: 2.7, aggro: 30, reach: 2.4, windup: 0.65, coins: [0, 0], keepAway: 6, rainDelay: 1.5, rootDelay: 1.25, volleyLock: 0.45 },
 } as const;

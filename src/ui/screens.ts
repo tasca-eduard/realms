@@ -26,7 +26,7 @@ export class Screens {
   private titleSel = 0;
   private titleActions: (() => void)[] = [];
 
-  constructor(root: HTMLElement, private audio: Audio, settings: { shake: boolean; hints: boolean }, private onSettings: () => void) {
+  constructor(root: HTMLElement, private audio: Audio, settings: { shake: boolean; hints: boolean; fly: boolean }, private onSettings: () => void) {
     this.loading = div('loading', '', 'KINDLING THE MOON&hellip;');
     this.title = div(
       'title',
@@ -52,6 +52,7 @@ export class Screens {
         <div class="row"><span>Ambience</span><input type="range" min="0" max="100" data-k="amb"><span class="val"></span></div>
         <div class="row"><span>Screen shake</span><button class="tog" data-s="shake"></button></div>
         <div class="row"><span>Tips</span><button class="tog" data-s="hints"></button></div>
+        <div class="row"><span>Explore mode<small>Fly anywhere, can't be hurt. Click to jump, wheel to zoom out.</small></span><button class="tog" data-s="fly"></button></div>
         <h3>Controls</h3>
         <div class="keys tch">
           <b>Left thumb</b><span>Move (the stick stays where you first touch)</span>
@@ -108,7 +109,7 @@ export class Screens {
       });
     }
     for (const b of this.pause.querySelectorAll<HTMLButtonElement>('.tog')) {
-      const k = b.dataset.s as 'shake' | 'hints';
+      const k = b.dataset.s as 'shake' | 'hints' | 'fly';
       const sync = () => {
         b.textContent = settings[k] ? 'On' : 'Off';
         b.classList.toggle('on', settings[k]);

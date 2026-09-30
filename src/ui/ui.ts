@@ -402,6 +402,9 @@ export class UI {
     this.bossEl.classList.remove('on');
   }
   bossIntro(name: string, title: string, dur = 3) {
+    // (Its name takes the place's: never the two at once.)
+    this.areaEl.classList.remove('on');
+    this.areaT = 0;
     (this.bossIntroEl.querySelector('.n') as HTMLElement).textContent = name;
     (this.bossIntroEl.querySelector('.t') as HTMLElement).textContent = title;
     this.bossIntroEl.classList.add('on');

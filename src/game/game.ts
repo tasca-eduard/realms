@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { EFFECTS, FOES, MOBILE, VIEW, WORLD } from '../config';
+import { EFFECTS, FOES, MOBILE, PLAYER, VIEW, WORLD } from '../config';
 import { Pipeline } from '../engine/pipeline';
 import { IsoCamera } from '../engine/camera';
 import { Input, loadKeyLayout } from '../engine/input';
@@ -143,7 +143,12 @@ export class Game {
   bossActive = false;
   cutscene: { t: number; dur: number; x: number; y: number; z: number; onEnd?: () => void } | null = null;
   godMode = false;
-  settings = { shake: true, hints: true, lines: 360 };
+  settings = { shake: true, hints: true, lines: 360, fly: false };
+  private exploreFow!: FogOfWar;
+  /** Explore mode (the pause menu's "Fly"): the knight flies, can't be hurt, foes ignore him. */
+  get flying() {
+    return this.settings.fly;
+  }
   private swooshes: Swoosh[] = [];
   private alerts: { s: SpriteActor; e: Enemy; t: number }[] = [];
   private focusTarget = new THREE.Vector3();
@@ -199,13 +204,21 @@ export class Game {
     } catch {
       /* ignore */
     }
+    this.flyApplied = this.settings.fly;
     this.screens = new Screens(uiRoot, this.audio, this.settings, () => {
       try {
         localStorage.setItem('realms-settings', JSON.stringify(this.settings));
       } catch {
         /* ignore */
       }
+      // (Only when explore mode itself was switched: another toggle mustn't lift or land the knight.)
+      if (this.settings.fly !== this.flyApplied) this.applyFlying();
     });
+    // Explore mode: the mouse wheel zooms out to see more of the map.
+    window.addEventListener('wheel', (e) => {
+      if (!this.flying || this.paused || this.state !== 'play') return;
+      this.cam.zoom = Math.max(0.3, Math.min(1, this.cam.zoom * (e.deltaY > 0 ? 0.85 : 1 / 0.85)));
+    }, { passive: true });
     this.touch = new TouchControls(uiRoot, this.input);
     this.ui.keyLabel = (a) => this.input.label(a);
     loadKeyLayout(() => {
@@ -257,6 +270,10 @@ export class Game {
     this.realm.afterOutskirts(this.grid, builder);
     this.def.decorateOutskirts(builder, this.grid, this.realm.w, this.realm.d, mulberry32(99));
     this.fow = new FogOfWar(this.realm.w, this.realm.d, PAD);
+    // Explore mode's mist: the whole realm clear, the land beyond its edges misty.
+    this.exploreFow = new FogOfWar(this.realm.w, this.realm.d, PAD);
+    for (let z = 2; z < this.realm.d; z += 3) for (let x = 2; x < this.realm.w; x += 3) this.exploreFow.reveal(x, z, 4);
+    this.exploreFow.flush();
     this.pipe.fow = { tex: this.fow.tex, x: this.fow.originX, z: this.fow.originZ, size: this.fow.worldSize, amount: 0 };
     builder.finish(this.scene);
     this.structures = builder.structures;
@@ -397,7 +414,7 @@ export class Game {
       } else this.audio.sleep(false);
     });
     (window as unknown as { __game: Game }).__game = this;
-    (window as unknown as { __reach: (p?: boolean) => unknown }).__reach = (progress = true) => reachability(this, progress);
+    (window as unknown as { __reach: (p?: boolean, climb?: number) => unknown }).__reach = (progress = true, climb?: number) => reachability(this, progress, climb);
   }
 
   /**
@@ -1361,6 +1378,10 @@ export class Game {
     const b = this.boss, info = this.story.boss;
     if (!b || !info || this.bossActive || !b.alive) return;
     this.bossActive = true;
+    // On foot: the knight gets down, and his mount waits outside the arena till it's over.
+    const arena = this.realm.arena!, out = arena.mountOut;
+    if (this.player.riding) this.player.dismount(this);
+    if (out) for (const m of this.mounts) if (m.x > arena.x0 - 3 && m.x < arena.x1 + 3 && m.z > arena.z0 - 3 && m.z < arena.z1 + 3) m.arriveAt(out[0], out[1], this);
     this.hallDoor?.setOpen(false, this);
     this.audio.music?.setTrack('');
     this.focus(b.x + 1, b.y + 1.2, b.z, 3.2, () => {
@@ -1468,6 +1489,10 @@ export class Game {
     this.ui.bossHide();
     this.audio.music?.setTrack('');
     for (const s of e.summoned) if (s.alive) s.die(this);
+    // What it loosed dies with it (no arrow still in the air, no marked spot, hurts after it falls).
+    for (const a of this.combat.arrows) if (a.from === e) a.dead = true;
+    for (const m of this.wardenMarks) m.remove(this);
+    this.wardenMarks = [];
     this.story.onBossDeath(this, e);
     this.writeSave();
     this.victory = true;
@@ -1721,8 +1746,43 @@ export class Game {
     if (this.debug) this.debugKeys();
   }
 
+  /** The explore mode last applied (so only a real switch lands or lifts the knight). */
+  private flyApplied = false;
+  /** Explore mode switched on or off (from the pause menu, a debug key, or a saved setting). */
+  applyFlying() {
+    const p = this.player;
+    this.flyApplied = this.flying;
+    if (!p) return;
+    if (this.flying) {
+      if (p.riding) p.dismount(this);
+      this.ui.toast('Explore mode', this.input.usingTouch ? 'Fly anywhere; nothing can hurt you.' : 'Fly anywhere; nothing can hurt you. Click to jump to a spot, wheel to zoom out, hold guard to go faster.', 5);
+      return;
+    }
+    this.cam.zoom = 1;
+    // (Where he lands counts as arriving there: its story runs, as if he'd walked in.)
+    this.region = null;
+    // Land on the nearest open ground (not in deep water, a wall, a tree or a pit).
+    const grid = this.grid, x0 = Math.floor(p.x), z0 = Math.floor(p.z);
+    for (let rad = 0; rad < 30; rad++)
+      for (let dz = -rad; dz <= rad; dz++)
+        for (let dx = -rad; dx <= rad; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dz)) !== rad) continue;
+          const cx = x0 + dx, cz = z0 + dz;
+          if (!grid.inside(cx, cz) || grid.solid[grid.i(cx, cz)] || grid.isDeep(cx, cz) || grid.groundAt(cx + 0.5, cz + 0.5) < PLAYER.fallY + 0.5) continue;
+          const body = { x: cx + 0.5, y: grid.groundAt(cx + 0.5, cz + 0.5), z: cz + 0.5, r: p.r };
+          grid.resolve(body, 0.45, false);
+          if (Math.hypot(body.x - cx - 0.5, body.z - cz - 0.5) > 0.05) continue;
+          p.place(cx + 0.5, cz + 0.5, this);
+          return;
+        }
+  }
+
   private debugKeys() {
     const inp = this.input;
+    if (inp.keyPressed('KeyV')) {
+      this.settings.fly = !this.settings.fly;
+      this.applyFlying();
+    }
     if (inp.keyPressed('KeyG')) {
       this.godMode = !this.godMode;
       this.ui.toast(this.godMode ? 'God mode on' : 'God mode off');
@@ -1841,7 +1901,7 @@ export class Game {
 
     this.fx.setRes(this.pipe.w, this.pipe.h);
     this.fx.update(dt, this.time, this.cam.focus.x, this.cam.focus.z);
-    this.lights.update(this.time, this.cam.focus.x, this.cam.focus.z);
+    this.lights.update(this.time, this.cam.focus.x, this.cam.focus.z, real);
     shared.uPlayer.value.set(p.x, p.y, p.z);
     this.updateStructures(real);
     this.updateCamera(dt, real);
@@ -1855,11 +1915,14 @@ export class Game {
     }
 
     // Fog of war clears around the knight (and wherever a cutscene looks).
-    if (this.state === 'play' || this.state === 'dead' || this.state === 'victory') {
+    if ((this.state === 'play' || this.state === 'dead' || this.state === 'victory') && !this.flying) {
       this.fow.reveal(p.x, p.z, 17);
       if (this.cutscene) this.fow.reveal(this.cam.focus.x, this.cam.focus.z, 9);
     }
     this.fow.flush();
+    // (In explore mode the mist lifts over the whole realm, so all of it can be looked at, and stays
+    // over the land beyond its edges; nothing is marked explored by it.)
+    this.pipe.fow!.tex = this.flying ? this.exploreFow.tex : this.fow.tex;
     const fowTarget = this.state === 'play' || this.state === 'dead' || this.state === 'victory' ? 1 : 0;
     this.pipe.fow!.amount = damp(this.pipe.fow!.amount, fowTarget, 2, real);
 
@@ -1886,7 +1949,7 @@ export class Game {
   /** Walked (or rode) into a border: over to the realm on the other side. */
   private checkBorders() {
     const p = this.player;
-    if (!p.alive || this.leaving || this.cutscene) return;
+    if (!p.alive || this.leaving || this.cutscene || this.flying) return;
     for (const b of this.realm.borders ?? []) if (Math.hypot(p.x - b.x, p.z - b.z) < b.r) return this.travel(b);
   }
 
@@ -1926,6 +1989,12 @@ export class Game {
       this.touch.setInteract('Dismount');
       return;
     }
+    // (Explore mode touches nothing: no chest opened, no lever pulled, no quest talked on.)
+    if (this.flying) {
+      this.ui.prompt(null);
+      this.touch.setInteract(null);
+      return;
+    }
     let best: Interactable | null = null, bd = Infinity;
     for (const it of this.interactables) {
       const d = Math.hypot(it.x - p.x, it.z - p.z);
@@ -1951,7 +2020,8 @@ export class Game {
     if (r && r !== this.region) {
       const prev = this.region;
       this.region = r;
-      this.story.onRegion(this, r);
+      // (Flying over a place in explore mode shows its name but moves no quest on.)
+      if (!this.flying) this.story.onRegion(this, r);
       if (!prev || prev.name !== r.name) {
         this.ui.area(r.name, this.story.areaSub(this, r));
         this.audio.sfx('area');
@@ -1963,7 +2033,7 @@ export class Game {
   private checkBossTrigger() {
     const p = this.player, b = this.boss, a = this.realm.arena;
     if (!b || !a || !b.alive || this.bossActive || this.save.data.flags.boss) return;
-    if (p.x > a.x0 && p.x < a.x1 && p.z > a.z0 && p.z < a.z1 && p.y > a.y) this.startBoss();
+    if (!this.flying && p.x > a.x0 && p.x < a.x1 && p.z > a.z0 && p.z < a.z1 && p.y > a.y) this.startBoss();
   }
 
   private updateStructures(real: number) {

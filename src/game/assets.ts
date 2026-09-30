@@ -18,6 +18,8 @@ export interface Look {
   apron?: string;
   dress?: boolean;
   longHair?: boolean;
+  /** Something carried: a fishing rod (right hand), a basket (left), a sack on the back. */
+  prop?: 'rod' | 'basket' | 'sack';
 }
 
 export const LOOKS: Record<string, Look> = {
@@ -33,6 +35,15 @@ export const LOOKS: Record<string, Look> = {
   woodboy: { skin: '#f0c8a0', hair: '#6b4226', cloth: '#5a7a3a', cloth2: '#4a6a2e', pants: '#4a3a26', boots: '#2a2018', h: 16, hat: 'hood', hatCol: '#6b4226' },
   woodgirl: { skin: '#f0c8a0', hair: '#8a5a2a', cloth: '#3b6b2a', cloth2: '#2e5420', pants: '#4a3a26', boots: '#2a2018', h: 17, longHair: true, dress: true },
   herbwife: { skin: '#d8a888', hair: '#b8b8b0', cloth: '#5a4a6a', cloth2: '#4a3a5a', pants: '#3a3024', boots: '#2a2018', h: 20, hat: 'hood', hatCol: '#44603a', dress: true },
+  // Hollowbough's folk about their day.
+  woodfisher: { skin: '#d8a888', hair: '#7a6a5a', cloth: '#5a6a5a', cloth2: '#4a5a4a', pants: '#3a3024', boots: '#2a2018', h: 21, hat: 'hood', hatCol: '#6a7a5a', beard: '#7a6a5a', prop: 'rod' },
+  woodwasher: { skin: '#e8b890', hair: '#8a5a3a', cloth: '#7a5a8a', cloth2: '#6a4a7a', pants: '#3a3024', boots: '#2a2018', h: 20, apron: '#d8d0c0', dress: true, longHair: true },
+  woodelder: { skin: '#d8a888', hair: '#e0e0e0', cloth: '#4a5a3a', cloth2: '#3a4a2e', pants: '#3a3024', boots: '#2a2018', h: 20, beard: '#e0e0e0', hat: 'hood', hatCol: '#3a4a2e' },
+  woodchild: { skin: '#f0c8a0', hair: '#a86a2a', cloth: '#6a8a3a', cloth2: '#5a7a2e', pants: '#4a3a26', boots: '#2a2018', h: 15 },
+  woodlass: { skin: '#f0c8a0', hair: '#d8a050', cloth: '#8a5a6a', cloth2: '#7a4a5a', pants: '#4a3a26', boots: '#2a2018', h: 15, dress: true, longHair: true },
+  woodgardener: { skin: '#e0b090', hair: '#6a4a2a', cloth: '#5a6a3a', cloth2: '#4a5a2e', pants: '#3a3024', boots: '#2a2018', h: 21, apron: '#a8c080', dress: true, hat: 'hood', hatCol: '#8a6a3a', prop: 'basket' },
+  woodward: { skin: '#d8a888', hair: '#4a3a2a', cloth: '#3b5b2a', cloth2: '#2e4a20', pants: '#2e2a20', boots: '#1e1a14', h: 22, hat: 'hood', hatCol: '#2e4a20' },
+  woodcarrier: { skin: '#c89070', hair: '#3a2a1a', cloth: '#7a6a4a', cloth2: '#6a5a3a', pants: '#3a3024', boots: '#2a2018', h: 22, bald: true, beard: '#3a2a1a', prop: 'sack' },
   guard: { skin: '#e0b090', hair: '#8a8a8a', cloth: '#6a2a2a', cloth2: '#5a2020', pants: '#3a3a44', boots: '#2a2a30', h: 22, hat: 'helmet', hatCol: '#8a8a9a', beard: '#9a9a9a' },
 };
 

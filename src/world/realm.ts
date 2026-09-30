@@ -48,6 +48,14 @@ export interface NpcDef {
   hidden?: boolean;
   /** Sits locked in the realm's cage until it is broken open. */
   caged?: boolean;
+  /** Going about the day: walks round these spots in turn, stopping a while (`pause` s) at each. */
+  roam?: [number, number][];
+  pause?: number;
+  /** How fast it walks (m/s). */
+  speed?: number;
+  /** What it does when it's not walking or talking, and which way it faces then (radians). */
+  pose?: 'sit' | 'fish' | 'work' | 'play';
+  heading?: number;
 }
 
 export type ObjDef =
@@ -146,8 +154,11 @@ export interface RealmData {
   thornBursts?: { x: number; z: number; w: number; d: number; ph: number }[];
   /** Chandeliers over the boss's hall. */
   chandeliers?: { x: number; z: number; floor: number }[];
+  /** How much tougher the realm's foes are than their kind (health; not the tyrant, tuned alone):
+   *  the knight comes on with a better sword, and the foes should still take as many blows. */
+  foeHp?: number;
   /** The boss's hall: walking in (above y) starts the fight; summoned guards appear at `summons`. */
-  arena?: { x0: number; z0: number; x1: number; z1: number; y: number; summons: Pt[]; dust: [number, number, number, number, number] };
+  arena?: { x0: number; z0: number; x1: number; z1: number; y: number; summons: Pt[]; dust: [number, number, number, number, number]; mountOut?: Pt };
   /** A war drum that beats while its group lives. */
   drums?: { x: number; z: number; group: string };
   /** The inn: its tune leaks out into the street. */
@@ -264,6 +275,8 @@ export interface DressOpts {
   critters: CritterDef[];
   /** Runs right after the scatter pass (paths beyond the map edge, say). */
   afterScatter?: () => void;
+  /** Where detail grows thick (1) and where the ground stays open (0); absent, it's spread evenly. */
+  patch?: (x: number, z: number) => number;
 }
 
 /**
@@ -272,7 +285,7 @@ export interface DressOpts {
  * and owls on some of the dead trees.
  */
 export function dressRealm(bb: Builder, g: Grid, r: Rng, o: DressOpts) {
-  D.dressWorld(bb, g, r, MOBILE ? 0.5 : 1, o.fits);
+  D.dressWorld(bb, g, r, MOBILE ? 0.5 : 1, o.fits, o.patch);
   o.afterScatter?.();
   for (let z = g.oz; z < g.oz + g.d; z += 3)
     for (let x = g.ox; x < g.ox + g.w; x += 3) {

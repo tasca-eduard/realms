@@ -1,6 +1,8 @@
 import * as THREE from 'three';
+import type { Geo } from '../engine/geo';
 import { K } from '../engine/materials';
 import { P } from '../engine/particles';
+import { hash2, mulberry32 } from '../engine/util';
 import { GLOW, PAL, type Builder } from './builder';
 import type { Grid } from './grid';
 
@@ -53,6 +55,202 @@ export function bramble(b: Builder, x: number, z: number, s = 1, h = 1.6, sap = 
   if (sap) for (let i = 0; i < 2; i++) b.gl(x, z).box(x + (r() - 0.5) * 0.8 * s, y + (0.5 + r() * h * 0.7) * s, z + (r() - 0.5) * 0.8 * s, 0.07, 0.07, 0.07, WOOD.glow, {});
 }
 
+type V3 = [number, number, number];
+
+// ---------------------------------------------------------------------------
+// Living wood: trunks, roots and boughs as knobbly tubes that taper, lean, wander and fork (never
+// a straight post or a square beam). Each plant rolls its own dice from where it stands, so the
+// realm's dice (and everything placed after it) don't shift.
+// ---------------------------------------------------------------------------
+
+/** A plant's own dice, from where it stands. */
+export const diceAt = (x: number, z: number, k = 0) => mulberry32(Math.floor(hash2(Math.round(x * 10), Math.round(z * 10), 917 + k) * 2147483647));
+
+/**
+ * A trunk from under the ground up `h`: `rb` round at the foot and flaring wider in its lowest
+ * metre or so (`flare`), `rt` at the top; it leans (`lean` metres off at the top, curving over)
+ * and wanders a little as it rises (straight up to `straight`), knobbly. Returns its middle at a
+ * height (to grow boughs from).
+ */
+export function trunkUp(g: Geo, x: number, y: number, z: number, rb: number, rt: number, h: number, col: string, d: () => number, o: { seg?: number; lean?: number; sway?: number; flare?: number; lumpy?: number; straight?: number; wind?: number } = {}) {
+  const steps = Math.max(6, Math.round(h / 1.1)), la = d() * Math.PI * 2, lean = o.lean ?? 0, sway = o.sway ?? 0.1, flare = o.flare ?? 0.3;
+  const pts: V3[] = [], rad: number[] = [];
+  let sx = 0, sz = 0;
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps, hh = -0.6 + (h + 0.6) * t;
+    if (hh > (o.straight ?? 0.5)) {
+      sx += (d() - 0.5) * sway;
+      sz += (d() - 0.5) * sway;
+    }
+    const off = lean * Math.pow(Math.max(0, hh) / h, 1.7);
+    pts.push([x + Math.cos(la) * off + sx, y + hh, z + Math.sin(la) * off + sz]);
+    rad.push((rb + (rt - rb) * t) * (1 + flare * Math.pow(Math.max(0, 1 - Math.max(0, hh) / 1.4), 2)));
+  }
+  g.sweep(pts, rad, col, { kind: K.Bark, seg: o.seg ?? 10, lumpy: o.lumpy ?? 0.09, seed: Math.floor(d() * 9999), wind: o.wind });
+  return (hy: number): V3 => {
+    const f = Math.max(0, Math.min(steps - 1e-3, ((hy - y + 0.6) / (h + 0.6)) * steps)), i = Math.floor(f), u = f - i;
+    return [pts[i][0] + (pts[i + 1][0] - pts[i][0]) * u, hy, pts[i][2] + (pts[i + 1][2] - pts[i][2]) * u];
+  };
+}
+
+/**
+ * A root from (sx, sz), `h0` above the ground there, out along heading `a`: it arches down to the
+ * ground, runs on half-sunk, wandering and thinning, and dives in `reach` further out; thick ones
+ * fork. `thick` is its radius at the start. Where it arches high off the ground it's in the way
+ * (a collider), so it's never walked through.
+ */
+export function rootFrom(b: Builder, g: Geo, sx: number, sz: number, a: number, reach: number, thick: number, h0: number, col: string, d: () => number, fork = true) {
+  const steps = Math.max(4, Math.round(reach / 0.5));
+  const pts: V3[] = [], rad: number[] = [], heads: number[] = [];
+  let an = a, px = sx, pz = sz;
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    if (i > 0) {
+      an += (d() - 0.5) * 0.32;
+      px += (Math.cos(an) * reach) / steps;
+      pz += (Math.sin(an) * reach) / steps;
+    }
+    const r = thick * (1 - 0.8 * Math.pow(t, 0.8)) * (i > 0 && d() < 0.2 ? 1.15 : 1);
+    const lift = h0 * Math.pow(Math.max(0, 1 - t * 1.8), 2) + r * 0.3 - (t > 0.78 ? (t - 0.78) * 5 * r : 0);
+    pts.push([px, b.y(px, pz) + lift, pz]);
+    rad.push(r);
+    heads.push(an);
+  }
+  g.sweep(pts, rad, col, { kind: K.Bark, seg: thick > 0.3 ? 7 : 5, lumpy: 0.2, seed: Math.floor(d() * 9999), squash: 0.8 });
+  for (let i = 0; i < steps; i++) {
+    const [qx, qy, qz] = pts[i];
+    if (qy + rad[i] * 0.8 - b.y(qx, qz) > 0.75 && rad[i] > 0.2) b.collide({ kind: 'c', x: qx, z: qz, r: rad[i] * 0.85, y0: qy - 3, y1: qy + rad[i] * 0.8 });
+  }
+  if (fork && thick > 0.24) {
+    const k = Math.max(2, Math.floor(steps * (0.3 + d() * 0.25))), side = d() < 0.5 ? -1 : 1;
+    const [fx, fy, fz] = pts[k];
+    rootFrom(b, g, fx, fz, heads[k] + side * (0.55 + d() * 0.4), reach * (0.35 + d() * 0.2), rad[k] * 0.62, Math.max(0, fy - b.y(fx, fz) - rad[k] * 0.3), col, d, false);
+  }
+}
+
+/** A root out of a trunk: from `rt` off its middle (x, z), `h0` up its bark. */
+export function rootOut(b: Builder, g: Geo, x: number, z: number, a: number, rt: number, reach: number, thick: number, h0: number, col: string, d: () => number, fork = true) {
+  rootFrom(b, g, x + Math.cos(a) * rt, z + Math.sin(a) * rt, a, reach, thick, h0, col, d, fork);
+}
+
+/** The path of a bough from `from` to `to`: bowed (it dips, then lifts toward its tip), wobbling, tapering r0 to r1. */
+export function boughPath(from: V3, to: V3, r0: number, r1: number, d: () => number, steps = 5, bow = 0.12) {
+  const L = Math.hypot(to[0] - from[0], to[1] - from[1], to[2] - from[2]);
+  const w1 = [d() - 0.5, d() - 0.5, d() - 0.5], w2 = [d() - 0.5, d() - 0.5, d() - 0.5];
+  const pts: V3[] = [], rad: number[] = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps, s1 = Math.sin(t * Math.PI) * L * 0.16, s2 = Math.sin(t * Math.PI * 2) * L * 0.08;
+    pts.push([
+      from[0] + (to[0] - from[0]) * t + w1[0] * s1 + w2[0] * s2,
+      from[1] + (to[1] - from[1]) * t - Math.sin(t * Math.PI) * bow * L + w1[1] * s1 * 0.5,
+      from[2] + (to[2] - from[2]) * t + w1[2] * s1 + w2[2] * s2,
+    ]);
+    rad.push(r0 + (r1 - r0) * Math.pow(t, 0.9));
+  }
+  return { pts, rad };
+}
+
+/** A bough drawn whole. */
+export function bough(g: Geo, from: V3, to: V3, r0: number, r1: number, col: string, d: () => number, wind = 0) {
+  const { pts, rad } = boughPath(from, to, r0, r1, d, Math.max(3, Math.round(Math.hypot(to[0] - from[0], to[1] - from[1], to[2] - from[2]) / 0.9)));
+  g.sweep(pts, rad, col, { kind: K.Bark, seg: r0 > 0.25 ? 7 : 5, lumpy: 0.12, seed: Math.floor(d() * 9999), wind });
+}
+
+/** Moss hugging a trunk's north side, in lumps from the ground up to `h`. */
+function trunkMoss(g: Geo, at: (h: number) => V3, y: number, rAt: (h: number) => number, h: number, d: () => number) {
+  for (let k = 0; k < 4; k++) {
+    const hy = y + 0.2 + (h * k) / 4 + d() * 0.3, [cx, , cz] = at(hy), r = rAt(hy - y);
+    g.blob(cx + (d() - 0.5) * r * 0.5, hy, cz - r * 0.9, r * 0.55, 0.35 + d() * 0.25, r * 0.28, k % 2 ? WOOD.moss : '#3d5a33', Math.floor(d() * 999), { kind: K.Grass, jitter: 0.3 });
+  }
+}
+
+/**
+ * A great withered oak of the Warden's heights: a thick grey trunk on buttress roots, heavy bare
+ * limbs twisting out and forking, grey-green moss hanging from their ends.
+ */
+export function witheredOak(b: Builder, x: number, z: number, s = 1) {
+  const g = b.g(x, z), y = b.y(x, z), r = b.rng, d = diceAt(x, z, 1);
+  const bark = r() < 0.5 ? PAL.dead : '#5e564c';
+  const rootA: number[] = [];
+  for (let i = 0; i < 5; i++) rootA.push((i / 5) * Math.PI * 2 + r() * 0.8);
+  const top: V3 = [x + (r() - 0.5) * 0.7 * s, y + 3.5 * s, z + (r() - 0.5) * 0.7 * s];
+  // The trunk: thick and gnarled, straight up and then over toward its top, where the limbs spring.
+  const tp: V3[] = [], tr: number[] = [];
+  for (let i = 0; i <= 7; i++) {
+    const t = i / 7, hy = -0.4 + (3.5 * s + 0.4) * t, k = Math.max(0, Math.min(1, (hy - 1.2 * s) / (2.3 * s)));
+    tp.push([x + (top[0] - x) * k * k * (3 - 2 * k) + (i > 1 && i < 7 ? (d() - 0.5) * 0.12 * s : 0), y + hy, z + (top[2] - z) * k * k * (3 - 2 * k) + (i > 1 && i < 7 ? (d() - 0.5) * 0.12 * s : 0)]);
+    tr.push((0.58 - 0.26 * t) * s * (1 + 0.35 * Math.pow(Math.max(0, 1 - Math.max(0, hy) / 1.1), 2)) * (i === 3 || i === 5 ? 1.12 : 1));
+  }
+  g.sweep(tp, tr, bark, { kind: K.Bark, seg: 8, lumpy: 0.16, seed: Math.floor(d() * 9999) });
+  for (const a of rootA) rootOut(b, g, x, z, a, 0.35 * s, 1.3 * s, 0.2 * s, 0.8 * s, bark, d);
+  const limb = (from: V3, a: number, len: number, rad: number, depth: number) => {
+    const to: V3 = [from[0] + Math.cos(a) * len, from[1] + len * (0.2 + r() * 0.5), from[2] + Math.sin(a) * len];
+    bough(g, from, to, rad * 1.1, rad * 0.62, bark, d, depth < 2 ? 0.06 : 0);
+    if (depth > 0) for (let k = 0; k < 2; k++) limb(to, a + (r() - 0.5) * 1.7, len * 0.62, rad * 0.62, depth - 1);
+    else if (r() < 0.55) g.beam(to, [to[0] + (r() - 0.5) * 0.1, to[1] - 0.45 - r() * 0.8, to[2]], 0.035, r() < 0.5 ? '#5a6a4a' : '#6a7458', { wind: 0.6 });
+  };
+  const n = 3 + Math.floor(r() * 2);
+  for (let i = 0; i < n; i++) {
+    const k = 0.55 + (i / n) * 0.4;
+    limb([x + (top[0] - x) * k, y + (1.8 + (3.5 - 1.8) * k) * s, z + (top[2] - z) * k], (i / n) * Math.PI * 2 + r() * 0.9, 1.6 * s, 0.17 * s, 2);
+  }
+  limb(top, r() * Math.PI * 2, 1.1 * s, 0.14 * s, 1);
+  b.collide({ kind: 'c', x, z, r: 0.55 * s, y0: y - 1, y1: y + 4 * s });
+}
+
+/** A dead shrub: a clump of bare grey twigs (no collider: the knight pushes through it). */
+export function deadShrub(b: Builder, x: number, z: number, s = 1) {
+  const g = b.g(x, z), y = b.y(x, z), r = b.rng;
+  const n = 6 + Math.floor(r() * 6);
+  for (let i = 0; i < n; i++) {
+    const a = r() * Math.PI * 2, len = (0.4 + r() * 0.5) * s, col = r() < 0.5 ? PAL.dead : '#6a5a48';
+    const base: V3 = [x + (r() - 0.5) * 0.3 * s, y - 0.02, z + (r() - 0.5) * 0.3 * s];
+    const tip: V3 = [base[0] + Math.cos(a) * len * 0.6, y + len * (0.6 + r() * 0.6), base[2] + Math.sin(a) * len * 0.6];
+    g.beam(base, tip, 0.022 * s, col, { kind: K.Bark, wind: 0.35 });
+    const mid: V3 = [(base[0] + tip[0]) / 2, (base[1] + tip[1]) / 2, (base[2] + tip[2]) / 2];
+    g.beam(mid, [mid[0] + Math.cos(a + 1.1) * len * 0.3, mid[1] + len * 0.28, mid[2] + Math.sin(a + 1.1) * len * 0.3], 0.015 * s, col, { wind: 0.45 });
+  }
+}
+
+/**
+ * A thorn creeper running low over the ground along pts: a cane arching in and out of the soil,
+ * thorns along it, the odd leaf and berry, a glowing bud at its tip (the Warden's thorns spreading).
+ */
+export function thornCreeper(b: Builder, pts: [number, number][], s = 1) {
+  if (pts.length < 2) return;
+  const [x0, z0] = pts[0], g = b.g(x0, z0), gl = b.gl(x0, z0), r = b.rng;
+  let prev: V3 | null = null;
+  const n = pts.length;
+  pts.forEach(([x, z], i) => {
+    const taper = 1 - i / n;
+    const p: V3 = [x, b.y(x, z) + 0.03 + Math.abs(Math.sin(i * 0.8 + r() * 0.6)) * 0.3 * s * (0.35 + taper * 0.65), z];
+    if (prev) {
+      g.beam(prev, p, (0.03 + 0.05 * taper) * s, i % 3 ? WOOD.thorn : WOOD.thornDark, { kind: K.Bark });
+      const m: V3 = [(prev[0] + p[0]) / 2, (prev[1] + p[1]) / 2, (prev[2] + p[2]) / 2];
+      g.box(m[0] + (i % 2 ? 0.05 : -0.05), m[1] + 0.05, m[2], 0.035, 0.12, 0.035, WOOD.thornTip);
+      if (r() < 0.12) g.blob(m[0], m[1] + 0.08, m[2], 0.18 * s, 0.12 * s, 0.18 * s, r() < 0.5 ? WOOD.leaf : WOOD.leaf2, Math.floor(r() * 999), { kind: K.Leaves, jitter: 0.3 });
+      if (r() < 0.05) g.box(m[0], m[1] + 0.12, m[2], 0.07, 0.07, 0.07, WOOD.berry);
+    }
+    prev = p;
+  });
+  if (prev) gl.box((prev as V3)[0], (prev as V3)[1] + 0.06, (prev as V3)[2], 0.08, 0.08, 0.08, WOOD.glow, {});
+}
+
+/** Thorn canes spiralling up a trunk (radius rad) to height h. */
+export function thornClimb(b: Builder, x: number, z: number, rad: number, h: number) {
+  const g = b.g(x, z), y = b.y(x, z), r = b.rng;
+  for (let c = 0; c < 2; c++) {
+    let a = r() * Math.PI * 2, prev: V3 = [x + Math.cos(a) * rad, y, z + Math.sin(a) * rad];
+    for (let k = 1; k <= 10; k++) {
+      a += 0.75 + r() * 0.3;
+      const p: V3 = [x + Math.cos(a) * rad, y + (k / 10) * h, z + Math.sin(a) * rad];
+      g.beam(prev, p, 0.035, c ? WOOD.thorn : WOOD.thornDark, { kind: K.Bark });
+      g.box(p[0] + Math.cos(a) * 0.06, p[1], p[2] + Math.sin(a) * 0.06, 0.035, 0.11, 0.035, WOOD.thornTip);
+      prev = p;
+    }
+  }
+}
+
 /** A wall of briar along a line, solid to walk into (a real, visible thicket). */
 export function thicket(b: Builder, pts: [number, number][], h = 1.8, depth = 1.2, step = 0.8) {
   for (let i = 0; i < pts.length - 1; i++) {
@@ -95,14 +293,18 @@ export function giantMushroom(b: Builder, x: number, z: number, s = 1, light = f
  * The Great Tree of the Old Wood: a trunk as wide as a tower, roots like walls, and a
  * crown lit by glowing seed-pods (the landmark the prototype drew on Whisperwood's horizon).
  */
-export function greatTree(b: Builder, x: number, z: number, s = 1) {
-  const g = b.g(x, z), gl = b.gl(x, z), y = b.y(x, z), r = b.rng;
-  g.cyl(x, y - 1, z, 2.6 * s, 1.7 * s, 18 * s, 10, WOOD.bark, { kind: K.Bark });
+export function greatTree(b: Builder, x: number, z: number, s = 1, o: { clearToward?: number } = {}) {
+  const g = b.g(x, z), gl = b.gl(x, z), y = b.y(x, z), r = b.rng, d = diceAt(x, z, 3);
+  // A vast gnarled trunk, leaning a little, flaring at its foot.
+  const at = trunkUp(g, x, y - 0.4, z, 2.6 * s, 1.5 * s, 18.4 * s, WOOD.bark, d, { seg: 14, lean: 0.9 * s, sway: 0.22, flare: 0.22, lumpy: 0.1, straight: 2 });
   b.collide({ kind: 'c', x, z, r: 2.5 * s, y0: y - 2, y1: y + 20 * s });
-  // Roots flaring out.
+  trunkMoss(g, at, y, (h) => 2.6 * s - 1.1 * s * Math.min(1, h / (18 * s)), 4 * s, d);
+  // Great roots leaving the trunk high up, arching down and running out over the ground, forking
+  // (none toward `clearToward`, where its arena's own roots are).
   for (let i = 0; i < 7; i++) {
     const a = (i / 7) * Math.PI * 2 + r() * 0.4;
-    g.beam([x + Math.cos(a) * 1.8 * s, y + 3 * s, z + Math.sin(a) * 1.8 * s], [x + Math.cos(a) * 5 * s, y - 0.2, z + Math.sin(a) * 5 * s], 0.55 * s, WOOD.barkDark, { kind: K.Bark });
+    if (o.clearToward !== undefined && Math.abs(Math.atan2(Math.sin(a - o.clearToward), Math.cos(a - o.clearToward))) < 1.15) continue;
+    rootOut(b, g, x, z, a, 2.2 * s, 4.2 * s, 0.75 * s, 2.6 * s, WOOD.barkDark, d);
   }
   // Great limbs, and the crown on them (a structure that fades when it hides the knight).
   const cs = b.structure('great crown', new THREE.Box3(new THREE.Vector3(x - 11 * s, y + 10 * s, z - 11 * s), new THREE.Vector3(x + 11 * s, y + 28 * s, z + 11 * s)));
@@ -110,7 +312,7 @@ export function greatTree(b: Builder, x: number, z: number, s = 1) {
   for (let i = 0; i < 6; i++) {
     const a = (i / 6) * Math.PI * 2 + r() * 0.5, from = y + (12 + r() * 4) * s;
     const to: [number, number, number] = [x + Math.cos(a) * 7 * s, from + (4 + r() * 3) * s, z + Math.sin(a) * 7 * s];
-    cs.core.beam([x, from, z], to, 0.6 * s, WOOD.bark, { kind: K.Bark });
+    bough(cs.core, at(from), to, 0.85 * s, 0.35 * s, WOOD.bark, d);
     crown.push(to);
   }
   crown.push([x, y + 24 * s, z]);
@@ -141,20 +343,20 @@ export function greatTree(b: Builder, x: number, z: number, s = 1) {
  * Returns the doorstep (where its keeper stands) and the treehouse platform's centre.
  */
 export function homeTree(b: Builder, x: number, z: number, s = 1, o: { face: number; treehouse?: boolean; chimney?: boolean; tint?: string } = { face: Math.PI / 4 }) {
-  const g = b.g(x, z), gl = b.gl(x, z), y = b.y(x, z), r = b.rng;
+  const g = b.g(x, z), gl = b.gl(x, z), y = b.y(x, z), r = b.rng, d = diceAt(x, z, 4);
   const R = 1.9 * s, H = 9 * s, bark = o.tint ?? WOOD.bark;
-  // The trunk, flaring into buttress roots, moss up its north side.
-  g.cyl(x, y - 0.5, z, R, R * 0.72, H + 0.5, 11, bark, { kind: K.Bark });
-  g.cyl(x, y - 0.5, z, R * 1.18, R, 1.4, 11, WOOD.barkDark, { kind: K.Bark });
+  // The trunk: straight where the doors and windows are, gnarled above; buttress roots arching out
+  // of it (none across the door); moss up its north side.
+  const at = trunkUp(g, x, y + 0.1, z, R, R * 0.72, H - 0.1, bark, d, { seg: 12, sway: 0.16, flare: 0.16, lumpy: 0.045, straight: 6.4 * s });
   for (let i = 0; i < 7; i++) {
     const a = (i / 7) * Math.PI * 2 + 0.25 + r() * 0.3;
     if (Math.abs(Math.atan2(Math.sin(a - o.face), Math.cos(a - o.face))) < 0.55) continue; // not across the door
-    g.beam([x + Math.cos(a) * R * 0.7, y + 2.2 * s, z + Math.sin(a) * R * 0.7], [x + Math.cos(a) * (R + 1.5 * s), y - 0.2, z + Math.sin(a) * (R + 1.5 * s)], 0.42 * s, WOOD.barkDark, { kind: K.Bark });
+    rootOut(b, g, x, z, a, R * 0.8, 1.7 * s, 0.46 * s, 1.9 * s, WOOD.barkDark, d);
   }
-  g.box(x, y + 0.3, z - R * 0.8, R * 1.1, 3.2 * s, 0.14, WOOD.moss, { kind: K.Grass });
   // The trunk's radius at a height (it tapers), and something on its bark facing `a` at height h
   // (local +z points out of the trunk), in the plain geometry and in the glow.
   const rAt = (h: number) => R - R * 0.28 * Math.min(1, h / H);
+  trunkMoss(g, at, y, rAt, 3.2 * s, d);
   const onBark = (geo: typeof g, a: number, h: number, out = 0) => geo.push().translate(x + Math.cos(a) * (rAt(h) + out), y + h, z + Math.sin(a) * (rAt(h) + out)).rotateY(Math.PI / 2 - a);
   // The door: a lit arch in a frame of pale wood, the plank door ajar, a little shingled hood
   // over it, a stone step.
@@ -206,7 +408,7 @@ export function homeTree(b: Builder, x: number, z: number, s = 1, o: { face: num
   for (let i = 0; i < 6; i++) {
     const a = (i / 6) * Math.PI * 2 + r() * 0.5, from = y + (6.5 + r() * 2) * s;
     const to: [number, number, number] = [x + Math.cos(a) * 5 * s, from + (2 + r() * 1.5) * s, z + Math.sin(a) * 5 * s];
-    cs.core.beam([x, from, z], to, 0.4 * s, bark, { kind: K.Bark });
+    bough(cs.core, at(from), to, 0.5 * s, 0.2 * s, bark, d);
     crown.push(to);
   }
   for (const [cx, cy, cz] of crown)
@@ -250,15 +452,15 @@ export function homeTree(b: Builder, x: number, z: number, s = 1, o: { face: num
  * limbs and a crown well above the rooftops. The trunk is solid.
  */
 export function giantOak(b: Builder, x: number, z: number, s = 1, pods = 0) {
-  const g = b.g(x, z), gl = b.gl(x, z), y = b.y(x, z), r = b.rng;
+  const g = b.g(x, z), gl = b.gl(x, z), y = b.y(x, z), r = b.rng, d = diceAt(x, z, 2);
   const rb = 0.95 * s;
-  g.cyl(x, y - 0.5, z, rb, rb * 0.7, 8.5 * s, 9, WOOD.bark, { kind: K.Bark });
+  // A gnarled trunk, leaning and wandering, flaring at its foot; buttress roots; moss up its north side.
+  const at = trunkUp(g, x, y, z, rb, rb * 0.62, 8.5 * s, WOOD.bark, d, { seg: 10, lean: 0.45 * s, sway: 0.12, flare: 0.3, lumpy: 0.1 });
   for (let i = 0; i < 5; i++) {
     const a = (i / 5) * Math.PI * 2 + r() * 0.6;
-    g.beam([x + Math.cos(a) * rb * 0.6, y + 1.6 * s, z + Math.sin(a) * rb * 0.6], [x + Math.cos(a) * rb * 2.1, y - 0.15, z + Math.sin(a) * rb * 2.1], 0.28 * s, WOOD.barkDark, { kind: K.Bark });
+    rootOut(b, g, x, z, a, rb * 0.75, rb * 1.8, 0.3 * s, 1.4 * s, WOOD.barkDark, d);
   }
-  // Moss up the north side.
-  g.box(x, y + 0.2, z - rb * 0.7, rb * 1.1, 2.5 * s, 0.12, WOOD.moss, { kind: K.Grass });
+  trunkMoss(g, at, y, (h) => rb - rb * 0.38 * Math.min(1, h / (8.5 * s)), 2.5 * s, d);
   // The crown is its own structure: it fades when it stands between the camera and the
   // knight, like a roof (a crown this high would otherwise hide half the screen).
   const top = y + 9.5 * s, span = 4.8 * s;
@@ -267,8 +469,10 @@ export function giantOak(b: Builder, x: number, z: number, s = 1, pods = 0) {
   for (let i = 0; i < 4; i++) {
     const a = (i / 4) * Math.PI * 2 + r() * 0.7, from = y + (5.5 + r() * 2) * s;
     const to: [number, number, number] = [x + Math.cos(a) * 3.2 * s, from + (1.8 + r() * 1.2) * s, z + Math.sin(a) * 3.2 * s];
-    g.beam([x, from, z], [x + (to[0] - x) * 0.35, from + (to[1] - from) * 0.35, z + (to[2] - z) * 0.35], 0.28 * s, WOOD.bark, { kind: K.Bark });
-    cs.core.beam([x + (to[0] - x) * 0.35, from + (to[1] - from) * 0.35, z + (to[2] - z) * 0.35], to, 0.22 * s, WOOD.bark, { kind: K.Bark });
+    // (Its first stretch plain, the rest part of the crown, fading with it.)
+    const { pts, rad } = boughPath(at(from), to, 0.34 * s, 0.14 * s, d, 6);
+    g.sweep(pts.slice(0, 3), rad.slice(0, 3), WOOD.bark, { kind: K.Bark, seg: 7, lumpy: 0.12, seed: i + 11 });
+    cs.core.sweep(pts.slice(2), rad.slice(2), WOOD.bark, { kind: K.Bark, seg: 7, lumpy: 0.12, seed: i + 11, first: 2 });
     crown.push(to);
   }
   // Leaf clusters: several smaller ones per limb, lighter on top, so it reads as foliage.

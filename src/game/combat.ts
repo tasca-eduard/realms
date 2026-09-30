@@ -164,6 +164,11 @@ export class Combat {
   aimLines = new Map<Enemy, THREE.Mesh>();
   private aimMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.5, 0.3, 0.2), transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false });
   private aimSeen = new Set<Enemy>();
+  /** The Thorn Warden's volley before it flies: a line along each arrow's way (brighter once fixed). */
+  private fans = new Map<Enemy, THREE.Mesh[]>();
+  private fanSeen = new Set<Enemy>();
+  private fanMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 0.5, 0.25), transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false });
+  private fanLockMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(3.5, 0.9, 0.35), transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false });
 
   constructor(private g: Game) {}
 
@@ -354,6 +359,36 @@ export class Combat {
     (m.material as THREE.MeshBasicMaterial).opacity = 0.25 + 0.25 * Math.sin(this.g.time * 30);
   }
 
+  /** Shows a fan of `n` arrows' lines from a foe, `spread` apart round `base`, `len` long. */
+  aimFan(e: Enemy, base: number, n: number, spread: number, len: number, locked: boolean) {
+    this.fanSeen.add(e);
+    let ms = this.fans.get(e);
+    if (!ms || ms.length !== n) {
+      for (const m of ms ?? []) {
+        this.g.scene.remove(m);
+        m.geometry.dispose();
+      }
+      ms = [];
+      for (let k = 0; k < n; k++) {
+        const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.14), this.fanMat);
+        m.renderOrder = 6;
+        this.g.scene.add(m);
+        ms.push(m);
+      }
+      this.fans.set(e, ms);
+    }
+    const y = this.g.grid.groundAt(e.x, e.z) + 0.08;
+    for (let k = 0; k < n; k++) {
+      const m = ms[k], a = base + (k - (n - 1) / 2) * spread;
+      m.visible = true;
+      m.material = locked ? this.fanLockMat : this.fanMat;
+      m.scale.x = len;
+      m.position.set(e.x + (Math.cos(a) * len) / 2, y, e.z + (Math.sin(a) * len) / 2);
+      m.rotation.set(-Math.PI / 2, -a, 0, 'YXZ');
+    }
+    if (!locked) this.fanMat.opacity = 0.22 + 0.12 * Math.sin(this.g.time * 18);
+  }
+
   update(dt: number) {
     const g = this.g, p = g.player, grid = g.grid;
     for (const pot of this.pots) {
@@ -466,8 +501,19 @@ export class Combat {
       } else if (!this.aimSeen.has(e)) m.visible = false;
     }
     this.aimSeen.clear();
+    for (const [e, ms] of this.fans) {
+      if (e.removed || !e.alive) {
+        for (const m of ms) {
+          g.scene.remove(m);
+          m.geometry.dispose();
+        }
+        this.fans.delete(e);
+      } else if (!this.fanSeen.has(e)) for (const m of ms) m.visible = false;
+    }
+    this.fanSeen.clear();
 
     for (const a of this.arrows) {
+      if (a.dead) continue;
       a.t += dt;
       if (a.stuck > 0) {
         a.stuck -= dt;

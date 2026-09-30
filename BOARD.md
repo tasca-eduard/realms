@@ -6,7 +6,7 @@ items move to **Done** with the date.
 
 ## In progress
 
-_Nothing: realm 2 is built. Next up would be realm 3, the Sunken Reef (the Sea Stair waits for it)._
+Nothing: the review is done (see Done), waiting for the next request.
 
 ## Realm 2 plan (agreed 2026-09-28)
 
@@ -91,6 +91,186 @@ _All done (2026-09-28)._
 - [ ] Difficulty and economy: tuned by feel, not playtested.
 
 ## Done
+
+- 2026-09-30: **Review, balance, flaws** (full suite: 58 reports, all read; the lights check's limit then set above frame-time jitter, 5 a second (a pop reads tens), and rerun) (asked: "review, balance, find flaws"). Measured first:
+  - **Economy.** Blackpine pays ~1,145 coins (chests 720, foes ~225, quests and trial ~200) for 770 of
+    things to buy (the sword to level 3, flasks to six). Whisperwood paid ~1,930 (chests 1,550!, foes
+    ~210, quests and trial 170) for 960 (the two tempers): with Blackpine's leftovers some 1,500 coins
+    unspent by its end. Now its chests pay by how hard they are to reach, 35 to 60 (1,055 in all):
+    the tempers take most of the realm (tests/economy2.js).
+  - **Toughness.** A knight comes into Whisperwood with a level-3 sword (1.75 times the damage), so its
+    foes (as tough as Blackpine's) fell in fewer blows than Blackpine's had: the curve went down. Now a
+    realm sets how much tougher its foes are than their kind (`foeHp`): Whisperwood 1.6, so a goblin
+    takes three blows at level 3, as it did at level 0 (thornbacks two stun-combos, like Blackpine's
+    boars at levels 0 to 1); the tyrants are tuned alone (tests/economy1.js, economy2.js).
+  - **The Warden** (a bot that plays like a person: real keys, aimed clicks, dodges what it sees coming a
+    quarter second late, keeps back from a blow winding up, otherwise closes in and swings): with a
+    level-3 sword it won in 40 s losing 7 hearts, every one to the bow's swipe: the knight (5.2 m/s)
+    ran the keep-away archer (2.7 m/s) down and cut it apart. Now it leaps back to open ground after its
+    swipe and after three blows in quick succession (a crouch first; the landing and the path checked
+    clear of roots and thorns), never volleys from close by (its arrows would be on him before he could
+    step aside: it rains instead), 54 health (was 46). The bot: 68 to 73 s, 6 to 8 hearts, all to the
+    swipe, which winds up for 0.65 s (tests/bossbot.js). (The Goblin King, for comparison: 29 s, 6
+    hearts at level 2; left as it is.)
+  - **Flaws found** (a code review of everything uncommitted, then checked): any toggle in the pause menu
+    "landed" the knight (paused in mid-air over Rookfall, a screen-shake toggle put him on the rim);
+    explore mode's "can't be hurt" wasn't true (a foe already after him, marks and arrows still hurt, and
+    chests, the Thorn Heart and quest folk could be used while flying); the Thornstag's second leap
+    (2.23 m) cleared the hollow's 2 m roots, so it could jump in before the garrison fell (the stag reach
+    check couldn't see it: it treated every root over 1.1 m as a wall); the volley's arrows flew 3 to 4 m
+    past its lines; a Warden felled mid-leap hung in the air; an arrow marked dead could still hit in the
+    frame its Warden died; lamps could still pop when many faded at once (and the lights check measured
+    the wrong thing); the bridges' search could loop for ever; landing never greeted the knight with the
+    place's story, and could put him on ground that counts as a fall; small ones (an open bough end,
+    children running through the log seats, a lax check). All fixed; new or extended checks: fly,
+    arenastag, wardenfair (the volley's end), lights (what a lamp actually shows), corners2.
+  - Also: the Goblin King left as it is (29 s, 6 hearts for the bot at level 2: short for a tyrant, but realm 1 was
+    called done); Hollowbough is the heaviest place to draw (60 frames a second headless, 120 to 144 elsewhere).
+
+- 2026-09-30: **Group 23 review** (full suite: 53 reports, all read; then corners2, 54). All pass. Realm 1's
+  "foes" check is chance-bound as ever (the thrower's burn missed its own round, landed in the camp's). New
+  checks this group: wardenfair (the fair fight, with a dodging bot), normals and normals2 (no face that
+  can blacken the screen), corners2 (the once-empty corners pay; the village's walkers walk, its sitters
+  stay sat); the lights check made frame-rate independent. Screenshots of every changed place looked at:
+  the stair and its hills, the path, the hollow in a fight, the gorge (bridge, cave, pillar), the village
+  (green, inn side, jetty, north homes, hives) and the new corners. The file's header comment redrawn for
+  the new layout.
+
+- 2026-09-30: **Explore mode** (asked: "I need a godmode with flying mode so I can check the map myself
+  easily"): a switch in the pause menu (and V with ?debug). The knight flies over everything a little
+  above the ground, through walls, trees and water; can't be hurt; foes don't notice him; the mist lifts
+  (the world's edge stays misty); hold guard to go faster, click to jump to a spot, the mouse wheel zooms
+  out; nothing picked up, no quest moved, no border crossed, no boss woken while flying; switched off he
+  lands on the nearest open ground (tests/fly.js).
+- 2026-09-30: **Review of realm 2** (asked: "review realm 2, find flaws, fix"). Fixed: stale texts (people
+  talking about knolls, a comment still describing the pit and drawbridge, the story file saying the stag
+  "comes with later groups", the Thorn Heart's saved flag still called 'bridge', the arena's toast "The
+  Great Tree opens"); regions (the Deep Wood named, the Whisper's name following the river, the
+  Blackwater's name off the Deep Wood's north edge); the heights' new growth thinned on phones; the
+  realm-wide detail scatter in patches; a debug spot inside rock; the README's section. The reach check now
+  also floods back from every reachable cell to the start and found places to be stranded (drop in, never
+  climb out): in Whisperwood a one-cell strip of low ground along the heights' west edge and a shallow
+  corner of the Mirror Pool; in the Moonlit Keep shallow cells at the moat's edges. Fixed: traps 0 in both
+  realms.
+
+- 2026-09-30: **Whisperwood's empty corners given a purpose** (asked: "some areas are empty, they don't serve a
+  purpose (check realm 1, I had that issue there too and it was fixed)"). Measured with tools/emptymap.js
+  (reachable ground more than 13 m from anything to do): 5% of it, five patches, the worst 25.5 m from
+  anything (realm 1: 11%). Each patch given a place: **the Warden's Seat** (a knot of great roots grown
+  into a seat on the heights north-east of the Great Tree, a lore stone, a chest behind it, a thornback);
+  **the Rookery** in the pines north of Rookfall (three dead pines with stick nests, a fallen nest with the
+  rooks' hoard, feathers, bats for rooks, a lore stone); **the beekeeper's hives** between the Heartpool
+  and the Whisper (straw skeps on a log bench, bees, flowers, Marigold at work); **a goblin camp by the
+  brook** (fire, a hide on a pole, a stolen chest); **the kingfisher's bank** (a chest in the reeds by the
+  east river). Now 0.4%, the worst 15 m. (Each built on dice of its own, lent to the builder and given
+  back, so nothing placed after moved.)
+
+- 2026-09-30: **Hollowbough rebuilt: bigger, uneven, lived in** (asked: "the village is small, I can't really
+  see anybody there, the positions of the trees are too symmetric, it's not natural, the middle island is
+  too crowded, barely any room there to move around the tree").
+  - **The lake**: some 35 by 31 m (was a 23 m wavy round): a body with an arm reaching north-east and a bay to
+    the south-west, round lobes melted together, the shore wandering (lakeSd; lakeR and byLake now read
+    from it, so every lane and lantern string round it followed).
+  - **The island**: broad (7.6 m, a tongue reaching south-east), the Heart Oak at its back, a green on the
+    near side with the gathering fire and log seats (moved from the north shore). The bridges aren't a
+    matched pair any more: one east to the road's shore, one south to the lane's.
+  - **Seven home trees** (were four, 90 degrees apart): placed by hand, most behind the lake (north, west,
+    east), none between the camera and the green, sizes 0.82 to 1.2; three new ones (the weaver's, the
+    elder's, the fisher's).
+  - **Folk about their day** (16 in the realm now; 9 new): Reed fishing off the jetty, Tansy washing at the
+    bay, Pip and Linnet chasing round the fire, Old Burdock sitting by it, Hazel working Ash's family's beds,
+    Bram carrying between the smithy and the inn, Rowan watching the east bridge, Old Sorrel at her door.
+    New for them: villagers walk a round of spots with pauses, and sit, fish, work or play; a rod, a basket,
+    a sack; eight new looks.
+  - Checks: wood's village bridge follows the new bridge; spawns clean; folk names them all; sister passes.
+    The lights check now measures by the game's clock (a slow frame then a fast one read as a pop): the
+    fastest a lamp changes is the fade's own 3.5 a second.
+
+- 2026-09-30: **Rookfall made a gorge, the bank by the lake opened up** (second pass at "too much cliff/hole,
+  looks like a grand canyon" and "the space between the lake and the bridge is too narrow, too much cliff";
+  the first pass only made it shallower and moved the lake's shore, and it barely showed).
+  - The chasm was an 11 by 49 m trench from the northern cliffs to the Whisper, walls sheer all the way.
+    Now a gorge winding from the Whisper's Fall north to a cave where the river goes under the rock (an arch
+    of rock over a dark mouth, mist, a faint light): 5.5 to 8.5 m across, ragged, its rim broken here and
+    there (a step down to a lip of rock, never more than a climb back); boulders, ferns and roots over its
+    edge, trees right up to it. Its old north half is pine wood (the East Woods reach over it; no ridges
+    there, the zone's edge would cut them straight).
+  - The bank between the Blackwater and the bridge: 11 m of meadow (was 8, and a cliff at the end of it).
+  - The Rook Pillar stands where the gorge is widest (still a running jump from the east rim); the bridge
+    is shorter. Checks moved with them (wood, treasures2, fly): all pass; reach, stag, spawns clean.
+
+- 2026-09-30: **The Warden's fight made fair, its hollow and the way to it made natural** (asked: "it's very
+  hard to fight the boss in realm 2, there's not enough space, they can hit me from anywhere, don't have time
+  to react"; "the way to the boss area is too crowded"; "the boss area too crowded"; "the tree trunk and its
+  roots look so plastic/fake/straight").
+  - **Room**: the hollow is 16 by 15 m (179 m² of floor, was 88), its mouth on the east, straight down a short
+    path from the top of the stair. The garrison stands before the mouth; the spring moved aside.
+  - **Nothing hidden**: the roots round it stand 2 m on the camera's side (were 3 to 3.4 m all round; still
+    more than the knight can climb), 3.4 m at the back. Moonlight on the floor. Marked spots and the volley's
+    lines are drawn over everything.
+  - **Time to react**: marked spots fill up for 1.5 s (1.25 s enraged; were 0.95 s) and are as big as what they
+    hit; the rain marks the knight's spot and an arc to one side, never all round; the volley's lines lie on
+    the ground while it draws and are fixed 0.45 s before the arrows fly along them; roots 1.25 s. One attack
+    at a time (nothing new while marks are still to land), longer pauses between, 46 health (was 54).
+    Goblins summoned, not snarers (a bola held the knight still under the rain). The fight is on foot (the
+    stag waits outside). Arrows in the air and marks die with the Warden. Its name replaces the place's.
+  - **Proved** (tests/wardenfair.js): a bot that only steps out of the way a quarter second after each
+    warning took 0 hits calm and 0 to 1 enraged in 22 s; standing still, 3 to 4 hits in 14 s.
+  - **Living wood**: a new knobbly tube (Geo.sweep) and trunk, root and bough builders (wood.ts): trunks
+    taper, lean, wander and flare at the foot; roots arch out of the bark, run half-sunk, fork and dive in
+    (colliders where they stand high); boughs bow. The Great Tree, the home trees, giant oaks, withered oaks
+    and the Fallen Giant (with a root plate) are built with them; the ring round the hollow is a braid of two
+    great roots with knots, moss and rootlets (collision follows them; no blocky raised cells). Same dice as
+    before, so nothing placed after them moved.
+  - **The way up**: no box-shaped rock towers either side of the stair: two ragged, mossy hills at the
+    heights' edge, the cleft between them (still too high to climb from the stair, even on the stag); the
+    stair a slope of bare rock with roots across it for steps.
+  - **Found on the way**: a black square at the foot of the stair (a face with no area gave a NaN that the bloom
+    smeared); faces with no area are skipped now, and tests/normals.js checks both realms for them.
+
+- 2026-09-30: **Group 20, the north-west made natural** (full suite: 48 reports, all read, no errors) (asked: "I don't really like the north-west, the area
+  around the boss. I don't like those new bushes, they are so weird planted. Go for a more natural look
+  instead of looking so man-made").
+  - **What made it look planted** (overhead map, screenshots, code): dead trees and thorn domes spread evenly
+    on a jittered grid, every clump the same round dome; the heights a flat table with a straight 29 m south
+    edge; square patches of mud; the Great Tree's roots two straight walls round a checkerboard floor, with
+    green pines growing on them; rows of bushes along every cliff lip; a row of brambles along the ravine lip;
+    brambles on an even arc round the stag; the gully's rock masses 8 m boxes with checkerboard tops; the
+    Thorn Heart on a square rock column.
+  - **The land**: the heights' outline lobed (bays and points); mossy rises and a few crags on the plateau (no
+    lone blocks); a spring among mossy stones in the Withered Wood, its stream across the heights and over
+    their south cliff in a small waterfall into a deep plunge pool, then on to the Whisper; the ground in small
+    natural patches (leaf litter under the groves, moss by the water, mud here and there). The rock masses by
+    the gully are grassy, pine-topped knolls rising in broken steps (2.9 m over the gully at their edges),
+    stone jutting from their faces and heaped at their feet.
+  - **Growth** (`src/world/wood.ts`: `witheredOak`, `deadShrub`, `thornCreeper`, `thornClimb`): everything grows
+    in groves and clumps with open ground between (a patch noise gates the whole wood's trees and
+    undergrowth). On the heights: groves of dead trees of every size on the leaf litter, a few great withered
+    oaks alone, dead shrubs, fallen trunks; thorns only where thorns take (at the feet of trees and crags, over
+    the cliff lips in stretches, up the trunks near the Great Tree), creepers running out over the ground from
+    it; thin patchy grass. No green pines in the Withered Wood. Cliff lips everywhere dressed in stretches with
+    long bare runs; the ravine's and the stag's brambles in clumps; thorn scrub in clumps of one to three.
+  - **The Great Tree**: its arena a hollow ringed by two great roots curving out from the trunk and back in,
+    drawn as massive knuckled roots with moss on top and rootlets diving into the ground, their tips at the
+    mouth (grown shut by thorns in the fight); roots snaking over the heights; toadstools and bones in the
+    hollow. No collar block round the trunk (its own roots show).
+  - **The Thorn Heart** now beats in the broken top of a great dead trunk by the stair's foot (split grey bark,
+    jagged splinters, roots gripping the ground, ivy up its east side where it's climbed, thorns coiling
+    round it). Quest text and README updated.
+  - **Found on the way: the Thornstag could leave the world and skip the story.** Its double leap (2.3 m) plus
+    the step-up at the top (0.45 m) reaches 2.75 m, but barriers were built for the knight's 1.5 m. Traced with
+    the reach tool (now given a climb height and a route to any cell): in Whisperwood, up the brook's 2 m far
+    bank beside the thorn road's bridge and out to the world's edge; into the Warden's hold over the lowered
+    rocks and roots, or up the new stream's channel; in the Moonlit Keep, up the 2 m steps of the forest land
+    beyond the north edge to the world's edge. Fixed: the brook's far bank 3 m; the gully's rocks and the
+    arena's roots 2.9 m+; a deep plunge pool under the stream's channel; the Keep's northern forest land at
+    least 3 m over the map's edge. Left as it is: in the Keep the stag can hop the border hills round the thorn
+    hedge to the thorn road (harmless: the pause menu travels to Whisperwood anyway, and the stag is only had
+    after going there). The reach tool also let jumps cross deep water, which the game never allows: fixed.
+  - Checks: new `reachstag` and `reachstag2` (both realms on the stag: no escapes, no story skipped but the
+    known hop); reach and spawns in both realms clean; `hold` (thorns stop a walk, up the ivy to the heart,
+    through, garrison, arena) passes. Screenshots: `shots/nw4-*.png` (trunk, rocks, gully, arena outside and
+    in, the falls, a grove), overhead `shots/map-nw.png` (the map tool takes `&crop=x0,z0,x1,z1` now).
 
 - 2026-09-28: **Group 19, Whisperwood made wild** (asked: "the complexity isn't the same as realm 1, no zones,
   just random structures/groups in the forest; the boss arena is man-made, it should be a wild map; the
