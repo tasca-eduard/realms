@@ -13,7 +13,7 @@ import { FOES } from '../config';
 // ---------- arrows ----------
 
 let arrowGeo: THREE.BufferGeometry | null = null;
-function arrowGeometry() {
+export function arrowGeometry() {
   if (arrowGeo) return arrowGeo;
   const g = new Geo();
   g.box(0, -0.025, 0, 0.62, 0.05, 0.05, '#8a6a48');
@@ -35,7 +35,9 @@ export interface Arrow {
   stuck: number;
   dead: boolean;
   from: Enemy | null;
-  kind: 'arrow' | 'dart';
+  kind: 'arrow' | 'dart' | 'seed' | 'bola';
+  /** Gravity (arrows 6; a spitter's seed is lobbed higher). */
+  grav?: number;
 }
 
 export interface Pot {
@@ -72,6 +74,27 @@ function dartGeometry() {
   g.box(-0.14, -0.03, 0, 0.06, 0.06, 0.06, '#6a9a3a');
   dartGeo = g.build();
   return dartGeo;
+}
+
+let seedGeo: THREE.BufferGeometry | null = null;
+function seedGeometry() {
+  if (seedGeo) return seedGeo;
+  const g = new Geo();
+  g.blob(0, 0, 0, 0.1, 0.08, 0.08, '#6a5a2a', 9);
+  g.box(0.08, -0.01, 0, 0.08, 0.03, 0.03, '#e8f060');
+  seedGeo = g.build();
+  return seedGeo;
+}
+
+let bolaGeo: THREE.BufferGeometry | null = null;
+function bolaGeometry() {
+  if (bolaGeo) return bolaGeo;
+  const g = new Geo();
+  g.box(0, -0.01, 0, 0.6, 0.02, 0.02, '#8a7a5a');
+  g.box(0, -0.01, 0, 0.02, 0.02, 0.6, '#8a7a5a');
+  for (const [x, z] of [[0.3, 0], [-0.3, 0], [0, 0.3]]) g.box(x, -0.05, z, 0.1, 0.1, 0.1, '#5a5a66');
+  bolaGeo = g.build();
+  return bolaGeo;
 }
 
 export interface Wave {
@@ -234,6 +257,29 @@ export class Combat {
     this.g.audio.sfx('blowpipe', sx, sz);
   }
 
+  /** A thorn spitter's seed: lobbed in an arc, hard enough to cost a heart. */
+  spitSeed(from: Enemy, tx: number, ty: number, tz: number) {
+    const sx = from.x + from.fx * 0.35, sy = from.y + 1.1, sz = from.z + from.fz * 0.35;
+    const dx = tx - sx, dz = tz - sz, d = Math.hypot(dx, dz) || 1;
+    const speed = 9, t = d / speed, G = 14;
+    const mesh = new THREE.Mesh(seedGeometry(), this.mat);
+    mesh.castShadow = true;
+    this.g.scene.add(mesh);
+    this.arrows.push({ mesh, x: sx, y: sy, z: sz, vx: (dx / d) * speed, vy: (ty - sy) / t + 0.5 * G * t, vz: (dz / d) * speed, t: 0, stuck: 0, dead: false, from, kind: 'seed', grav: G });
+    this.g.audio.sfx('spit', sx, sz);
+  }
+
+  /** A snarer's bola: whirling, flat, and it holds whatever it wraps. */
+  throwBola(from: Enemy, tx: number, ty: number, tz: number) {
+    const sx = from.x + from.fx * 0.4, sy = from.y + 1.1, sz = from.z + from.fz * 0.4;
+    const dx = tx - sx, dz = tz - sz, d = Math.hypot(dx, dz) || 1;
+    const speed = 11, t = d / speed;
+    const mesh = new THREE.Mesh(bolaGeometry(), this.mat);
+    this.g.scene.add(mesh);
+    this.arrows.push({ mesh, x: sx, y: sy, z: sz, vx: (dx / d) * speed, vy: (ty - sy) / t + 0.5 * 6 * t, vz: (dz / d) * speed, t: 0, stuck: 0, dead: false, from, kind: 'bola' });
+    this.g.audio.sfx('throw', sx, sz);
+  }
+
   /** A pulsing ring on the ground where something is about to land. */
   markTarget(x: number, z: number) {
     const ring = new THREE.Mesh(new THREE.RingGeometry(1.05, 1.3, 32), this.ringMat.clone());
@@ -350,7 +396,7 @@ export class Combat {
       if (f.tick <= 0) {
         f.tick = 1;
         for (const e of g.enemies)
-          if (e.alive && !e.flying && e.type !== 'bomber' && e.type !== 'king' && Math.hypot(e.x - f.x, e.z - f.z) < f.r + e.r * 0.5) e.scorch(1, g);
+          if (e.alive && !e.flying && e.type !== 'bomber' && !e.isBoss && Math.hypot(e.x - f.x, e.z - f.z) < f.r + e.r * 0.5) e.scorch(1, g);
       }
     }
     this.fires = this.fires.filter((f) => {
@@ -428,15 +474,16 @@ export class Combat {
         if (a.stuck <= 0) a.dead = true;
         continue;
       }
-      a.vy -= 6 * dt;
+      a.vy -= (a.grav ?? 6) * dt;
       a.x += a.vx * dt;
       a.y += a.vy * dt;
       a.z += a.vz * dt;
       a.mesh.position.set(a.x, a.y, a.z);
-      a.mesh.rotation.set(0, -Math.atan2(a.vz, a.vx), Math.atan2(a.vy, Math.hypot(a.vx, a.vz)), 'YZX');
+      if (a.kind === 'bola') a.mesh.rotation.set(0, a.t * 22, 0);
+      else a.mesh.rotation.set(0, -Math.atan2(a.vz, a.vx), Math.atan2(a.vy, Math.hypot(a.vx, a.vz)), 'YZX');
       // Player.
       if (p.alive && Math.hypot(p.x - a.x, p.z - a.z) < 0.45 && a.y > p.y && a.y < p.y + 1.7) {
-        const res = a.kind === 'dart' ? g.dartHitsPlayer(a) : g.arrowHitsPlayer(a);
+        const res = a.kind === 'dart' ? g.dartHitsPlayer(a) : a.kind === 'bola' ? g.bolaHitsPlayer(a) : g.arrowHitsPlayer(a);
         if (res !== 'dodged' && res !== 'ignored') {
           a.dead = true;
           if (res === 'blocked' || res === 'parried') {

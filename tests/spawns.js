@@ -1,6 +1,7 @@
 // Every foe, villager and animal starts somewhere sensible: not inside a tent, wall or
 // rock, not in deep water, not standing in a campfire. Bats fly and owls perch, so only
-// fires count for them; Tam starts in his cage and the smith at his forge on purpose.
+// fires count for them; captives start in their cages, the owl on its snag and the smith at
+// his forge on purpose.
 const g = window.__game, grid = g.grid;
 // Fires on the ground (campfires, cooking fires), not torches or braziers up on stands.
 const fires = g.fx.emitters.filter((e) => e.spec?.color?.[0] === 4.5 && e.spec.gravity === -2.2 && e.y - grid.groundAt(e.x, e.z) < 0.5 && e.spread >= 0.3).map((e) => [e.x, e.z]);
@@ -31,7 +32,7 @@ const check = (label, x, z, r = 0.35, { air = false, fireOk = false } = {}) => {
   if (why.length) bad.push(`${label} @${x.toFixed(1)},${z.toFixed(1)}: ${why.join(', ')}`);
 };
 for (const e of g.enemies) check(`${e.type}${e.group ? '/' + e.group : ''}`, e.home.x, e.home.z, 0.35, { air: e.type === 'bat' });
-for (const n of g.npcs) check(`npc ${n.name}`, n.x, n.z, 0.35, { air: n.name === 'Tam', fireOk: n.name === 'Garrow the Smith' });
+for (const n of g.npcs) check(`npc ${n.name}`, n.x, n.z, 0.35, { air: !!n.def.caged || n.def.perch !== undefined, fireOk: n.name === 'Garrow the Smith' });
 for (const c of g.critters) check(`${c.def.kind}`, c.x, c.z, 0.2, { air: c.def.perch !== undefined });
 check('horse', g.horse.x, g.horse.z, 0.55);
 window.__report = () => ({ fires: fires.length, checked: g.enemies.length + g.npcs.length + g.critters.length + 1, bad });

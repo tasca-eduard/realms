@@ -60,6 +60,18 @@ export const EFFECTS = {
   /** Poisoned: stamina refills at this rate, for this long. */
   poisonRegen: 0.5,
   poisonTime: 6,
+  /** Snared (a bola, a snare trap): can't walk, roll or jump for this long; can still swing and block. */
+  snareTime: 1.3,
+  /** A snare trap also bites: this many hearts. */
+  trapBite: 1,
+};
+
+/** Hazards of the realms. */
+export const HAZARDS = {
+  /** The Thorn Ravine: each strip's cycle, the rustle before, and how long the thorns stand. */
+  thornCycle: 3.2,
+  thornWarn: 0.6,
+  thornUp: 0.7,
 };
 
 /** Foes: health, size, speed, sight, reach, wind-up before a blow, coins, and what their hits do. */
@@ -74,4 +86,12 @@ export const FOES = {
   darter: { hp: 2, r: 0.32, speed: 2.7, aggro: 11, reach: 9, windup: 0.7, coins: [2, 4] },
   shaman: { hp: 3, r: 0.34, speed: 2.6, aggro: 10, reach: 8, windup: 1.1, coins: [5, 8], heal: 2, hasteTime: 6, chantRange: 7 },
   king: { hp: 48, r: 0.85, speed: 3.1, aggro: 30, reach: 2.3, windup: 0.6, coins: [0, 0] },
+  // The Old Wood's own.
+  spitter: { hp: 4, r: 0.42, speed: 0, aggro: 10, reach: 1.7, windup: 0.55, coins: [3, 6], cooldown: [1.8, 2.5] },
+  snarer: { hp: 3, r: 0.34, speed: 2.7, aggro: 10.5, reach: 8, windup: 0.85, coins: [3, 5] },
+  thornback: { hp: 8, r: 0.52, speed: 2.3, aggro: 9, reach: 1.2, windup: 0.9, coins: [7, 11], prickStamina: 25 },
+  // The Thorn Warden (the Old Wood's tyrant): keeps its distance and shoots. Volleys fan 3 arrows
+  // (5 enraged); rain marks 5 spots round the knight (7 enraged) that arrows hit after `rainDelay`;
+  // enraged, roots burst under the knight after `rootDelay`. Close in and it swipes.
+  warden: { hp: 54, r: 0.8, speed: 2.7, aggro: 30, reach: 2.4, windup: 0.5, coins: [0, 0], keepAway: 4.8, rainDelay: 0.95, rootDelay: 0.8 },
 } as const;

@@ -42,6 +42,17 @@ if (script) {
   }
 }
 await page.waitForTimeout(Number(wait));
+// AFTER=<a.js,b.js>: scripts for the page after a reload (a border crossing, a save
+// loaded fresh), each run once the reloaded game is ready, AFTER_WAIT ms apart.
+for (const next of (process.env.AFTER ?? '').split(',').filter(Boolean)) {
+  try {
+    await page.waitForFunction(() => window.__ready === true, null, { timeout: 20000 });
+    await page.evaluate(fs.readFileSync(next, 'utf8'));
+  } catch (e) {
+    logs.push(`[script error] ${next}: ${e.message}`);
+  }
+  await page.waitForTimeout(Number(process.env.AFTER_WAIT ?? 3000));
+}
 await page.screenshot({ path: out });
 try {
   const rep = await page.evaluate(() => (window.__report ? window.__report() : undefined));

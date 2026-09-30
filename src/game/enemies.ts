@@ -2,12 +2,12 @@ import * as THREE from 'three';
 import { FOES } from '../config';
 import { P } from '../engine/particles';
 import { clamp } from '../engine/util';
-import { makeArcher, makeBat, makeBoar, makeBomber, makeBrute, makeDarter, makeGoblin, makeKing, makeShaman, type Model } from './models';
+import { makeArcher, makeBat, makeBoar, makeBomber, makeBrute, makeDarter, makeGoblin, makeKing, makeShaman, makeSnarer, makeSpitter, makeThornback, makeWarden, type Model } from './models';
 import type { Game } from './game';
-import type { EnemyType } from '../world/realm1';
+import type { EnemyType } from '../world/realm';
 
 type St = 'idle' | 'alert' | 'chase' | 'windup' | 'strike' | 'recover' | 'hurt' | 'stun' | 'dead' | 'aim' | 'retreat' | 'swoop' | 'paw' | 'charge' | 'return'
-  | 'slam' | 'summon' | 'sleep' | 'wake' | 'jump' | 'flee' | 'chant' | 'blink';
+  | 'slam' | 'summon' | 'sleep' | 'wake' | 'jump' | 'flee' | 'chant' | 'blink' | 'windupM';
 
 interface Spec {
   hp: number;
@@ -93,6 +93,10 @@ export class Enemy {
       : type === 'bomber' ? makeBomber()
       : type === 'darter' ? makeDarter()
       : type === 'shaman' ? makeShaman()
+      : type === 'spitter' ? makeSpitter()
+      : type === 'snarer' ? makeSnarer()
+      : type === 'thornback' ? makeThornback()
+      : type === 'warden' ? makeWarden()
       : makeKing();
     this.fx = -0.7;
     this.fz = -0.7;
@@ -103,7 +107,7 @@ export class Enemy {
       this.hp = this.maxHp = this.spec.hp * 3;
       this.r *= 1.3;
       this.model.rig.scale *= 1.35;
-    } else if (type !== 'king' && Math.random() < 0.08) {
+    } else if (!this.isBoss && Math.random() < 0.08) {
       this.golden = true;
       this.hp = this.maxHp = Math.ceil(this.spec.hp * 1.5);
     }
@@ -111,7 +115,7 @@ export class Enemy {
     this.model.rig.enableSilhouette(new THREE.Color(1.2, 0.32, 0.22), 2);
     this.model.rig.showSilhouette(false);
     if (type === 'bat') this.thief = Math.random() < FOES.bat.thiefChance;
-    if (type === 'king') {
+    if (this.isBoss) {
       this.state = 'sleep';
       this.fx = 1;
       this.fz = 0;
@@ -123,9 +127,13 @@ export class Enemy {
   get alive() {
     return this.state !== 'dead';
   }
+  /** A realm's tyrant (the Goblin King, the Thorn Warden). */
+  get isBoss() {
+    return this.type === 'king' || this.type === 'warden';
+  }
   /** Rough standing height, for attacks from above. */
   get height() {
-    const base = this.type === 'king' ? 2.6 : this.type === 'boar' ? 1.1 : this.type === 'bat' ? 0.5 : this.type === 'archer' ? 1.7 : this.type === 'brute' ? 1.8 : 1.3;
+    const base = this.type === 'king' ? 2.6 : this.type === 'warden' ? 1.8 : this.type === 'boar' || this.type === 'thornback' ? 1.1 : this.type === 'bat' ? 0.5 : this.type === 'archer' ? 1.7 : this.type === 'brute' ? 1.8 : this.type === 'spitter' ? 1.4 : 1.3;
     return base * this.model.rig.scale;
   }
   get solid() {
@@ -211,12 +219,13 @@ export class Enemy {
 
     if (this.state === 'dead') {
       this.deathT += dt;
-      if (this.deathT > (this.type === 'king' ? 3 : 0.9)) this.removed = true;
+      if (this.deathT > (this.isBoss ? 3 : 0.9)) this.removed = true;
       this.render(g, dt);
       return;
     }
 
-    // Knockback.
+    // Knockback (a rooted spitter doesn't budge).
+    if (this.type === 'spitter') this.vx = this.vz = 0;
     if (Math.abs(this.vx) + Math.abs(this.vz) > 0.05) {
       if (this.flying) {
         this.x += this.vx * dt;
@@ -228,10 +237,12 @@ export class Enemy {
     }
 
     if (this.type === 'king') this.bossUpdate(dt, g, d);
+    else if (this.type === 'warden') this.wardenUpdate(dt, g, d);
     else if (this.type === 'bat') this.batUpdate(dt, g, d);
     else if (this.type === 'shaman') this.shamanUpdate(dt, g, d);
-    else if (this.type === 'archer' || this.type === 'bomber' || this.type === 'darter') this.archerUpdate(dt, g, d);
-    else if (this.type === 'boar') this.boarUpdate(dt, g, d);
+    else if (this.type === 'archer' || this.type === 'bomber' || this.type === 'darter' || this.type === 'snarer') this.archerUpdate(dt, g, d);
+    else if (this.type === 'boar' || this.type === 'thornback') this.boarUpdate(dt, g, d);
+    else if (this.type === 'spitter') this.spitterUpdate(dt, g, d);
     else this.meleeUpdate(dt, g, d);
 
     // Keep off each other.
@@ -265,13 +276,13 @@ export class Enemy {
       this.seen = this.alive && p.alive && d < 18 && g.grid.lineClear(p.x, p.z, this.x, this.z, Math.max(p.y, this.y - (this.flying ? 1.3 : 0)) + 0.6);
     }
     rig.showSilhouette(this.seen);
-    rig.setCastShadow(this.type === 'king' || Math.hypot(g.player.x - this.x, g.player.z - this.z) < 16);
+    rig.setCastShadow(this.isBoss || Math.hypot(g.player.x - this.x, g.player.z - this.z) < 16);
     if (rig.silMat) {
       const tel = this.telegraph > 0 ? 0.5 + 0.5 * Math.sin(g.time * 40) : 0;
       rig.silMat.color.setRGB(0.85 + tel * 1.6, 0.12 + tel * 1.3, 0.08 + tel * 0.3);
       rig.silMat.opacity = 0.6 + tel * 0.3;
     }
-    if (this.state !== 'dead' && this.state !== 'stun' && this.state !== 'charge') rig.face(this.fx, this.fz, dt, this.type === 'king' ? 6 : 10);
+    if (this.state !== 'dead' && this.state !== 'stun' && this.state !== 'charge') rig.face(this.fx, this.fz, dt, this.isBoss ? 6 : 10);
     this.model.animate(dt, this.x, this.z, this.state, this.t, g.time);
     const tel = this.telegraph > 0 ? 0.3 + 0.3 * Math.sin(g.time * 40) : 0;
     const dying = this.state === 'dead' ? Math.max(0, 1 - this.deathT * 4) : 0;
@@ -415,13 +426,15 @@ export class Enemy {
         const wind = this.spec.windup / this.tempo;
         this.faceTo(this.type === 'bomber' ? this.potTarget.x : p.x, this.type === 'bomber' ? this.potTarget.y : p.z);
         this.telegraph = this.t > wind - 0.4 ? 1 : 0;
-        if (this.type !== 'bomber') g.aimLine(this);
+        if (this.type !== 'bomber' && this.type !== 'snarer') g.aimLine(this);
+        if (this.type === 'snarer' && Math.random() < dt * 8) g.audio.sfx('bola', this.x, this.z);
         if (this.t >= wind) {
           this.set('strike');
           if (this.type === 'bomber') {
             g.combat.throwPot(this, this.potTarget.x, this.potTarget.y, this.potRing);
             this.potRing = null;
           } else if (this.type === 'darter') g.combat.shootDart(this, p.x, p.y + 0.8, p.z);
+          else if (this.type === 'snarer') g.combat.throwBola(this, p.x + p.vx * 0.2, p.y + 0.6, p.z + p.vz * 0.2);
           else g.shootArrow(this, p.x, p.y + 0.8, p.z);
         }
         break;
@@ -429,7 +442,7 @@ export class Enemy {
       case 'strike':
         if (this.t > 0.3) {
           this.set('chase');
-          this.cooldown = this.type === 'bomber' ? 2.4 + Math.random() : this.type === 'darter' ? 1.6 + Math.random() * 0.6 : 1.3 + Math.random() * 0.8;
+          this.cooldown = this.type === 'bomber' ? 2.4 + Math.random() : this.type === 'darter' ? 1.6 + Math.random() * 0.6 : this.type === 'snarer' ? 2.6 + Math.random() : 1.3 + Math.random() * 0.8;
         }
         break;
       case 'return': {
@@ -658,6 +671,186 @@ export class Enemy {
     }
   }
 
+  /**
+   * The thorn spitter: rooted where it grew. It rears back and spits a hard seed at the
+   * knight, and snaps at anything that comes close.
+   */
+  private spitterUpdate(dt: number, g: Game, d: number) {
+    const p = g.player, spec = FOES.spitter;
+    this.telegraph = 0;
+    switch (this.state) {
+      case 'idle':
+      case 'chase':
+      case 'return':
+      case 'alert':
+        if (!p.alive) break;
+        if (d < spec.reach + 0.3 && this.sees(g, spec.reach + 0.3) && this.cooldown <= 0) {
+          this.faceTo(p.x, p.z);
+          this.set('windup');
+        } else if (this.cooldown <= 0 && this.sees(g, spec.aggro)) {
+          if (this.state === 'idle') g.alert(this);
+          this.faceTo(p.x, p.z);
+          this.set('aim');
+          g.audio.sfx('rustle', this.x, this.z);
+        }
+        break;
+      case 'aim':
+        this.faceTo(p.x, p.z);
+        this.telegraph = this.t > spec.windup - 0.3 ? 1 : 0;
+        if (this.t >= spec.windup / this.tempo) {
+          g.combat.spitSeed(this, p.x + clamp(p.vx * 0.35, -2, 2), p.y + 0.8, p.z + clamp(p.vz * 0.35, -2, 2));
+          this.set('strike');
+          this.cooldown = spec.cooldown[0] + Math.random() * (spec.cooldown[1] - spec.cooldown[0]);
+        }
+        break;
+      case 'windup':
+        // A snap at close range.
+        this.faceTo(p.x, p.z);
+        this.telegraph = this.t > 0.2 ? 1 : 0;
+        if (this.t > 0.4 / this.tempo) {
+          g.audio.sfx('enemySwing', this.x, this.z);
+          if (d < spec.reach + p.r + 0.2 && Math.abs(p.y - this.y) < 1.2) g.enemyHitsPlayer(this, 1, { kb: 6 });
+          this.set('strike');
+          this.cooldown = 0.9;
+        }
+        break;
+      case 'strike':
+        if (this.t > 0.35) this.set('chase');
+        break;
+      case 'hurt':
+        if (this.t > 0.3) this.set('chase');
+        break;
+      case 'stun':
+        if (this.t > 1.3) this.set('chase');
+        break;
+    }
+  }
+
+  /** Where the Warden's next moves come from (enraged it adds roots bursting underfoot). */
+  private wardenMove = 0;
+  /**
+   * The Thorn Warden: keeps its distance and shoots (the prototype's volley, rain and summon),
+   * and swipes with its bow if the knight gets too close. Enraged (half health) it moves and
+   * draws faster, looses more arrows, and makes roots burst under the knight.
+   */
+  private wardenUpdate(dt: number, g: Game, d: number) {
+    const p = g.player, W = FOES.warden;
+    this.telegraph = 0;
+    const sp = this.enraged ? 1.3 : 1;
+    switch (this.state) {
+      case 'sleep':
+        break;
+      case 'wake':
+        this.faceTo(p.x, p.z);
+        if (this.t > 1.3) this.set('chase');
+        break;
+      case 'chase': {
+        this.faceTo(p.x, p.z);
+        if (!p.alive) break;
+        if (d < 2.3 && this.cooldown <= 0.6) {
+          this.set('windupM');
+          break;
+        }
+        if (this.cooldown <= 0) {
+          const moves = this.enraged ? ['volley', 'roots', 'rain', 'volley', 'summon', 'roots'] : ['volley', 'rain', 'volley', 'summon', 'rain'];
+          let m = moves[this.wardenMove++ % moves.length];
+          if (m === 'summon' && this.summoned.filter((e) => e.alive).length >= 2) m = 'volley';
+          this.set(m === 'volley' ? 'aim' : m === 'rain' ? 'windup' : m === 'roots' ? 'slam' : 'summon');
+          break;
+        }
+        // Keep away: back off when the knight closes in, drift closer when he's far, else circle.
+        const dx = p.x - this.x, dz = p.z - this.z;
+        if (d < W.keepAway) this.walk(g, -dx, -dz, this.spec.speed * sp, dt);
+        else if (d > W.keepAway + 3.5) this.walk(g, dx, dz, this.spec.speed * 0.8 * sp, dt);
+        else this.walk(g, -dz, dx, this.spec.speed * 0.45 * sp, dt);
+        break;
+      }
+      case 'windupM':
+        // Too close: a swipe with the bow.
+        this.faceTo(p.x, p.z);
+        this.telegraph = 1;
+        if (this.t > W.windup / sp) {
+          this.set('strike');
+          g.audio.sfx('enemySwing', this.x, this.z);
+          if (d < this.spec.reach + p.r) g.enemyHitsPlayer(this, 1, { kb: 11 });
+        }
+        break;
+      case 'strike':
+        if (this.t > 0.4) {
+          this.set('recover');
+          this.cooldown = Math.max(this.cooldown, 0.9 / sp);
+        }
+        break;
+      case 'aim':
+        // Volley: three arrows fanned at the knight (five enraged).
+        this.faceTo(p.x, p.z);
+        this.telegraph = this.t > 0.3 ? 1 : 0;
+        if (this.t > 0.65 / sp) {
+          const n = this.enraged ? 5 : 3, base = Math.atan2(p.z - this.z, p.x - this.x), reach = Math.max(4, d);
+          for (let k = 0; k < n; k++) {
+            const a = base + (k - (n - 1) / 2) * 0.16;
+            g.combat.shoot(this, this.x + Math.cos(a) * reach, p.y + 0.9, this.z + Math.sin(a) * reach);
+          }
+          this.set('recover');
+          this.cooldown = 1.1 / sp;
+        }
+        break;
+      case 'windup':
+        // Rain: arrows loosed at the sky, marked where they will fall round the knight.
+        this.faceTo(p.x, p.z);
+        this.telegraph = 1;
+        if (this.t > 0.55 / sp) {
+          g.audio.sfx('bow', this.x, this.z);
+          const n = this.enraged ? 7 : 5;
+          const ax = p.x + p.vx * 0.4, az = p.z + p.vz * 0.4;
+          for (let k = 0; k < n; k++) {
+            const a = (k / n) * Math.PI * 2 + Math.random() * 0.5, rr = k === 0 ? 0 : 1.5 + Math.random() * 1.6;
+            g.wardenMark(k === 0 ? ax : ax + Math.cos(a) * rr, k === 0 ? az : az + Math.sin(a) * rr, 'rain', W.rainDelay + k * 0.06);
+          }
+          this.set('recover');
+          this.cooldown = 1.4 / sp;
+        }
+        break;
+      case 'slam':
+        // Roots (enraged only): the bow driven into the floor, roots burst under the knight and
+        // where he is heading.
+        this.telegraph = 1;
+        if (this.t > 0.5) {
+          g.audio.sfx('thorns', this.x, this.z);
+          g.shake(0.35);
+          const ax = p.x + p.vx * 0.5, az = p.z + p.vz * 0.5;
+          g.wardenMark(p.x, p.z, 'roots', W.rootDelay);
+          g.wardenMark(ax + p.vx * 0.3, az + p.vz * 0.3, 'roots', W.rootDelay + 0.25);
+          g.wardenMark(p.x + (Math.random() - 0.5) * 3, p.z + (Math.random() - 0.5) * 3, 'roots', W.rootDelay + 0.5);
+          this.set('recover');
+          this.cooldown = 1.3;
+        }
+        break;
+      case 'summon':
+        this.telegraph = 1;
+        if (this.t > 0.9) {
+          g.bossSummon(this);
+          this.set('recover');
+          this.cooldown = 1.6;
+        }
+        break;
+      case 'recover':
+        if (this.t > 0.5) this.set('chase');
+        break;
+      case 'stun':
+        if (this.t > 1.8) {
+          this.set('chase');
+          this.cooldown = 0.5;
+        }
+        break;
+      case 'hurt':
+        this.set('chase');
+        break;
+      default:
+        this.set('chase');
+    }
+  }
+
   private bossUpdate(dt: number, g: Game, d: number) {
     const p = g.player;
     this.telegraph = 0;
@@ -814,11 +1007,13 @@ export class Enemy {
     }
     let mult = 1;
     if (this.state === 'stun') mult = 1.5;
-    if (this.type === 'boar' && this.state !== 'stun') mult = 0.5;
-    if (this.type === 'king' && this.state !== 'stun') mult = 0.8;
+    if ((this.type === 'boar' || this.type === 'thornback') && this.state !== 'stun') mult = 0.5;
+    // The thornback's thorns prick whatever strikes them, until it's stunned.
+    if (this.type === 'thornback' && this.state !== 'stun') g.thornsPrick(this);
+    if (this.isBoss && this.state !== 'stun') mult = 0.8;
     this.hp -= dmg * mult;
     this.flashT = 0.1;
-    const heavy = this.type === 'king' || this.type === 'boar';
+    const heavy = this.isBoss || this.type === 'boar' || this.type === 'thornback' || this.type === 'spitter';
     this.vx = dx * kb * (heavy ? 0.2 : 1);
     this.vz = dz * kb * (heavy ? 0.2 : 1);
     g.fx.burst(P.spark, this.x - dx * 0.2, this.y + (this.flying ? 0 : 0.8), this.z - dz * 0.2, 6, 3.5, 2);
@@ -828,7 +1023,7 @@ export class Enemy {
       this.die(g);
       return 'hit';
     }
-    if (this.type === 'king') {
+    if (this.isBoss) {
       g.ui.bossHp(this.hp / this.maxHp);
       if (!this.enraged && this.hp < this.maxHp * 0.5) {
         this.enraged = true;
@@ -846,7 +1041,7 @@ export class Enemy {
       this.armorPopT = g.time;
       g.pop(this, 'unflinching', '#c0c0cc');
     }
-    if (!armored && this.state !== 'charge' && this.state !== 'stun' && !(this.type === 'boar' && this.state === 'paw')) {
+    if (!armored && this.state !== 'charge' && this.state !== 'stun' && !((this.type === 'boar' || this.type === 'thornback') && this.state === 'paw')) {
       this.set('hurt');
       this.cooldown = Math.max(this.cooldown, 0.3);
     }
@@ -866,6 +1061,16 @@ export class Enemy {
     if (this.potRing) g.combat.clearMark(this.potRing);
     this.potRing = null;
     this.hasteT = 0;
+  }
+
+  /** Caught in the ravine's thorns. */
+  prick(dmg: number, g: Game) {
+    if (!this.alive || this.state === 'sleep') return;
+    this.hp -= dmg;
+    this.flashT = 0.1;
+    g.fx.burst(P.splinter, this.x, this.y + 0.6, this.z, 6, 1, 1.5);
+    if (this.hp <= 0) this.die(g);
+    else if (this.state === 'idle') this.set('chase');
   }
 
   /** Take fire damage (standing in burning ground). */

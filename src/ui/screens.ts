@@ -1,5 +1,6 @@
 import type { Audio } from '../audio/audio';
 import { keyName } from '../engine/input';
+import { WorldMap, type MapRealm } from './worldmap';
 
 function div(id: string, cls: string, html: string) {
   const e = document.createElement('div');
@@ -41,6 +42,8 @@ export class Screens {
       'screen hidden',
       `<div class="sheet">
         <h2>Paused</h2>
+        <h3>The Eight Realms</h3>
+        <div class="wslot"></div>
         <h3>Journal</h3>
         <div class="journal"></div>
         <div class="row"><span>Master</span><input type="range" min="0" max="100" data-k="master"><span class="val"></span></div>
@@ -88,6 +91,9 @@ export class Screens {
     );
     this.victory = div('victory', 'screen hidden', '<div class="t">The Keep Is Free</div><div class="s"></div><div class="stats"></div>');
     root.append(this.title, this.story, this.pause, this.victory, this.loading);
+    // Clicking a visited realm on the map is the same as its Travel button.
+    this.map = new WorldMap((id) => (this.pause.querySelector(`.btns [data-a="realm:${id}"]`) as HTMLElement | null)?.click());
+    this.pause.querySelector('.wslot')!.replaceWith(this.map.el);
 
     for (const inp of this.pause.querySelectorAll<HTMLInputElement>('input[type=range]')) {
       const k = inp.dataset.k as keyof Audio['vol'];
@@ -116,12 +122,40 @@ export class Screens {
     }
   }
 
+  /** The realm's name under the logo and on the victory screen; a travel card on the loading screen after a border crossing. */
+  setRealm(title: string, victory: string, card: [string, string] | null) {
+    (this.title.querySelector('.sub') as HTMLElement).innerHTML = title;
+    (this.victory.querySelector('.t') as HTMLElement).textContent = victory;
+    if (card) this.loading.innerHTML = `<div class="travel"><span>${card[0]}</span><b>&rarr;</b><span>${card[1]}</span></div>`;
+  }
+
+  private map: WorldMap;
+  setWorldMap(realms: MapRealm[]) {
+    this.map.draw(realms);
+  }
+
   setJournal(html: string) {
     (this.pause.querySelector('.journal') as HTMLElement).innerHTML = html;
   }
 
   onPauseAction(fn: (a: string) => void) {
-    for (const b of this.pause.querySelectorAll<HTMLButtonElement>('[data-a]')) b.addEventListener('click', () => fn(b.dataset.a!));
+    // Delegated: travel buttons are added after this is set up.
+    this.pause.addEventListener('click', (e) => {
+      const b = (e.target as HTMLElement).closest<HTMLElement>('[data-a]');
+      if (b) fn(b.dataset.a!);
+    });
+  }
+
+  /** A button per other realm in the pause menu, between Resume and Quit. */
+  setTravel(realms: { id: string; name: string }[]) {
+    const quit = this.pause.querySelector('.btns [data-a="title"]')!;
+    for (const r of realms) {
+      const b = document.createElement('button');
+      b.className = 'btn';
+      b.dataset.a = `realm:${r.id}`;
+      b.textContent = `Travel to ${r.name}`;
+      quit.before(b);
+    }
   }
 
   hideLoading() {

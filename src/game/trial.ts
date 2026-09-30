@@ -7,21 +7,12 @@ import { PAL, GLOW } from '../world/builder';
 import { Enemy } from './enemies';
 import type { Game } from './game';
 import type { Interactable } from './objects';
-import type { EnemyType } from '../world/realm1';
+import type { TrialDef } from '../world/realm';
 
 /**
- * The Seven Stones: strike the altar, a ring of runes seals the circle, and three
- * waves come. Win and the Knight's Crest is yours.
+ * A realm's relic trial (the Seven Stones in realm 1): strike the altar, a ring of
+ * runes seals the circle, and three waves come. Win and the relic is yours.
  */
-const WAVES: { type: EnemyType; elite?: boolean }[][] = [
-  [{ type: 'goblin' }, { type: 'goblin' }, { type: 'goblin' }],
-  [{ type: 'shield' }, { type: 'shield' }, { type: 'archer' }, { type: 'bomber' }],
-  [{ type: 'brute' }, { type: 'shaman' }, { type: 'goblin' }, { type: 'boar', elite: true }],
-];
-
-/** Coins the stones pay out when the trial is won (about what its foes used to drop). */
-const TRIAL_PURSE = 90;
-
 export class Trial implements Interactable {
   y: number;
   radius = 1.8;
@@ -34,7 +25,12 @@ export class Trial implements Interactable {
   private runeMat: THREE.MeshBasicMaterial;
   readonly R = 6.2;
 
-  constructor(public x: number, public z: number, g: Game) {
+  x: number;
+  z: number;
+  constructor(public def: TrialDef, g: Game) {
+    const { x, z } = def;
+    this.x = x;
+    this.z = z;
     this.y = g.grid.groundAt(x, z);
     // Altar.
     const a = new Geo(), gl = new Geo(true);
@@ -67,20 +63,24 @@ export class Trial implements Interactable {
     g.lights.add(x, this.y + 1.2, z + 0.6, 0x6aa0ff, 3, 5, 0.1);
   }
 
+  private get won() {
+    return this.state === 'won';
+  }
+
   prompt(g: Game) {
-    if (this.state === 'won' || g.save.data.relic) return null;
-    return this.state === 'idle' ? 'Face the trial of the Seven Stones' : null;
+    if (this.won || g.save.data.relics.includes(this.def.relic)) return null;
+    return this.state === 'idle' ? this.def.prompt : null;
   }
 
   interact(g: Game) {
-    if (this.state !== 'idle' || g.save.data.relic) return;
+    if (this.state !== 'idle' || g.save.data.relics.includes(this.def.relic)) return;
     this.state = 'between';
     this.wave = 0;
     this.t = 1.2;
     this.seal(true, g);
     g.audio.sfx('moonfire', this.x, this.z);
-    g.ui.toast('The Seven Stones wake', 'Three waves. Stand your ground.');
-    g.quest('stones', 0);
+    g.ui.toast(...this.def.wake);
+    g.quest(this.def.quest, 0);
   }
 
   private seal(on: boolean, g: Game) {
@@ -112,11 +112,11 @@ export class Trial implements Interactable {
     } else if (this.state === 'wave') {
       if (this.foes.every((e) => !e.alive)) {
         this.wave++;
-        if (this.wave >= WAVES.length) this.win(g);
+        if (this.wave >= this.def.waves.length) this.win(g);
         else {
           this.state = 'between';
           this.t = 2;
-          g.ui.toast(`Wave ${this.wave + 1} of ${WAVES.length}`);
+          g.ui.toast(`Wave ${this.wave + 1} of ${this.def.waves.length}`);
         }
       }
     }
@@ -125,7 +125,7 @@ export class Trial implements Interactable {
   private spawnWave(g: Game) {
     this.state = 'wave';
     this.foes = [];
-    const list = WAVES[this.wave];
+    const list = this.def.waves[this.wave];
     list.forEach((s, i) => {
       const a = (i / list.length) * Math.PI * 2 + this.wave;
       const x = this.x + Math.cos(a) * 3.8, z = this.z + Math.sin(a) * 3.8;
@@ -144,14 +144,13 @@ export class Trial implements Interactable {
   private win(g: Game) {
     this.state = 'won';
     this.seal(false, g);
-    g.save.data.relic = true;
-    g.player.crest = true;
+    g.winRelic(this.def.relic);
     g.audio.sfx('victory');
     g.fx.burst(P.bluespark, this.x, this.y + 1.2, this.z, 50, 5, 3);
     // The old pilgrims' offerings, paid once (the trial's foes drop nothing).
-    g.player.coins += TRIAL_PURSE;
-    g.combat.coins(this.x, this.y + 1, this.z, TRIAL_PURSE, true);
-    g.ui.toast("The Knight's Crest", `Relic won: blocking costs 30% less stamina. The stones give up ${TRIAL_PURSE} coins of old offerings.`, 4.5);
-    g.quest('stones', 1);
+    g.player.coins += this.def.purse;
+    g.combat.coins(this.x, this.y + 1, this.z, this.def.purse, true);
+    g.ui.toast(this.def.win[0], this.def.win[1], 4.5);
+    g.quest(this.def.quest, 1);
   }
 }

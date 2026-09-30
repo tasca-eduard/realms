@@ -1,11 +1,13 @@
 import * as THREE from 'three';
 import { P } from '../engine/particles';
-import { makeHorse, type Model } from './models';
+import { makeHorse, makeStag, type Model } from './models';
 import type { Game } from './game';
 import type { Interactable } from './objects';
 
+export type MountKind = 'horse' | 'stag';
+
 /**
- * The warhorse. Left alone it grazes and wanders near where you left it. Ridden,
+ * A mount: the warhorse, or the Thornstag once it's freed. Left alone it grazes and wanders near where you left it. Ridden,
  * the knight's controls drive it (see Player.updateRiding). It has its own
  * health: hits taken while riding land on the horse first, and if it runs out
  * the knight is thrown and the horse bolts home to recover.
@@ -26,20 +28,26 @@ export class Mount implements Interactable {
   t = 0;
   away = 0;
   private target: { x: number; z: number } | null = null;
-  readonly name = 'Warhorse';
-
-  constructor(x: number, z: number, g: Game) {
+  constructor(x: number, z: number, g: Game, public kind: MountKind = 'horse') {
     this.x = x;
     this.z = z;
     this.y = g.grid.groundAt(x, z);
     this.home = { x, z };
-    this.model = makeHorse();
+    this.model = kind === 'stag' ? makeStag() : makeHorse();
     this.model.rig.addTo(g.scene);
     this.model.rig.face(-0.7, 0.7, 0);
   }
 
+  get name() {
+    return this.kind === 'stag' ? 'Thornstag' : 'Warhorse';
+  }
+  /** Lower case, for sentences ("your warhorse", "the Thornstag"). */
+  get called() {
+    return this.kind === 'stag' ? 'Thornstag' : 'warhorse';
+  }
+
   prompt() {
-    return this.ridden || this.state === 'gone' || this.state === 'flee' ? null : 'Ride the warhorse';
+    return this.ridden || this.state === 'gone' || this.state === 'flee' ? null : `Ride the ${this.called}`;
   }
   interact(g: Game) {
     g.player.mount(this, g);
@@ -53,7 +61,7 @@ export class Mount implements Interactable {
     const dx = this.x - g.player.x || 1, dz = this.z - g.player.z;
     const l = Math.hypot(dx, dz) || 1;
     this.target = { x: this.x + (dx / l) * 14, z: this.z + (dz / l) * 14 };
-    g.audio.sfx('neigh', this.x, this.z);
+    g.audio.sfx(this.kind === 'stag' ? 'bellow' : 'neigh', this.x, this.z);
   }
 
   /** Come to a spot (the knight rested at a moonfire far away). */
@@ -111,7 +119,7 @@ export class Mount implements Interactable {
         if (this.away <= 0) {
           this.arriveAt(this.home.x, this.home.z, g);
           this.model.rig.root.visible = true;
-          g.pop(this, 'your warhorse returns', '#feae34');
+          g.pop(this, `your ${this.called} returns`, '#feae34');
         }
         return;
     }

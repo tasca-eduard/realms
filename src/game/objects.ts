@@ -3,11 +3,13 @@ import { Geo } from '../engine/geo';
 import { glowMaterial, K, worldMaterial } from '../engine/materials';
 import { P, type PSpec, type Emitter } from '../engine/particles';
 import type { LightSource } from '../engine/lights';
-import { PAL, GLOW } from '../world/builder';
+import { Builder, PAL, GLOW } from '../world/builder';
+import { mulberry32 } from '../engine/util';
+import { bramble, WOOD } from '../world/wood';
 import type { Collider } from '../world/grid';
-import { makeVillager, type Model } from './models';
+import { makeOwl, makeStag, makeVillager, type Model } from './models';
 import type { Game } from './game';
-import type { NpcDef } from '../world/realm1';
+import type { NpcDef } from '../world/realm';
 import type { PowerKind } from './player';
 
 const MOONFLAME: PSpec = { color: [2.2, 3.2, 5.5], color2: [0.3, 0.6, 2.2], size: 2, size2: 1, life: 0.7, gravity: -2.4, drag: 2, fadeIn: 0.05 };
@@ -44,9 +46,10 @@ export class Moonfire implements Interactable {
   light: LightSource;
   emitters: Emitter[] = [];
   group: THREE.Group;
-  constructor(public id: string, public name: string, public x: number, public z: number, g: Game) {
+  /** An inn's hearth: always burning, no stone basin of its own. */
+  constructor(public id: string, public name: string, public x: number, public z: number, g: Game, public indoor = false) {
     this.y = g.grid.groundAt(x, z);
-    const hearth = id === 'hearth';
+    const hearth = indoor;
     this.group = hearth
       ? new THREE.Group()
       : meshOf((m) => {
@@ -72,14 +75,14 @@ export class Moonfire implements Interactable {
   setLit(on: boolean, g: Game) {
     this.lit = on;
     for (const e of this.emitters) e.on = on;
-    this.light.intensity = this.id === 'hearth' ? 0 : 14;
-    this.light.on = on && this.id !== 'hearth';
-    this.light.level = on && this.id !== 'hearth' ? 1 : 0;
+    this.light.intensity = this.indoor ? 0 : 14;
+    this.light.on = on && !this.indoor;
+    this.light.level = on && !this.indoor ? 1 : 0;
     void g;
   }
   prompt(g: Game) {
     if (g.enemiesNear(this.x, this.z, 9)) return '!Enemies are near';
-    if (this.id === 'hearth') return 'Rest by the hearth';
+    if (this.indoor) return 'Rest by the hearth';
     return this.lit ? 'Rest at the moonfire' : 'Light the moonfire';
   }
   interact(g: Game) {
@@ -242,8 +245,27 @@ export class Lever implements Interactable {
   pulled = false;
   handle: THREE.Group;
   t = 0;
-  constructor(public id: string, public x: number, public z: number, g: Game) {
+  /** The Thorn Heart's glowing pod (look 'heart'), dimmed once it's torn out. */
+  private pod: THREE.Group | null = null;
+  constructor(public id: string, public x: number, public z: number, g: Game, public look: 'lever' | 'heart' = 'lever') {
     this.y = g.grid.groundAt(x, z);
+    if (look === 'heart') {
+      // A knot of thorn canes round a pulsing pod: the heart that feeds the Warden's thorns.
+      const base = meshOf((m) => {
+        for (let i = 0; i < 7; i++) {
+          const a = (i / 7) * Math.PI * 2;
+          m.beam([Math.cos(a) * 0.7, 0, Math.sin(a) * 0.7], [Math.cos(a + 1.3) * 0.22, 1.2, Math.sin(a + 1.3) * 0.22], 0.07, i % 2 ? WOOD.thorn : WOOD.thornDark, { kind: K.Bark });
+          m.box(Math.cos(a + 0.6) * 0.45, 0.6, Math.sin(a + 0.6) * 0.45, 0.04, 0.14, 0.04, WOOD.thornTip);
+        }
+      });
+      base.position.set(x, this.y, z);
+      this.pod = meshOf((_m, gl) => gl.blob(0, 0, 0, 0.32, 0.4, 0.32, [2.2, 0.4, 2.6], 7, { jitter: 0.15 }));
+      this.pod.position.set(x, this.y + 0.75, z);
+      g.scene.add(base, this.pod);
+      this.handle = new THREE.Group();
+      g.grid.addCollider({ kind: 'c', x, z, r: 0.45, y0: this.y - 1, y1: this.y + 1.2 });
+      return;
+    }
     const base = meshOf((m) => {
       m.box(0, 0, 0, 0.8, 0.5, 0.6, PAL.stoneDark, { kind: K.Brick });
       m.cyl(0, 0.5, 0, 0.18, 0.18, 0.1, 6, PAL.iron);
@@ -263,9 +285,11 @@ export class Lever implements Interactable {
     this.pulled = true;
     this.t = 1;
     this.handle.rotation.x = 0.7;
+    if (this.pod) this.pod.scale.setScalar(0.35);
   }
   prompt() {
-    return this.pulled ? null : 'Pull the winch lever';
+    if (this.pulled) return null;
+    return this.look === 'heart' ? 'Tear out the Thorn Heart' : this.id === 'winch' ? 'Pull the winch lever' : 'Pull the gate lever';
   }
   interact(g: Game) {
     if (this.pulled) return;
@@ -274,10 +298,76 @@ export class Lever implements Interactable {
     g.pullLever();
   }
   update(dt: number) {
+    if (this.pod) {
+      // The heart beats until it's torn out, then shrivels.
+      const beat = this.pulled ? 0.35 * (1 - Math.min(1, this.t)) + 0.35 : 1 + Math.max(0, Math.sin(performance.now() * 0.006)) ** 8 * 0.25;
+      if (this.pulled && this.t < 1) this.t = Math.min(1, this.t + dt * 1.5);
+      this.pod.scale.setScalar(beat);
+      return;
+    }
     if (this.pulled && this.t < 1) {
       this.t = Math.min(1, this.t + dt * 3);
       this.handle.rotation.x = -0.7 + 1.4 * this.t;
     }
+  }
+}
+
+// ---------- a living thorn gate ----------
+
+/**
+ * The Thorn Warden's living gate: a mass of briars grown across a gap `w` wide (along x or z),
+ * closed until something makes it wither. It stands in for a door (the same open/setOpen/update),
+ * so the realm's arena mouth can be one: open, it shrinks into the ground; shut, it grows back.
+ */
+export class ThornGate {
+  open = false;
+  t = 1; // 1 grown, 0 withered
+  y: number;
+  collider: Collider;
+  private group: THREE.Group;
+  constructor(public id: string, public x: number, public z: number, public w: number, public alongX: boolean, g: Game) {
+    this.y = g.grid.groundAt(x, z);
+    this.group = meshOf((m, gl) => {
+      // A tangle, not a fence: canes leaning hard both ways along the gap and arching over,
+      // crossing each other, leaves and berries caught in them.
+      const n = Math.round(w * 2.6);
+      const P = (a: number, o: number, y: number): [number, number, number] => (this.alongX ? [a, y, o] : [o, y, a]);
+      for (let i = 0; i < n; i++) {
+        const u = (i / (n - 1) - 0.5) * w, lean = (i % 2 ? 1 : -1) * (0.8 + Math.random() * 1.2), h = 1.5 + Math.random() * 1.8;
+        const o0 = (Math.random() - 0.5) * 0.9, o1 = (Math.random() - 0.5) * 1.2;
+        const base = P(u, o0, -0.2), top = P(u + lean, o1, h), end = P(u + lean * 1.7, o1 + (Math.random() - 0.5) * 0.6, h * 0.45);
+        const col = i % 3 ? WOOD.thorn : WOOD.thornDark;
+        m.beam(base, top, 0.09 + Math.random() * 0.05, col, { kind: K.Bark });
+        m.beam(top, end, 0.07, col, { kind: K.Bark });
+        for (let k = 1; k < 6; k++) {
+          const f = k / 6, [a0, a1] = f < 0.5 ? [base, top] : [top, end], t = f < 0.5 ? f * 2 : (f - 0.5) * 2;
+          m.box(a0[0] + (a1[0] - a0[0]) * t + 0.07, a0[1] + (a1[1] - a0[1]) * t, a0[2] + (a1[2] - a0[2]) * t, 0.04, 0.15, 0.04, WOOD.thornTip);
+        }
+        if (i % 2 === 0) m.blob(...P(u + lean * 0.5, o0, h * 0.55), 0.5, 0.38, 0.5, i % 4 ? WOOD.leaf : WOOD.leaf2, i * 17 + 3, { kind: K.Leaves, jitter: 0.25 });
+        if (i % 3 === 0) m.box(...P(u + lean * 0.7, o1, h * 0.8), 0.09, 0.09, 0.09, WOOD.berry);
+        if (i % 4 === 0) gl.box(...top, 0.09, 0.09, 0.09, [1.4, 0.3, 1.8], {});
+      }
+    });
+    this.group.position.set(x, this.y, z);
+    g.scene.add(this.group);
+    this.collider = g.grid.addCollider(this.alongX
+      ? { kind: 'b', x0: x - w / 2, z0: z - 0.5, x1: x + w / 2, z1: z + 0.5, y0: this.y - 1, y1: this.y + 6 }
+      : { kind: 'b', x0: x - 0.5, z0: z - w / 2, x1: x + 0.5, z1: z + w / 2, y0: this.y - 1, y1: this.y + 6 });
+  }
+  setOpen(open: boolean, g: Game, instant = false) {
+    if (this.open === open) return;
+    this.open = open;
+    this.collider.on = !open;
+    if (instant) this.t = open ? 0 : 1;
+    g.audio.sfx('thorns', this.x, this.z);
+    if (!instant) g.fx.burst(open ? P.leaf : P.splinter, this.x, this.y + 1, this.z, 24, this.w / 2, 2);
+  }
+  update(dt: number) {
+    const target = this.open ? 0 : 1;
+    this.t += Math.sign(target - this.t) * Math.min(Math.abs(target - this.t), dt * (this.open ? 0.6 : 2.5));
+    const k = this.t * this.t * (3 - 2 * this.t);
+    this.group.scale.set(1, Math.max(0.02, k), 1);
+    this.group.visible = k > 0.03;
   }
 }
 
@@ -455,6 +545,122 @@ export class CrackedWall implements Interactable {
   }
 }
 
+// ---------- the Warden's thorns across a way (a hedge only a charging warhorse breaks) ----------
+
+/**
+ * A hedge of the Old Wood's black thorns grown right across a path. Swords only
+ * scratch it; a warhorse's charge tears through. Broken, it stays broken (saved
+ * with the broken walls).
+ */
+export class ThornHedge implements Interactable {
+  y: number;
+  radius = 3;
+  broken = false;
+  group: THREE.Group;
+  collider: Collider;
+  private holdT = -9;
+  constructor(public id: string, public x: number, public z: number, public alongX: boolean, public w: number, g: Game) {
+    this.y = g.grid.groundAt(x, z);
+    const b = new Builder(g.grid, g.lights, g.fx, mulberry32(id.length * 97 + 13), 1000);
+    // Drawn in its own builder so the whole hedge can vanish when it's torn through.
+    // Two ranks of briar, taller in the middle where the trail ran.
+    for (const rank of [-0.35, 0.35])
+      for (let t = -w / 2; t <= w / 2; t += 0.55) {
+        const j = (Math.random() - 0.5) * 0.3;
+        const bx = alongX ? x + t : x + rank + j, bz = alongX ? z + rank + j : z + t;
+        bramble(b, bx, bz, 1.15 + Math.random() * 0.35, 2.3 + (1 - Math.abs(t) / (w / 2)) * 0.6, Math.random() < 0.35);
+      }
+    this.group = b.finish(g.scene);
+    const hw = w / 2 + 0.2, hd = 0.7;
+    this.collider = g.grid.addCollider(alongX
+      ? { kind: 'b', x0: x - hw, z0: z - hd, x1: x + hw, z1: z + hd, y0: this.y - 2, y1: this.y + 4 }
+      : { kind: 'b', x0: x - hd, z0: z - hw, x1: x + hd, z1: z + hw, y0: this.y - 2, y1: this.y + 4 });
+  }
+  prompt(g: Game) {
+    if (this.broken) return null;
+    const touch = g.input.usingTouch;
+    if (g.player.riding) return touch ? '!Charge (the star button) to break through the thorns' : `!Charge (${g.input.label('special')}) to break through the thorns`;
+    return '!Thorns as thick as a wall. A charging warhorse could break through.';
+  }
+  interact() {}
+  /** A blow that can't cut through. */
+  hold(g: Game, dx: number, dz: number) {
+    g.audio.sfx('guard', this.x, this.z);
+    g.fx.burst(P.splinter, this.x - dx * 0.4, this.y + 1, this.z - dz * 0.4, 6, 2, 2);
+    if (g.time - this.holdT > 2.5) {
+      this.holdT = g.time;
+      g.pop({ x: this.x, y: this.y, z: this.z }, 'the thorns spring back', '#c8b89a');
+    }
+  }
+  smash(g: Game, instant = false) {
+    this.broken = true;
+    this.collider.on = false;
+    g.scene.remove(this.group);
+    if (instant) return;
+    for (let i = 0; i < 40; i++) g.fx.emit(P.splinter, this.x + (Math.random() - 0.5) * this.w, this.y + Math.random() * 2, this.z + (Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 7, 2 + Math.random() * 4, (Math.random() - 0.5) * 7);
+    g.fx.burst(P.leaf, this.x, this.y + 1.2, this.z, 24, this.w / 2, 3);
+  }
+}
+
+// ---------- the Warden's thorns binding a great beast ----------
+
+/**
+ * Knots of thorn-vine holding the Thornstag to the ground. Each blow cuts one (three in
+ * all); the last frees it. The beast stands in the middle, pulling at them.
+ */
+export class Bindings {
+  y: number;
+  left = 3;
+  freed = false;
+  knots: THREE.Group[] = [];
+  beast: Model;
+  collider: Collider;
+  constructor(public id: string, public x: number, public z: number, g: Game) {
+    this.y = g.grid.groundAt(x, z);
+    this.beast = makeStag();
+    this.beast.rig.addTo(g.scene);
+    this.beast.rig.face(0.7, 0.7, 0);
+    for (let k = 0; k < 3; k++) {
+      const a = (k / 3) * Math.PI * 2 + 0.5;
+      const kx = x + Math.cos(a) * 1.3, kz = z + Math.sin(a) * 1.3;
+      const knot = meshOf((m) => {
+        m.blob(0, 0.25, 0, 0.35, 0.3, 0.35, '#35451f', k * 7 + 3, { kind: K.Leaves, jitter: 0.3 });
+        for (let i = 0; i < 6; i++) m.box((Math.random() - 0.5) * 0.5, 0.2 + Math.random() * 0.4, (Math.random() - 0.5) * 0.5, 0.04, 0.12, 0.04, '#e8e2d4');
+        // A cane from the knot up to the stag's flank.
+        m.beam([0, 0.3, 0], [(x - kx) * 0.7, 1.1, (z - kz) * 0.7], 0.05, '#4a5e2a');
+      });
+      knot.position.set(kx, g.grid.groundAt(kx, kz), kz);
+      g.scene.add(knot);
+      this.knots.push(knot);
+    }
+    this.collider = g.grid.addCollider({ kind: 'c', x, z, r: 1.1, y0: this.y - 1, y1: this.y + 2.5 });
+  }
+  /** A blow lands on the knots. */
+  cut(g: Game) {
+    if (this.freed) return;
+    this.left--;
+    const knot = this.knots[this.left];
+    g.scene.remove(knot);
+    g.audio.sfx('thorns', this.x, this.z);
+    g.fx.burst(P.splinter, knot.position.x, knot.position.y + 0.3, knot.position.z, 12, 2, 2);
+    g.fx.burst(P.leaf, knot.position.x, knot.position.y + 0.4, knot.position.z, 8, 1, 2);
+    if (this.left <= 0) this.free(g);
+    else g.pop({ x: this.x, y: this.y, z: this.z }, `${this.left} to go`, '#d8e8a0');
+  }
+  free(g: Game, instant = false) {
+    this.freed = true;
+    this.collider.on = false;
+    for (const k of this.knots) g.scene.remove(k);
+    this.beast.rig.removeFrom(g.scene);
+    if (!instant) g.freeBeast(this);
+  }
+  update(dt: number, g: Game) {
+    if (this.freed) return;
+    this.beast.animate(dt, this.x, this.z, 'rear', (g.time % 3) * 0.3, g.time);
+    this.beast.rig.place(g.cam, this.x, this.y, this.z, this.y, true);
+  }
+}
+
 // ---------- breakables ----------
 
 export class Breakable {
@@ -545,8 +751,9 @@ export class Npc implements Interactable {
   constructor(public def: NpcDef, g: Game) {
     this.x = def.x;
     this.z = def.z;
-    this.y = g.grid.groundAt(def.x, def.z);
-    this.model = makeVillager(def.look);
+    this.y = g.grid.groundAt(def.x, def.z) + (def.perch ?? 0);
+    this.model = def.look === 'owl' ? makeOwl() : makeVillager(def.look);
+    if (def.look === 'owl') this.model.rig.scale = 2.2;
     this.model.rig.addTo(g.scene);
     this.model.rig.face(this.fx, this.fz, 0);
     this.visible = !def.hidden;
@@ -580,11 +787,11 @@ export class Npc implements Interactable {
       this.fz = dz / d;
     }
     this.model.rig.setCastShadow(Math.hypot(p.x - this.x, p.z - this.z) < 16);
-    const caged = this.def.id === 'brother' && g.cage && !g.cage.open;
-    const name = caged ? 'captive' : g.talking === this ? 'talk' : g.victory ? 'cheer' : 'idle';
+    const caged = this.def.caged && g.cage && !g.cage.open;
+    const name = this.def.look === 'owl' ? 'perch' : caged ? 'captive' : g.talking === this ? 'talk' : g.victory ? 'cheer' : 'idle';
     const rig = this.model.rig;
     rig.face(this.fx, this.fz, dt, 6);
     this.model.animate(dt, this.x, this.z, name, this.t, g.time + this.x);
-    rig.place(g.cam, this.x, this.y, this.z, this.y, this.visible);
+    rig.place(g.cam, this.x, this.y, this.z, this.y - (this.def.perch ?? 0), this.visible);
   }
 }

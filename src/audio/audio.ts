@@ -295,6 +295,23 @@ export class Audio {
       case 'rustle':
         this.noiseHit(o(0.25, 0.05), t, 0.2, 'highpass', 2500, 1800, 0.7, 0.3, 0.02);
         break;
+      case 'thorns':
+        this.noiseHit(o(0.7, 0.2), t, 0.18, 'bandpass', 1800, 700, 1.4, 0.8, 0.005);
+        for (let i = 0; i < 4; i++) this.noiseHit(o(0.3, 0.1), t + i * 0.03, 0.06, 'highpass', 3000 + R() * 1500, 2000, 2, 0.4);
+        break;
+      case 'spit':
+        this.tone(o(0.4, 0.1), t, 'sine', 240, 520, 0.08, 0.3);
+        this.noiseHit(o(0.3, 0.1), t, 0.06, 'bandpass', 1200, 1800, 2, 0.4, 0.005);
+        break;
+      case 'bellow': {
+        const d = o(0.5, 0.5);
+        this.tone(d, t, 'sawtooth', 150, 110, 0.7, 0.18, 0.05);
+        this.tone(d, t + 0.05, 'sine', 300, 220, 0.6, 0.15, 0.05);
+        break;
+      }
+      case 'bola':
+        this.noiseHit(o(0.18, 0.05), t, 0.12, 'bandpass', 700 + R() * 300, 900, 3, 0.3, 0.02);
+        break;
       case 'daze':
         this.bell(o(0.5, 0.5), t, 1560, 0.5, 0.18);
         this.bell(o(0.4, 0.5), t + 0.12, 1320, 0.5, 0.12);

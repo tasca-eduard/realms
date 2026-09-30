@@ -1,8 +1,9 @@
 # Eight Realms: The Moonlit Keep
 
-An isometric remake of the first realm of Eight Realms: a knight crosses a moonlit
-countryside, frees a captive, lowers the keep's drawbridge and dethrones the Goblin King.
-It runs in the browser, on desktop and on phones.
+An isometric remake of Eight Realms. Realm 1: a knight crosses a moonlit countryside, frees a
+captive, lowers the keep's drawbridge and dethrones the Goblin King. Realm 2, Whisperwood (the
+prototype's second realm), is reached on foot along the thorn road; see BOARD.md. It runs in the browser, on desktop and
+on phones.
 
 ## Run it
 
@@ -45,6 +46,14 @@ guard rears and stomps, special charges, galloping into foes tramples them. Hits
 the horse first; if its three pips run out you are thrown and it bolts, coming back later.
 It won't go indoors, and it finds you when you rest at a far-off moonfire. Resting heals it.
 
+**The Thornstag** (Whisperwood: cut it free of the Warden's thorns west of the Ring of Oaks;
+once freed it goes with you to every realm): attack gores with its antlers, guard raises a
+thorn shield (knocks arrows and darts away, pricks what's close), special is a thorn burst all
+round, and jump twice to leap again in the air. Whichever beast you rode last is the one that
+comes when you rest at a far-off moonfire.
+
+**Vines** hang down some cliff faces in Whisperwood: hold jump against them to climb.
+
 **Combat details:** hits build energy and a combo; at 5, 10 and 15 hits foes drop 2, 3 or
 4 times the coins. Blocking drains stamina while held; rolling needs stamina ("tired"
 when you're out). A parry stuns, slows time and gives stamina and energy back. Enemies
@@ -64,6 +73,7 @@ remembered on this device). Effects hold still while you read, talk or watch a c
 | **Dazed** | Can't act for about a second (knocked down: a little longer, flat on your back) | Parry the blow, or roll clear of the charge. Once dazed, you can't be dazed again until 3 s after it ends, even if a hit cuts it short |
 | **Burning** | Costs a heart after 1.5 s. The count pauses while you're dazed, so you always get your chance to roll | Roll, or step (or ride) into water, before then |
 | **Poisoned** | Stamina refills at half speed for 6 s | Drink a flask (works at full health and on horseback), or rest |
+| **Snared** | Held fast for about a second: no walking, rolling or jumping, but you can still swing and block. Never on horseback | Wait it out, or drink a flask |
 
 | Foe | Where | What to know |
 | --- | --- | --- |
@@ -77,6 +87,9 @@ remembered on this device). Effects hold still while you read, talk or watch a c
 | **Bog darter** | Sallow Marsh | Blowpipe darts do no damage but **poison** |
 | **Goblin shaman** | Barrow Fields, camp, lodge, courtyard | Chants to heal nearby goblins and make them faster (they glow red), and vanishes when you get close. Kill it first |
 | Goblin King | The great hall | Charges **knock you down**; enraged, he calls in a brute |
+| **Thorn Spitter** | Whisperwood: the grove, the canopy, the ravine | Rooted: rears back and lobs a hard seed where you're heading (a heart), and snaps if you come close |
+| **Snarer** | Whisperwood | Whirls a bola and throws it: it does no damage but leaves you **snared**. A raised shield stops it |
+| **Thornback** | Whisperwood: the grove, the east woods | A boar grown over with thorns: charges like the armored boar, and striking it before it's stunned **pricks** you (a shove, stamina). Parry it or let it charge into a tree first |
 
 Foes that lose you walk back to their posts and heal. Golden foes (rare) drop ten times
 the coins; elites are bigger, tougher and drop a power-up.
@@ -109,8 +122,41 @@ Every number here (health, speed, wind-ups, chances, durations) is in `src/confi
   Wind Boots (double jump), Magnet, Bubble (blocks two hits), Giant Slash. Golden foes
   are rare and drop ten times the coins.
 
-The **journal** in the pause menu lists your quests; the current step of the main quest
-shows at the top right.
+## Whisperwood (realm 2)
+
+- **The Warden's Stone**: where the thorn road comes in over the brook from Blackpine.
+- **Hollowbough**: a village of great home trees round a lake, the Heartpool: doors and lit
+  windows in the trunks, treehouses up in the crowns, lanterns strung between the trees, and the
+  Heart Oak on an island, reached by rope bridges. Alder the Reeve, in the Heart Oak, knows where
+  the Thorn Warden holds out; Moss the innkeeper sells Moon Flasks;
+  Bryony the thorn-smith sharpens swords and, past realm 1's smith, tempers them twice more
+  (levels 4 and 5, +15% each); Ash's sister Wren is missing; the old owl on the snag where the
+  road comes in gives a hint each time you ask.
+- **The Gatherers' Clearing**, past the Whisper on the Blackwater's shore: Wren in a goblin cage.
+- **The Ring of Oaks**, west of the village: a three-wave trial for the Heartwood Seed (one
+  more heart) and 100 coins. Old Nettle lives in the glade south of it.
+- **Moon Shards**: three more, among the fen's pools, up where the vines climb, and on a giant's
+  shelf in the High Canopy that only the rope walk over the Mirror Pool reaches (another heart).
+  A cracked rock under the Overhang hides a niche.
+- **The Warden's Hold**, up the stair by the Overhang: living thorns grow across the gully at
+  the top. Their heart beats on a rock spire by the stair's foot: climb its vines and tear it out,
+  and they wither. Past them, the Warden's grove of dead trees; clear its garrison, and the thorns
+  across the Great Tree's roots draw back. The Thorn Warden waits between the roots: it keeps its
+  distance and shoots, rains arrows on marked spots (move off the glowing rings, or raise your
+  shield), calls in goblins, and when enraged makes roots burst under you.
+- **The Stag's Thicket**: a hollow among mossy rocks in the Deep Wood, where the Warden's keepers
+  guard the bound stag.
+- **The Sea Stair**, past the Withered Wood: the way down to the Sunken Reef (realm 3), blocked for now.
+- **Off the paths**: the Deer Meadow's hunter's stand, the Whisper's Fall into Rookfall, a rock
+  pillar in the chasm a running jump from the rim, the Bat Roost in the north cliff, the Fallen
+  Giant lying across the Whisper, the Drowned Shrine out on the Blackwater's stepping stones, a
+  fallen knight's cairn in the Withered Wood on the Warden's heights, the Mushroom Dell, and the
+  Charcoal Kilns south of the village (goblins have taken them). Each hides a chest.
+
+The **pause menu** has a map of the eight realms (the prototype's): the realms you have been to
+show their land, whether their tyrant has fallen, Moon Shards and chests found, and a click on
+one travels there; the next realm is a rumour, the rest unknown. Below it, the **journal**
+lists your quests; the current step of the main quest shows at the top right.
 
 **Finding your way.** Roads and trodden footpaths link every place with a purpose: the
 village, the camps, the keep, the homestead, the stones, the farms, the ford, the pier
@@ -120,9 +166,10 @@ in Mirrormere, the Hollow) have no path: leave the track to find them.
 Unexplored land stays under mist (fog of war) until you walk near it.
 
 **Saving.** Progress saves on this device (browser storage) whenever something changes
-and when you close or switch away from the tab. It keeps: your coins, flasks and sword,
-the last moonfire you rested at, chests opened, walls broken, shards, the relic, quests,
-explored land, and which placed foes you have defeated: **a cleared area stays cleared**.
+and when you close or switch away from the tab. What the knight carries (coins, flasks, sword,
+relics) goes with him from realm to realm; each realm keeps its own last moonfire, chests
+opened, walls broken, shards, quests, explored land, and which placed foes you have defeated:
+**a cleared area stays cleared**. Saves from before realm 2 (version 1) load with everything kept.
 Foes that were only wounded heal and go back to their posts when you fall. **New journey**
 on the title screen starts over.
 
@@ -140,9 +187,12 @@ src/
   engine/    renderer (low-res pixel pipeline, outlines, bloom, fog, fog of war),
              camera, input, lights, particles, materials, character rigs
   world/     map grid and collision, terrain and water meshes, grass, props,
-             realm1.ts (the whole map, its people, foes and objects),
-             outskirts.ts (the landscape beyond the map edges)
-  game/      game.ts (states, camera, events, boss, saving), player.ts (the knight's
+             realm.ts (what every realm's map provides, shared layout helpers),
+             realm1.ts (the Moonlit Keep: its map, people, foes and objects),
+             realm2.ts (Whisperwood), outskirts.ts (realm 1's land beyond the map edges)
+  game/      game.ts (states, camera, events, boss, saving), realms.ts (the realms: map,
+             outskirts, story, quests, light), story/ (each realm's story moments: levers,
+             cages, cleared groups, special talks, the tyrant), player.ts (the knight's
              moveset and riding), enemies.ts (AI), models.ts (3D characters and their
              animations), objects.ts (chests, moonfires, doors, the cave wall...),
              combat.ts (arrows, waves, pickups, power-ups), mount.ts (the warhorse),
@@ -162,9 +212,11 @@ tests/       scripts for shot.mjs that drive the game
 Add these to the URL while the dev server runs:
 
 - `?play` skips the title and story. Add `&at=78,64` to start at a map position,
-  `&god` for no damage, `&dawn` for the ending light, `&lines=200` to zoom in.
+  `&god` for no damage, `&dawn` for the ending light, `&lines=200` to zoom in,
+  `&realm=forest` to play Whisperwood (`castle` is realm 1).
 - `?play&viewer&anim=attack0&t=0.2` shows every character model in one pose.
-- `?debug` enables keys: G god mode, T teleport to the mouse, 1 to 7 jump to key places.
+- `?debug` enables keys: G god mode, T teleport to the mouse, 1 to 7 jump to key places,
+  N and B cross to the next or previous realm (whether or not it is finished).
 - In the browser console, `__reach()` floods the map from the start the way the knight
   moves and lists anything unreachable and any spot where he could leave the world
   (`__reach(false)` checks before the drawbridge is lowered).
@@ -178,12 +230,17 @@ cutscenes, leaving the window, the victory screen, the music), the economy, menu
 talks by keyboard, a (faked) gamepad, each new foe in a live encounter (these depend on
 chance: a run can miss an effect), effects pausing in dialogs, no stun-locks, foes walking
 home, fire on horseback, the trial's waves, a light-leak soak, the merged character
-meshes, the boss fight and the phone flow. `npm test -- talk pad` runs only the named
+meshes, the boss fight, the phone flow, an old (version-1) save loading with nothing lost,
+and crossing to Whisperwood and back. `npm test -- talk pad` runs only the named
 checks. Screenshots land in `shots/` (not kept).
 
 Two longer checks are left out of `npm test`: `tests/monkey.js` (two minutes of random
 play all over the map, flagging errors, NaN positions, falls through the ground and stuck
 states) and `tests/tour.js` (frame rate and draw calls at 25 stops).
+
+A check that has to follow a reload (a border crossing, a save loaded fresh) names the
+scripts for the reloaded page in `AFTER` (comma-separated, `AFTER_WAIT` ms apart); see the
+`migrate` and `travel` entries in `tools/test-all.mjs`.
 
 One screenshot from the command line:
 

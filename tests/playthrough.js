@@ -20,6 +20,6 @@ at(13000, () => { ku('KeyW'); ku('KeyA'); log.push(['crossed', p.x.toFixed(1), p
   for (const e of g.enemies) if (e.group === 'courtyard' && e.alive) e.die(g); });
 at(18500, () => { log.push(['courtyard', q(), 'door open', g.hallDoor.open]); p.place(30, 18.5, g); });
 at(23000, () => { log.push(['boss awake', g.bossActive, g.boss && g.boss.state]); g.boss.hp = 1; g.boss.takeHit(5, 1, 0, 2, false, g); });
-at(29000, () => { log.push(['after boss', q(), 'state', g.state, 'victory', g.victory, 'saved boss', g.save.data.boss]); press('KeyE'); });
+at(29000, () => { log.push(['after boss', q(), 'state', g.state, 'victory', g.victory, 'saved boss', g.save.data.flags.boss]); press('KeyE'); });
 at(35000, () => { log.push(['back to play', g.state, 'dawn', g.dawn.toFixed(2)]); g.talkTo(g.npc('elder')); log.push(['victory line', document.querySelector('#dialog .who').textContent]); });
 window.__report = () => log;

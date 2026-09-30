@@ -6,7 +6,66 @@ items move to **Done** with the date.
 
 ## In progress
 
-_Nothing right now._
+_Nothing: realm 2 is built. Next up would be realm 3, the Sunken Reef (the Sea Stair waits for it)._
+
+## Realm 2 plan (agreed 2026-09-28)
+
+Realm 2 is **Whisperwood**, the prototype's second realm (source: `C:\Users\Ed\Downloads\eight-realms-source`),
+rebuilt the way realm 1 was: the prototype's tyrant, creature, mount, village, captive, hazard,
+set piece, relic, fortress and arena become places and systems on an open 120 x 120 map, plus
+side content. The realms are neighbouring lands, crossed on foot or by mount; each border opens
+with the beast freed in the realm before (the Warhorse's charge opens the way to Whisperwood).
+**A border needs the right beast, never a beaten tyrant**: you can go back and forth between realms
+whether or not they are finished (asked for on 2026-09-28). For testing: `?realm=forest` in the URL,
+and with `?debug` the keys N and B cross to the next or previous realm from anywhere.
+
+**How the game picks and switches realms**
+- Realm ids follow the prototype: `castle` (the Moonlit Keep), `forest` (Whisperwood), then aqua,
+  desert, ice, lava, storm, void. A registry (`src/game/realms.ts`) lists each realm's map
+  builder, outskirts, story module, quests, palette and borders.
+- One realm is built per page load. Crossing a border saves (current realm + where you arrive)
+  and reloads; the loading screen shows a travel card ("Blackpine → the Old Wood") and the knight
+  comes out at the other end of the same path, without the title screen. A realm build takes
+  about a third of a second, so this stays quick. Tests pick a realm with `?realm=forest`.
+
+**How the save holds several realms (version 2)**
+- Top level: what the knight carries (coins, flasks, sword, relics, freed mounts, deaths, play
+  time, foes felled). Under `realms.<id>`: everything about a place (last moonfire, chests,
+  moonfires lit, lore read, walls broken, shards, felled foes, explored land, quests, story flags).
+- A version-1 save becomes `realms.castle` plus the carried part, keeping every field; the
+  Knight's Crest becomes `relics: ['crest']`. A check writes a real version-1 save and compares
+  every field after loading.
+
+**What moves out of `realm1.ts` and `game.ts`**
+- `src/world/realm.ts` (new): the realm types, and map helpers realm 1 wrote inline: the
+  flat-ground / near-road / clear-of-colliders tests, tree scatter, lantern rows along a road,
+  the detail pass (scatter, lily pads on still water, wildlife, owls on dead trees), water points.
+- `outskirts.ts`: the painter takes each realm's biomes, river, lake and roads instead of
+  realm 1's (realm 1's move into its own spec).
+- `game.ts` keeps the generic flow and hands realm moments to a story module
+  (`src/game/story/castle.ts` now, `forest.ts` later): what levers, cages, doors and cleared
+  groups do, special talks, region triggers, hints, boss intro and death, victory text, what
+  `__reach` opens. Realm data instead of hard-coded realm 1 numbers: the boss arena, arrow slits,
+  chandeliers, camp drums and tavern music, title camera, debug spots, the night palette.
+  Quests become per realm. Goblins and archers get a palette so each realm can recolour them.
+
+**Groups** (each reviewed afterwards; checks recorded under Done)
+- [x] **11 Groundwork.** Done 2026-09-28 (see Done).
+- [x] **12 The way to Whisperwood.** Done 2026-09-28 (see Done).
+- [x] **13 Whisperwood's land.** Done 2026-09-28 (see Done).
+- [x] **14 Whisperwood's foes and hazards.** Done 2026-09-28 (see Done).
+- [x] **15 Climbing and the Thornstag.** Done 2026-09-28 (see Done).
+- [x] **16 People, quests and secrets.** Done 2026-09-28 (see Done).
+- [x] **16b Whisperwood relaid.** Done 2026-09-28 (see Done): woods by zone, a roomier village, a place with
+  a purpose in every part of the map.
+- [x] **17 The Warden's Hold and the Thorn Warden.** Done 2026-09-28 (see Done). Wall of thorn trees, the gate lever on a
+  tree-tower roof, the drawbridge over the thorn moat, the garrison, the arena inside the Great
+  Tree; the boss (arrow volleys, arrow rain on marked spots, summons; enraged, roots burst from the
+  floor), victory and dawn; the sea-cliff stair to realm 3 visible but closed. Checks: the boss
+  fight, a playthrough.
+- [x] **18 Review and balance.** Done 2026-09-28 (see Done). Prices, difficulty (hearts can reach 8 by the end of realm 2),
+  performance and phones in the new realm, the pause-menu world map (the prototype's, filled in as
+  you travel), README. Checks: the full suite in both realms.
 
 ## Backlog
 
@@ -15,7 +74,7 @@ and then reviewed together. "Confirmed" = reproduced in a live game.
 
 ### High
 
-_All done (2026-09-28)._
+_Realm 2 groups above._
 
 ### Medium
 
@@ -32,6 +91,282 @@ _All done (2026-09-28)._
 - [ ] Difficulty and economy: tuned by feel, not playtested.
 
 ## Done
+
+- 2026-09-28: **Group 19, Whisperwood made wild** (asked: "the complexity isn't the same as realm 1, no zones,
+  just random structures/groups in the forest; the boss arena is man-made, it should be a wild map; the
+  big lake is square, like a pool; the cliff edges are empty; the village is boring and man-made: I
+  expected big trees with the houses built in them; the stag should be guarded, and its fence looks
+  man-made").
+  - **Zones** (`zoneAt()` and `ZONES` in realm2.ts, borders wobbled so none is a straight line): the
+    thorn road's verge (birches, bracken, meadow), the Old Grove (moss and leaf litter under the ancient
+    oaks, ferns, moonflowers), Hollowbough, the Deer Meadow (flowers, a few birches), the High Canopy
+    (moss, ferns, glowing fungi in the giants' shade), the East Woods (close pines on rocky ridges),
+    Rookfall's rims and the Thorn Ravine (gravel, stone, dead trees, thorn scrub), the Blackwater's
+    shores (mud, reed beds, birches, drowned trees), the river banks, the Deep Wood (old oaks and pines
+    close together on mossy root mounds, ferns, fungi, fallen trunks), the cut wood round the Charcoal
+    Kilns (stumps, young birches), the withered Warden's heights, mixed woodland between. Each has its
+    own trees, ground, undergrowth and (East Woods, Deep Wood) relief.
+  - **Waters**: the village lake (the Heartpool) has a wavy round shore; it and the Blackwater (new, more
+    ragged outline) shelve: sand, 1.6 m of wadeable shallows, then deep. No sheer pool walls.
+  - **Cliff edges dressed** everywhere: ferns, bushes and stones along every lip, brown roots and moss
+    down the faces the camera sees (not green, so they aren't mistaken for climbable vines), boulders at
+    the feet.
+  - **Hollowbough, a tree village**: four great home trees round the Heartpool (`homeTree` in wood.ts):
+    a lit door in the trunk under a shingled hood, shuttered windows up the bark, a stone chimney, a
+    lantern in the roots; treehouses on platforms in three crowns with rope ladders, rope walks from two
+    of them to the Heart Oak (the Reeve's) on the island, which two rope bridges reach. The inn's tables,
+    the smith's forge and anvil in the roots, Ash's family's garden and woodpile, a gathering fire, a
+    jetty and a boat, lanterns strung between the trees. The box houses and round knolls are gone.
+  - **The Stag's Thicket**: a hollow among mossy rocks in the Deep Wood (open toward its lane, briars
+    spilling over the rocks, a fallen trunk, a dead tree), no ring of hedge; guarded by the Warden's
+    keepers (a snarer, two goblins, a thornback).
+  - **The Warden's Hold, grown not built**: the stair comes up into a gully between two masses of rock;
+    living thorns grow across it (`ThornGate`), fed by the Thorn Heart on a rock spire by the stair's
+    foot (climbed by its vines; the heart beats until torn out, then shrivels and the thorns wither).
+    Beyond, the Warden's grove of dead trees and thorns (the garrison), the Great Tree at the back (a
+    living giant again), and the arena between two great ridges of its roots, a tangle of thorns growing
+    shut across its mouth behind the knight. The pit, drawbridge, tree-tower, gateposts and staves are
+    gone (the drafted hollow tree removed).
+  - Also: the Ring of Oaks' oaks set less evenly; home trees' doors turned toward the camera.
+  - Checks: `hold` rewritten (the thorns stop a walk; up the spire's vines, the heart; through the
+    gully; the garrison; the arena's thorns shut behind; all kept after a reload); `wood` crosses to the
+    Heart Oak's island; `stag` clears the stag's keepers first; `warden` starts inside the new arena.
+    Reach and spawns clean. Frame rate: desktop over 60 everywhere (up to 702k triangles at the village),
+    phone mode 102-184 draw calls, 257k-444k triangles (as before the rework). Screenshots:
+    `shots/g19-*.png` (village), `shots/g19z-*.png` (zones), `shots/g19h-*.png` (stag, hold).
+- 2026-09-28: **Final review of groups 16-19** (asked: "after you are done you must review, find flaws, and fix").
+  Found and fixed: the main quest sent you to the Reeve "on the north-east knoll" (he's in the Heart Oak) and
+  the owl spoke of knolls; the README described the old knolls, drawbridge and tower; the drafted hollow tree
+  was dead code; the thorn gates read as a palisade of straight canes (now a tangle leaning both ways, leaves,
+  berries); the Thorn Heart's spire, the Rook Pillar and the Mirror Pool still looked cut with a ruler (rock
+  shouldering the spire and the pillar, a lobed pool edge); the `hold` check's description. Full suite: 46
+  reports, all read, no errors (`pause` counted 3 music notes after an 8 s stall where it used to see 0: within
+  its own "a handful, not 8 s worth", so not a regression). After the last fixes: reach, spawns and
+  `treasures2` rerun clean; screenshots `shots/g19f-*.png`.
+- 2026-09-28: **Group 18, review and balance.** The pause menu's **map of the eight realms** (the
+  prototype's world map, `src/ui/worldmap.ts`): islands on a pixel sea along a dotted route; realms
+  visited show their land, their tyrant freed or not, shards and chests found, and a click travels there;
+  the next realm is a rumour, the rest "?". **Economy**: Whisperwood paid ~1,560 coins (chests and rewards)
+  against ~770 to spend, so the thorn-smith's tempering costs 400 and 560 (was 330 and 440) and the six
+  biggest chests there are lighter. Check `worldmap` (a two-realm save; states, stats, travel by click).
+  The baseline worktree is removed.
+
+- 2026-09-28: **Group 17, the Warden's Hold and the Thorn Warden.**
+  - **The Thorn Warden** (the prototype's forest tyrant: volley, rain, summon): a giant bone archer grown
+    over with bark and moss, a crown of thorn-antlers, a living-wood longbow with a glowing string. It
+    keeps its distance (backs off inside 4.8 m, circles, closes in past 8.3 m) and shoots: volleys fanned
+    at the knight (3 arrows, 5 enraged); arrow rain on 5 spots round him (7 enraged), each marked by a
+    ring that brightens for 0.95 s before the arrows land (a raised shield stops them); goblins and a
+    snarer called in (shields enraged). Too close, it swipes with the bow. At half health it's enraged:
+    faster, and roots burst under the knight and where he's heading (0.8 s warning, unblockable, they
+    prick foes too). 54 health. `isBoss` now stands for the King or the Warden wherever the code said
+    'king' (no golden or elite rolls, the health bar, heavy knockback, no coin drops, reset to sleep).
+  - **The Warden's Hold**: the hollow Great Tree (a wall of trunk staves round a floor, the half toward
+    the camera vanishing while the knight is inside, its crown fading when it hides him); a ring of
+    thorn-trees open only at the gate; a pit of thorn stakes before the gate with a drawbridge; a
+    tree-tower beside it whose roof lever, reached up its vines, lowers the bridge (quest step 5, saved);
+    the garrison (two shields, two archers, a snarer, a thornback), whose fall opens the tree's door;
+    inside, the arena: the door shuts behind the knight and the Warden wakes. Falling in the fight resets
+    it with the door open (once the garrison is gone). Victory, dawn, quest done.
+  - **The Sea Stair**: past the Withered Wood the heights drop to the sea; a stair cut down the cliff
+    toward the Sunken Reef (realm 3) is blocked by a rockfall, with a sign.
+  - Screenshots: `shots/g17-*.png` (gate, roof, courtyard, the fight calm and enraged, the stair). Fixed
+    from them: the tree's staves were a palisade (now thick enough to read as one trunk); the stair's
+    rock wall hid the sea (removed: deep water either side already keeps the knight on the stair).
+  - Checks (new): `hold` (the gate holds against a walk and a running jump; up the vines, the lever, over
+    the bridge, the garrison, into the tree; after a reload it stays done, the Warden asleep inside) and
+    `warden` (every move seen; 7.7 m kept on average; enraged roots; felled: victory, quest 6, summons
+    gone). Reach and spawns clean in both realms.
+  - Full suite: 45 reports, all read, no errors.
+
+- 2026-09-28: **Group 16b, Whisperwood relaid** (asked: "the village is very crowded; the forest is very
+  dense but basically empty; make every area have a purpose and be beautiful scenery where you can find
+  treasures"). An overhead map tool (`tools/mapview.js`, drawn with `tools/shot.mjs`) showed one even
+  sprinkle of trees edge to edge and purpose zones as islands in it.
+  - **Woods by zone** (`woods()` in realm2.ts, a fixed hash not the dice picking spots): deep only in the
+    East Woods and the Deep Wood round the Stag's Thicket; light under the giants and between places;
+    open over meadows, the grove, the Warden's heights (dead trees only) and along the waters. Meadow grass
+    where it opens. Trees 4,567 to 3,969.
+  - **Hollowbough** half again as big: a rounded pond, knolls of 6.5 m with 6 m rope bridges, houses on the
+    far side of each knoll and open yards (the inn's tables, the smith's anvil and bench, the herb garden),
+    no giant oak on the knolls (two frame the village from the far side), four lanterns on the heart-oak.
+  - **Waters**: the Whisper and the brook bend (the brook's steep far bank follows its line); the Blackwater
+    has bays; Rookfall's tip is wider so the Whisper pours into it (**the Whisper's Fall**: falling drops,
+    faint streaks, spray, a lookout with a lore stone and a chest).
+  - **New places**: the **Deer Meadow** (a herd, two old snares, a hunter's stand with a chest up its
+    ladder); the **High Canopy** as five giants round the **Mirror Pool**, a rope walk from one's top to a
+    shelf on another that only the walk reaches (the canopy shard is there now, a spitter guards it); the
+    **Rook Pillar** (a rock column a running jump from Rookfall's east rim, a chest and a rooks' nest); the
+    **Bat Roost** (a cleft in the East Woods' cliff, two bats, a chest); the **Fallen Giant** (a trunk
+    across the Whisper: a secret way over, a chest in its roots); the **Drowned Shrine** (an island in the
+    Blackwater: a glowing arch, lore, a chest; stepping stones with shallows between); the **Withered
+    Wood** on the Warden's heights (dead trees, thorns, two spitters, Ser Aldric's cairn, lore and a chest);
+    the **Mushroom Dell** (giant glowing mushrooms, a fairy ring round a chest); the **Charcoal Kilns**
+    (smouldering kilns, the burners' hut taken by goblins, a chest, a lane from the road). The **Ring of
+    Oaks** stands in a clear meadow, its oaks set back so the ring and altar read from above.
+  - **Fixes found on the way**: the reach check counted thin posts (bridge rails, lamp posts) as filling a
+    cell, so it called the inn's knoll unreachable (the knight walks the bridge fine); it now ignores posts
+    that thin, and models the knight's running jump (gaps of up to two cells; 7.8 m/s up, gravity 26, 5.2
+    m/s run carry him about 3 m). Realm 1's report is unchanged by both (no new bypass or escape). The
+    heights' pine scatter now keeps clear of foes' posts too (one had landed on a ravine spitter). Deep water
+    stays unjumpable (the Thornstag's leap would otherwise clear rivers and realm 1's moat), so the shrine's
+    stones have shallows between; every step there and onto the Fallen Giant is within PLAYER.stepUp.
+  - Checks: new `treasures2` (each new place reached as a player would, all nine new chests pay: 700 coins,
+    five power-ups); `wood` updated for the new bridge and brook; reach and spawns in both realms clean;
+    the tour at 60 fps everywhere (113-198 draw calls, 262k-482k triangles). Screenshots: `shots/g16b-*.png`,
+    overhead map `shots/map-forest.png`.
+  - Full suite: 43 reports, all read, no errors. `border` once found the warhorse more than 4 m from the
+    knight after the crossing: the game sets it down 2.2 m away and it starts wandering after 5-10 s, so
+    `border` and `travel` now check where it was set down (its home), not where it has ambled to.
+
+- 2026-09-28: **Group 16, people, quests and secrets.**
+  - **Hollowbough's folk** in hooded greens and browns: Alder the Reeve (the way to the Warden: main
+    quest step 2), Moss the innkeeper (flasks), Bryony the thorn-smith, Ash (his sister is missing),
+    Old Nettle in her glade (the stag, the oaks), and the **old owl** on a snag at the foot of the ramp
+    into the village: one hint a talk, the next each time. Built by hand, not with `deadTree` (which
+    rolls the builder's dice and offers the perch to a wild owl).
+  - **The sword past level 3**: the thorn-smith sharpens (levels 1 to 3, as in realm 1) and tempers
+    (level 4 for 330, level 5 for 440; +15% a level, so x1.90 and x2.05). Realm 1's smith still stops at 3.
+  - **A Sister Past the River**: Wren is caged in the Gatherers' Clearing on the Blackwater's shore.
+    Three blows break the cage; she gives a traveller's purse (40) and walks home along the lane;
+    Ash gives his savings (30). Saved: after a reload the cage stays broken and Wren stays home.
+  - **The Ring of Oaks**: a three-wave trial (goblins and a snarer; a shield, an archer, a snarer and a
+    spitter; an elite thornback, a shaman, a goblin and a bomber) for the **Heartwood Seed** (one more
+    heart, filled at once) and 100 coins.
+  - **Secrets**: three Moon Shards (fen, vine ledge, canopy root top: a heart); a niche under the
+    Overhang's rock, walled on three sides and sealed by a cracked rock, with a chest (110, Giant
+    Slash); nine chests in all (the vine ledge, the niche, a root top, the grove, the fen, the gorge
+    rim, the chasm's east bank, the glade, the goblins' hoard), a third lore stone, pots and barrels.
+  - **Main quest** in seven steps: find Hollowbough, talk to the Reeve, cross Rookfall, through the
+    Thorn Ravine, open the Warden's gate (group 17), defeat the Warden, free.
+  - **Fixes**: a goblin at the foot of the Overhang stair started inside the moonfire (found by
+    spawns2 after group 15). The wood's scatter now keeps 1.3 m clear of every foe's and animal's
+    post, so trees and rocks can't land on them however later changes shift the scatter (they had,
+    twice). The spawns check exempts any caged or perched NPC instead of Tam by name.
+  - Checks (new): `folk`, `sister` (with a reload), `oaks`, `secrets2`. Also run: typecheck, reach and
+    spawns in both realms (clean). Screenshots: `shots/g16-*.png` (owl, cage, niche, ring, glade, reeve).
+  - Full suite: 42 reports, all read, no errors. `travel` had checked "no chests at all in Whisperwood" to
+    mean "none of realm 1's"; now that the wood has its own, it checks for realm 1's ids (passes).
+  - For group 18: the Ring of Oaks reads as more forest from above (the crowns hide the ring).
+
+- 2026-09-28: **Group 15, climbing and the Thornstag.**
+  - **The Thornstag** (the prototype's second mount): held in the Warden's thorns in the Stag's Thicket, a
+    ring of briar west of the Ring of Oaks with a lane to it. Three blows cut the three knots; it shakes
+    itself free (quest "The Bound Stag", saved with what the knight carries, so it comes to every realm).
+    On its back: attack gores with the antlers, guard raises a thorn shield (0.9 s: knocks arrows and
+    darts away, pricks what's close), special is a thorn burst (a ring that hits all round and breaks
+    shields), and a second jump in the air. It runs a little slower than the warhorse. Built on the
+    warhorse's frame, so riding, poses and the rider's seat all carry over.
+  - Whichever beast you rode last is the one that finds you at a far-off moonfire.
+  - **Vines** down cliff faces: hold jump against them to climb and step off at the top. Two stone
+    ledges under Whisperwood's northern cliffs (above the Overhang, over the Thorn Ravine) are reached
+    only this way (their treasures come with group 16). `__reach` follows vines.
+  - Review, found and fixed before building: the ledge faces would have sat half a cell off the vines
+    (fractional bounds round outward); the thicket's opening faced away from its lane; after building:
+    one goblin started in a tree the new props had shifted.
+  - Checks: new `stag` (three blows free it, quest and save; gore, shield against an arrow, burst on both
+    sides, double jump 2.2 m against 1.2 m), `vines` (climbs from 2 to 5 onto the ledge; a bare cliff
+    doesn't), `reach2`, `spawns2`, and realm 1's `ride` and `horse`; screenshots of the bound stag and a
+    vined ledge.
+
+- 2026-09-28: **Group 14, Whisperwood's foes and hazards.**
+  - Each realm colours its foes: in the Old Wood the goblins wear the prototype's forest greens and mossy
+    cloth, the skeleton archers are moss-grown with yellow-green eyes (`setFoePalette`).
+  - New foes (numbers in `config.ts`): the **Thorn Spitter** (the prototype's forest creature: rooted,
+    rears back and lobs a hard seed where you're heading, snaps if you come close); the **Snarer** (a
+    goblin with a bola: no damage, but you're **Snared**); the **Thornback** (a boar grown over with
+    thorns: charges like the armored boar, and striking it before it's stunned pricks you, a shove and
+    25 stamina; parry it or let it charge into a tree first).
+  - New effect **Snared** (1.3 s): no walking, rolling, jumping or dashing, but you can swing and block; a
+    flask frees you; never on horseback. HUD row and first-time tip like the others.
+  - Hazards: **snare traps** glinting in the grass beside the paths (a heart and snared; a blow springs one
+    safely); the **Thorn Ravine**'s three strips where thorns rustle, then burst for a moment (a heart and a
+    shove, once per burst; foes caught in them are hurt too).
+  - 35 placed foes: the grove, the canopy, the east woods, both ends of the Rookfall bridge, the lane,
+    the gatherers' clearing, the ravine, the Overhang, the Mossfen. None by the arrival or in the village.
+  - Review, found and fixed: a spitter's seed went through the arrow code and could maim like an arrow
+    (now only real arrows maim); eight foes started touching trees or cliff edges (moved beside the paths).
+  - Checks: new `foes2` (a spitter's seed costs hearts, a snarer's bola snares and the HUD shows it, a
+    thornback pricks unstunned and not stunned, one heart per thorn burst, a trap bites and snares, a
+    blow springs one), `spawns2` (54 checked, none bad); the full suite: 36 checks, all as before in
+    realm 1, no errors.
+
+- 2026-09-28: **Group 13, Whisperwood's land** (no foes or people yet: groups 14 to 16).
+  - The map (`src/world/realm2.ts`), laid out from the prototype's forest level: the thorn road comes over
+    the brook by a stone bridge to the Warden's Stone (south-east); the Old Grove's ancient oaks; Hollowbough,
+    four treehouse knolls round a black pond with the heart-oak on its island, joined by rope bridges; the
+    High Canopy, giant trunks whose roots step up a metre at a time; the east woods and the rope bridge over
+    Rookfall Chasm; the Thorn Ravine, a shelf under the northern cliffs above the Blackwater; the Overhang
+    and its stair; the Warden's Hold round the Great Tree, ringed by thorns (its gate comes in group 17);
+    west, the Ring of Oaks, the herbwife's glade and the Mossfen (no path: found by leaving the track);
+    past the Whisper, the gatherers' clearing. Four moonfires, two signs, two lore stones with the
+    prototype's lines. A green-teal night with a smaller green moon, and a gold-green dawn.
+  - Edges: the Old Wood's heights north and west, the gorge east (the same one as realm 1's), the brook
+    south with a steep far bank; nothing tall on the near sides.
+  - New props: giant oaks, rope bridges (planks over two cells, rails you can't slip between), the Great
+    Tree in the Hold. Giant crowns fade when they stand between the camera and the knight, like roofs.
+  - Review, found and fixed: the crowns hid half the screen (they fade now, and are built from smaller
+    leaf clusters); two village rope bridges ran over dry pond-edge land (an invisible wall under them:
+    moved inward over deep water); the chasm bridge covered one cell, so the knight fell off it (bridges now
+    run along cell boundaries); knoll oaks and lamps stood on bridge landings; a one-cell gap let you round
+    the Blackwater past the ravine; the gorge's rim ran out of the world north and south, and the brook's
+    far bank could be reached round the stone bridge's rail (the rim stops, the bank is steep); two
+    squirrels started inside trunks; the grove and the fen were overgrown; phones get a third fewer trees.
+  - **Also a bug in both realms:** falling into a gorge or chasm could put you back on its floor (you
+    landed there while the fall faded, and that counted as safe footing), then fall again and again. Safe
+    footing is now never below -5.
+  - Checks: new `wood` (across the chasm bridge and a village bridge without dropping; a step off the
+    chasm's edge costs exactly one heart and puts you back on the rim; the brook's far bank can't be
+    reached), `reach2` (Whisperwood: nothing unreachable, no way out), `spawns2`; `reach`, `travel`,
+    `border`, `menutravel`, `death`, `ride`, `horse`, `controls`, `moves` in realm 1; a tour of 18 stops
+    (`tests/tour2.js`: 60 fps, 95 to 164 draw calls, 340k to 590k triangles); screenshots of every area.
+
+- 2026-09-28: **Group 12, the way to Whisperwood**, and travel from the pause menu.
+  - **The pause menu has "Travel to <realm>"** between Resume and Quit (asked for): it crosses to the
+    other realm whether or not either is finished, coming out at your last lit moonfire there (or where
+    the road from here comes in).
+  - **The thorn road** (realm 1's north-east corner): the border hills end at the old lodge and a level
+    shelf runs north along the gorge's rim (the drop on the near side, so nothing hides the knight). A hedge
+    of the Warden's thorns grows right across it: swords and heavy blows only make it spring back; a
+    warhorse's charge tears through, the Goblin King alive or not (kept with the broken walls). Past it
+    the road runs into an arch of thorns lit green-gold from within, the roots of the Great Tree beyond,
+    and over into Whisperwood; the same road brings you back to its mouth. A sign at the lodge, two new
+    lines from the Old Warden (the other warden, the thorns), a quest "The Thorn Road", a region name.
+  - New props (`src/world/wood.ts`): the Warden's briar (green canes, bone-pale thorns, red berries, glowing
+    sap), thickets, the Great Tree.
+  - Review, found and fixed: the thorns were dark brown on dark ground and didn't read (recoloured with the
+    prototype's thorn colours, denser, with glowing sap); the Great Tree, meant as a landmark on the
+    horizon, never showed: in this view a 30 m tree shows only its trunk, and unexplored land is misted
+    (moved to the road's end so its roots, low pods and drifting seeds are in view, and landmarks are never
+    under the mist); at the road's first end the camera could see past the world's edge into black
+    (shortened by 6 m); the Warden's longer talk ran the `talk` check out of time (given 32 s).
+  - Checks: new `border` (hedge holds against a sword and a dash strike, a charge breaks it with the King
+    alive, the road leads to Whisperwood and back to its mouth with the hedge still down), `menutravel`
+    (menu to Whisperwood and back to the lit moonfire); `reach` (125 more reachable cells, nothing
+    unreachable, no way out; before the hedge breaks the border is unreachable, as it should be),
+    `spawns`, `travel`, `talk`, `pad`, `farm`; screenshots of the hedge, the road, the tunnel end.
+
+- 2026-09-28: **Group 11, groundwork for several realms.** Nothing in realm 1 looks or plays differently.
+  - Realm registry (`src/game/realms.ts`): each realm's map, outskirts, story module, quests and light.
+    One realm is built per page load; `?realm=forest` picks one (tests, and a way in before the borders
+    exist); with `?debug`, N and B cross to the next or previous realm. A border crossing saves, fades,
+    reloads with a travel card ("Blackpine → The Old Wood") and comes out at the other end.
+  - Save version 2: what the knight carries at the top, each realm under `realms.<id>`. Version-1 saves
+    migrate with every field kept (the Crest becomes `relics: ['crest']`).
+  - Moved out of `realm1.ts` into `src/world/realm.ts`: the realm types, the ground tests, tree scatter,
+    lantern rows, the detail pass (scatter, lily pads, wildlife, owls). Out of `game.ts` into
+    `src/game/story/castle.ts`: levers, the cage, cleared groups, special talks, region triggers, the
+    King's lines, victory text. Realm data instead of hard-coded numbers: arrow slits, chandeliers, the
+    boss arena, camp drums, the inn's tune, title camera, debug spots, the trial (waves, relic, purse).
+    Quests are per realm. Whisperwood is a bare stub for now (group 13 builds it).
+  - Review: all 30 checks ran; every realm-1 report matches an untouched baseline run (same reachable
+    cells, spawns, rigs, light counts). Found and fixed in my own work: loading a save could stash a blank
+    realm over the loaded one (split `view` from `select`); a crossing could let a late timer or the
+    page-hide save write this realm's data into the next (all writes stop once a crossing starts); the new
+    migration check stood the knight where a thief bat could take coins (moved to the hearth).
+  - Checks: new `migrate` (a real version-1 save, every field compared) and `travel` (to Whisperwood and
+    back: card, arrival, horse, coins, both realms kept). `tools/shot.mjs` takes `AFTER=` scripts to follow
+    a reload. `review.js`, `trial.js` and `playthrough.js` read the new save layout.
 
 - 2026-09-28: Group 10, fresh review (a screenshot tour of every area, a 2-minute random-play soak, reading the flow code). Found and fixed:
   - **High:** pressing E through a conversation restarted it (the press that closed it opened it again), so a keyboard player couldn't leave a talk (or a lore stone) with E. The press that closes a dialog, a reading, the pause menu, the story or the death screen now goes no further; Enter and Space page through talks too, and a pad's A, X or Y confirm as the README says.

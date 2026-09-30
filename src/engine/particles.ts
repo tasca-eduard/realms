@@ -166,6 +166,8 @@ export const P = {
   splinter: { color: [0.35, 0.24, 0.14], size: 1, life: 0.9, gravity: 14, drag: 1.2 },
   leaf: { color: [0.2, 0.26, 0.08], color2: [0.16, 0.14, 0.05], size: 1, life: 6, gravity: 0.5, drag: 1.5, wobble: 0.8 },
   splash: { color: [0.5, 0.65, 0.9], size: 1, life: 0.5, gravity: 10, drag: 1 },
+  /** Water falling over a lip (the Whisper's Fall): long drops, pale at the top. */
+  fall: { color: [0.75, 0.9, 1.25], color2: [0.3, 0.42, 0.7], size: 1, life: 1.3, gravity: 14, drag: 0.2, alpha: 0.8 },
   mote: { color: [0.8, 0.85, 1.2], size: 1, life: 6, wobble: 0.2, gravity: -0.03, alpha: 0.6, fadeIn: 0.3 },
   /** Grave wisps: slow cold lights drifting over the dead. */
   wisp: { color: [1.2, 2.2, 4.2], color2: [0.3, 0.7, 1.8], size: 2, size2: 1, life: 5, wobble: 0.45, gravity: -0.08, drag: 0.8, fadeIn: 0.25 },

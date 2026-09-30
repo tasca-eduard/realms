@@ -6,7 +6,7 @@ const log = {};
 const farm = g.enemies.filter((e) => e.group === 'farm');
 for (const e of farm) e.die(g);
 g['writeSave']();
-const saved = JSON.parse(localStorage.getItem('realms-save')).killed;
+const saved = JSON.parse(localStorage.getItem('realms-save')).realms.castle.killed;
 log.killedSaved = farm.every((e) => saved.includes(e.spawnId));
 setTimeout(() => {
   g['spawnEnemies']();

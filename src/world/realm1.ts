@@ -5,10 +5,11 @@ import { mulberry32, rand, fbm, type Rng } from '../engine/util';
 import { Builder, GLOW, PAL, type Structure } from './builder';
 import { Grid, S, T, NONE } from './grid';
 import { Painter, insidePoly, distLine, sdPoly, type Pt } from './paint';
-import type { CritterDef, CritterKind } from '../game/critters';
-import { MOBILE } from '../config';
+import type { CritterDef } from '../game/critters';
 import { OUTSKIRT_ROAD } from './outskirts';
 import * as D from './details';
+import { bramble, greatTree, thicket } from './wood';
+import { MapKit, dressRealm, forest, wallTorch, waterPoints, type EnemySpawn, type NpcDef, type ObjDef, type RealmData, type RegionDef } from './realm';
 
 // ---------------------------------------------------------------------------
 // Realm 1: the Moonlit Keep.
@@ -18,80 +19,6 @@ import * as D from './details';
 
 export const MAP_W = 120;
 export const MAP_D = 120;
-
-export type EnemyType = 'goblin' | 'shield' | 'archer' | 'bat' | 'boar' | 'brute' | 'bomber' | 'darter' | 'shaman' | 'king';
-
-export interface EnemySpawn {
-  type: EnemyType;
-  x: number;
-  z: number;
-  group?: string;
-  /** Archers that hold position. */
-  guard?: boolean;
-  /** Bigger, tougher, drops a power-up. */
-  elite?: boolean;
-  /** Retired from the realm (kept in the list so later save ids don't shift). */
-  off?: boolean;
-}
-
-export interface NpcDef {
-  id: string;
-  look: string;
-  name: string;
-  x: number;
-  z: number;
-  face?: -1 | 1;
-  lines: string[];
-  /** Extra lines after the captive is rescued. */
-  after?: string[];
-  shop?: 'flask' | 'sword';
-  hidden?: boolean;
-}
-
-export type ObjDef =
-  | { kind: 'moonfire'; id: string; name: string; x: number; z: number }
-  | { kind: 'chest'; id: string; x: number; z: number; rot: number; coins: number; power?: 'fire' | 'wind' | 'magnet' | 'bubble' | 'giant' }
-  | { kind: 'lore'; id: string; x: number; z: number; text: string }
-  | { kind: 'lever'; id: string; x: number; z: number }
-  | { kind: 'drawbridge'; x0: number; z0: number; x1: number; z1: number; deck: number }
-  | { kind: 'cage'; id: string; x: number; z: number }
-  | { kind: 'hallDoor'; x: number; z: number; y: number }
-  | { kind: 'breakable'; x: number; z: number; what: 'pot' | 'crate' | 'barrel' }
-  | { kind: 'windmill'; x: number; z: number }
-  | { kind: 'sign'; x: number; z: number; text: string }
-  | { kind: 'arenaGate'; x: number; z: number; y: number }
-  | { kind: 'shard'; id: string; x: number; z: number }
-  | { kind: 'cracked'; id: string; x: number; z: number; alongX: boolean };
-
-export interface RegionDef {
-  name: string;
-  music: string;
-  test: (x: number, z: number, y: number) => boolean;
-  /** Wind strength and ambience flavour. */
-  amb?: 'fields' | 'village' | 'woods' | 'keep' | 'indoor' | 'road';
-  quiet?: boolean;
-}
-
-export interface RealmData {
-  horse: { x: number; z: number };
-  trial: { x: number; z: number };
-  grid: Grid;
-  builder: Builder;
-  start: { x: number; z: number };
-  enemies: EnemySpawn[];
-  npcs: NpcDef[];
-  objects: ObjDef[];
-  regions: RegionDef[];
-  tavern: Structure;
-  hall: Structure;
-  waterPoints: [number, number][];
-  grassDensity: (x: number, z: number) => number;
-  grassScale: (x: number, z: number) => number;
-  fireflyZones: { x: number; z: number; r: number }[];
-  critters: CritterDef[];
-  /** Things placed once the land beyond the map edge exists. */
-  afterOutskirts: (grid: Grid, b: Builder) => void;
-}
 
 // Key shapes, shared between terrain, props and regions.
 const VILLAGE: Pt[] = [[54, 46], [100, 44], [108, 56], [104, 66], [96, 71], [86, 73], [74, 79], [62, 84], [54, 80], [50, 66]];
@@ -106,6 +33,10 @@ const ROAD_CAMP_WEST: Pt[] = [[93, 27], [84, 22], [76, 18], [68, 15.5], [62, 15]
 const TRAIL_EAST: Pt[] = [[100, 28], [106, 30.5], [113, 30.5], [119.5, 30.5]];
 const TRAIL_LODGE: Pt[] = [[97, 22], [102, 17], [107, 13]];
 const LODGE = { x: 108.5, z: 11.5 };
+// The thorn road: from the lodge north along the gorge's rim, out of the realm into the Old Wood.
+// The Warden's thorns have grown across it; only a charging warhorse breaks through.
+const THORN_ROAD: Pt[] = [[113.6, 14.2], [115.3, 9], [116.2, 3], [116.4, -4], [116.6, -9.8]];
+const HEDGE = { x: 116.5, z: 1.6, w: 11.4 };
 // The Old Warden's homestead, in the meadow inside the stream's bend.
 const HOME = { x: 87.5, z: 95 };
 const BAILEY_ROAD: Pt[] = [[62, 15], [56, 15], [55, 11]];
@@ -269,6 +200,15 @@ export function buildRealm1(builder: Builder): RealmData {
   }, LODGE.x - 8, LODGE.z - 8, LODGE.x + 8, LODGE.z + 8);
   p.path(TRAIL_EAST, 1.6, T.Dirt, 0.4, 14);
   p.path(TRAIL_LODGE, 1.6, T.Dirt, 0.4, 15);
+  // The north-east corner: the border hills end here, and the land runs level out to the
+  // gorge's rim (nothing tall on the near side of the thorn road, so the camera sees it).
+  p.each((x, z, i) => {
+    if (x + z * 0.35 < 112.5) return;
+    grid.h[i] = 2;
+    grid.dir[i] = -1;
+    grid.t[i] = (x * 7 + z * 3) % 5 === 0 ? T.Dirt : T.DarkGrass;
+  }, 110, 0, 120, 9);
+  p.path(THORN_ROAD.slice(0, 4), 1.6, T.Dirt, 0.4, 16);
 
   // Tavern floor.
   p.rect(72, 50, 82, 57, { t: T.Wood, h: 1, noGrass: true });
@@ -318,13 +258,9 @@ export function buildRealm1(builder: Builder): RealmData {
   // ---------- props ----------
   const b = builder;
   const inKnoll = (x: number, z: number) => x > 27 && x < 40 && z > 50 && z < 63;
-  const avoid: Pt[][] = [ROAD_IN, ROAD_WEST, ROAD_NORTH, ROAD_CAMP_WEST, BAILEY_ROAD, BAILEY_ROAD2, TRAIL_EAST, TRAIL_LODGE, ...LANES];
-  const nearRoad = (x: number, z: number, d: number) => avoid.some((l) => distLine(l, x, z) < d);
-  const flatAround = (x: number, z: number, rad: number) => {
-    const h = grid.groundAt(x, z);
-    for (const [dx, dz] of [[rad, 0], [-rad, 0], [0, rad], [0, -rad]]) if (Math.abs(grid.groundAt(x + dx, z + dz) - h) > 0.1) return false;
-    return grid.waterAt(x, z) === NONE;
-  };
+  const kit = new MapKit(grid, [ROAD_IN, ROAD_WEST, ROAD_NORTH, ROAD_CAMP_WEST, BAILEY_ROAD, BAILEY_ROAD2, TRAIL_EAST, TRAIL_LODGE, THORN_ROAD, ...LANES]);
+  const nearRoad = (x: number, z: number, d: number) => kit.nearRoad(x, z, d);
+  const flatAround = (x: number, z: number, rad: number) => kit.flatAround(x, z, rad);
 
   // Blackpine Wood: dense pines, clearings for the camp and trails.
   forest(b, r, 60, 1, 119, 57, 0.33, (x, z) => {
@@ -813,9 +749,7 @@ export function buildRealm1(builder: Builder): RealmData {
   const hall = buildKeep(b, grid, r);
 
   // ---------- nature: stumps, fallen logs, birches, wild flowers ----------
-  const clearOf = (x: number, z: number, rad: number) =>
-    !grid.collidersNear(x, z).some((c) => c.on && (c.kind === 'c' ? Math.hypot(x - c.x, z - c.z) < c.r + rad : x > c.x0 - rad && x < c.x1 + rad && z > c.z0 - rad && z < c.z1 + rad));
-  const room = (x: number, z: number, rad: number) => !nearRoad(x, z, rad + 1.2) && flatAround(x, z, rad) && clearOf(x, z, rad);
+  const room = (x: number, z: number, rad: number) => kit.room(x, z, rad);
   for (const [x, z, len, rot] of [[52, 60.5, 3, 0.3], [12.5, 91, 2.8, 1.2], [49, 107.5, 3.2, 0.1], [70.5, 40, 3, 0.8], [104, 44, 2.6, 2.2], [116, 85.5, 2.5, 1.9], [24.5, 88, 3, 2.6], [58, 94, 2.6, 0.5]] as [number, number, number, number][])
     if (room(x, z, len / 2)) D.fallenLog(b, x, z, len, rot);
   for (const [x, z] of [[66, 44.5], [72.5, 42.5], [78, 44.5], [57.5, 86.5], [26, 91.5], [110, 78.5], [100, 40.5], [64.5, 25.5], [112, 43], [18, 64.5]] as Pt[])
@@ -833,29 +767,8 @@ export function buildRealm1(builder: Builder): RealmData {
   // ---------- roadsides: pebbled edges, and lanterns on the way to the village ----------
   for (const [line, w] of [[ROAD_IN, 2.6], [ROAD_WEST, 2.4], [ROAD_NORTH, 2.2], [ROAD_CAMP_WEST, 2], [TRAIL_EAST, 1.6], [TRAIL_LODGE, 1.6], [GRAVE_PATH, 1.4], ...LANES.map((l) => [l, l === LANE_FARM ? 2 : 1.7])] as [Pt[], number][])
     D.edgeStones(b, grid, line, w);
-  {
-    const at = (line: Pt[], s: number): [number, number, number, number] => {
-      for (let i = 0; i < line.length - 1; i++) {
-        const [ax, az] = line[i], [bx, bz] = line[i + 1], len = Math.hypot(bx - ax, bz - az);
-        if (s <= len) return [ax + ((bx - ax) * s) / len, az + ((bz - az) * s) / len, -(bz - az) / len, (bx - ax) / len];
-        s -= len;
-      }
-      const [x, z] = line[line.length - 1];
-      return [x, z, 0, 1];
-    };
-    const lanterns = (line: Pt[], stops: number[], off: number) =>
-      stops.forEach((s, i) => {
-        const [x, z, nx, nz] = at(line, s);
-        for (const side of i % 2 ? [1, -1] : [-1, 1]) {
-          const lx = x + nx * off * side, lz = z + nz * off * side;
-          if (grid.waterAt(lx, lz) !== NONE || !flatAround(lx, lz, 0.3) || !clearOf(lx, lz, 0.9)) continue;
-          D.postLantern(b, lx, lz);
-          break;
-        }
-      });
-    lanterns(ROAD_IN, [25, 33, 41], 2.1);
-    lanterns(ROAD_WEST, [28], 2);
-  }
+  kit.lanterns(b, ROAD_IN, [25, 33, 41], 2.1);
+  kit.lanterns(b, ROAD_WEST, [28], 2);
 
   // ---------- data ----------
   const enemies: EnemySpawn[] = [
@@ -942,6 +855,8 @@ export function buildRealm1(builder: Builder): RealmData {
         'That warhorse followed you over the bridge before it burned. It will carry you, if you let it.',
         'And if you have a sword to spare: goblins are burning the fields south of my house. Drive them off and I will make it worth your while.',
         'They say the old royal hunting lodge in Blackpine has something living in it now. Something big.',
+        'And past the lodge, black thorns have come up out of the Old Wood, right across the deer trail along the gorge.',
+        "There were two wardens once. I kept the king's road; the other kept the Old Wood. Only a charging warhorse would get through those thorns now.",
       ],
     },
     {
@@ -972,7 +887,7 @@ export function buildRealm1(builder: Builder): RealmData {
       shop: 'sword',
     },
     {
-      id: 'brother', look: 'captive', name: 'Tam', x: 101, z: 26, face: -1, hidden: true,
+      id: 'brother', look: 'captive', name: 'Tam', x: 101, z: 26, face: -1, caged: true,
       lines: ['You came for me? Pip sent you, didn\'t she.', 'Here. I took this off a goblin before they caught me. It is yours.', 'I will run home. Go and knock that crown off his head!'],
     },
     {
@@ -983,7 +898,7 @@ export function buildRealm1(builder: Builder): RealmData {
 
   const objects: ObjDef[] = [
     { kind: 'moonfire', id: 'wayshrine', name: 'Wayshrine', x: 105.5, z: 99.5 },
-    { kind: 'moonfire', id: 'hearth', name: 'Tavern Hearth', x: 73.2, z: 53.3 },
+    { kind: 'moonfire', id: 'hearth', name: 'Tavern Hearth', x: 73.2, z: 53.3, indoor: true },
     { kind: 'moonfire', id: 'rest', name: "Knight's Rest", x: 70, z: 20 },
     { kind: 'moonfire', id: 'gate', name: 'Gate of the Keep', x: 41.5, z: 28.5 },
     { kind: 'lore', id: 'lore1', x: 45.5, z: 79.5, text: 'The keep was built by the first knights, when the moon was young.' },
@@ -1004,6 +919,8 @@ export function buildRealm1(builder: Builder): RealmData {
     { kind: 'shard', id: 's_cave', x: 31.2, z: 55.2 },
     { kind: 'shard', id: 's_gorge', x: 124.3, z: 30.5 },
     { kind: 'cracked', id: 'w_cave', x: 33, z: 59.7, alongX: true },
+    { kind: 'thorns', id: 'w_thorns', x: HEDGE.x, z: HEDGE.z, alongX: true, w: HEDGE.w },
+    { kind: 'sign', x: 114.2, z: 9.6, text: 'North, along the gorge: the Old Wood. (Scratched under it, newer: THE THORNS BITE.)' },
     { kind: 'lore', id: 'lore4', x: 106.8, z: 85.6, text: 'Seven stones for seven kings who kept the road. The eighth stone was never raised.' },
     { kind: 'lever', id: 'winch', x: 56.5, z: 10.2 },
     { kind: 'drawbridge', x0: 47, z0: 23, x1: 51, z1: 26, deck: 4 },
@@ -1031,6 +948,7 @@ export function buildRealm1(builder: Builder): RealmData {
     { name: 'The Hollow', music: 'hall', amb: 'indoor', test: (x, z, y) => x > 30 && x < 36.2 && z > 54 && z < 59.4 && y < 1 },
     { name: 'The Old Lodge', music: 'wilds', amb: 'woods', test: (x, z) => (x - LODGE.x) ** 2 + (z - LODGE.z) ** 2 < 81 },
     { name: 'The Gorge Lookout', music: 'wilds', amb: 'woods', test: (x, z) => x > 115 && z > 24 && z < 37 },
+    { name: 'The Thorn Road', music: 'wilds', amb: 'woods', test: (x, z) => z < 0 || (x + z * 0.35 > 113 && z < 7) },
     { name: 'Riverside', music: 'road', amb: 'road', test: (x, z) => x > 119.5 && z > 58 },
     { name: 'The Raided Farm', music: 'road', amb: 'fields', test: (x, z) => x > 68 && x < 109 && z > 109 },
     { name: 'The Moonlit Keep', music: 'keep', amb: 'keep', test: (x, z) => x > 13 && x < 47 && z > 7 && z < 41 },
@@ -1046,8 +964,6 @@ export function buildRealm1(builder: Builder): RealmData {
     { name: "The King's Road", music: 'road', amb: 'road', test: () => true },
   ];
 
-  const waterPoints: [number, number][] = [];
-  for (let z = 0; z < MAP_D; z += 2) for (let x = 0; x < MAP_W; x += 2) if (grid.water[grid.i(x, z)] !== NONE) waterPoints.push([x + 0.5, z + 0.5]);
 
   const grassDensity = (x: number, z: number) => {
     const y = grid.groundAt(x, z);
@@ -1078,11 +994,29 @@ export function buildRealm1(builder: Builder): RealmData {
   ];
 
   return {
+    id: 'castle',
+    w: MAP_W,
+    d: MAP_D,
     grid,
     builder,
     start: { x: 105.5, z: 105 },
     horse: { x: 103.2, z: 107.2 },
-    trial: { x: 111.5, z: 88 },
+    // The Seven Stones: the last wave is a brute, a shaman, a goblin and an elite boar.
+    trial: {
+      x: 111.5,
+      z: 88,
+      relic: 'crest',
+      quest: 'stones',
+      prompt: 'Face the trial of the Seven Stones',
+      wake: ['The Seven Stones wake', 'Three waves. Stand your ground.'],
+      win: ["The Knight's Crest", 'Relic won: blocking costs 30% less stamina. The stones give up 90 coins of old offerings.'],
+      purse: 90,
+      waves: [
+        [{ type: 'goblin' }, { type: 'goblin' }, { type: 'goblin' }],
+        [{ type: 'shield' }, { type: 'shield' }, { type: 'archer' }, { type: 'bomber' }],
+        [{ type: 'brute' }, { type: 'shaman' }, { type: 'goblin' }, { type: 'boar', elite: true }],
+      ],
+    },
     critters,
     afterOutskirts: (g: Grid, bb: Builder) => {
       // The island in Mirrormere, reached by the hidden shallows.
@@ -1114,6 +1048,38 @@ export function buildRealm1(builder: Builder): RealmData {
       gg.beam([125.1, rim + 0.9, 29], [125.1, rim + 0.9, 32], 0.05, PAL.woodDark, { kind: K.Wood });
       bb.collide({ kind: 'b', x0: 125, z0: 29, x1: 125.3, z1: 32, y0: rim - 1, y1: rim + 1.2 });
       bb.standingTorch(119.2, 28.4);
+      // The thorn road beyond the realm: a level shelf along the gorge's rim, high ground to the
+      // west, running into the thorns and the roots of the Great Tree where the Old Wood begins.
+      // (It stops well short of the world's edge, so the camera never sees past it.)
+      const roadOut = THORN_ROAD.slice(2);
+      new Painter(g).each((x, z, i) => {
+        const d = distLine(roadOut, x + 0.5, z + 0.5);
+        if (g.water[i] !== NONE) return;
+        if (x >= 120 && g.h[i] < 0) return; // the gorge itself
+        if (z > -11.5 && (d < 1.9 || (x >= 117 && x < 122 && g.h[i] > -1))) {
+          g.h[i] = 2;
+          g.t[i] = d < 1.2 ? T.Path : T.DarkGrass;
+          g.dir[i] = -1;
+          g.side[i] = S.Rock;
+        } else if (x < 122) g.h[i] = Math.max(g.h[i], 5);
+      }, 108, -24, 124, 0);
+      new Painter(g).path(roadOut, 1.4, T.Path, 0.4, 17, false);
+      // The end of the road: the thorns close over it in an arch, and grow into a wall past it.
+      thicket(bb, [[112.8, -11.9], [122.4, -11.9]], 2.4, 1.6);
+      for (const s0 of [-1, 1]) for (let k = 0; k < 5; k++) bramble(bb, 116.6 + s0 * (1.7 + k * 0.08), -6.4 - k * 0.9, 1.3, 2.6, k > 2);
+      for (let k = 0; k < 6; k++) {
+        const a = (k / 5) * Math.PI;
+        bramble(bb, 116.6 + Math.cos(a) * 1.5, -10.9, 0.9, 2.2 + Math.sin(a) * 1.2, true);
+      }
+      bb.collide({ kind: 'b', x0: 113.5, z0: -11.2, x1: 115, z1: -6.2, y0: -3, y1: 8 });
+      bb.collide({ kind: 'b', x0: 118.2, z0: -11.2, x1: 122.4, z1: -6.2, y0: -3, y1: 8 });
+      // A green-gold glow deep in the thorns: the Old Wood's light, where the road goes on.
+      bb.lights.add(116.6, 3.2, -11.4, 0xc8e070, 7, 7, 0.25);
+      bb.fx.addEmitter({ x: 116.6, y: 2.8, z: -10.8, rate: 2.5, spec: P.firefly, spread: 1.6, vy: 0.1 });
+      // Brambles creeping along the road, a dead pine, and the Great Tree's roots beyond the thorns.
+      for (const [bx, bz, sc] of [[114.3, -3.5, 1], [118.6, -1.2, 0.8], [114.1, -5.6, 1.2], [118.9, -4.6, 0.9], [119.4, 5.8, 0.8], [112.4, 6.4, 0.9]] as [number, number, number][]) bramble(bb, bx, bz, sc, 1.8);
+      bb.deadTree(113.6, -1.2, 1.1);
+      greatTree(bb, 117, -17.5, 1.25);
       // A goblin fishing camp on the Mirrow's bank, at the end of the lane from the stones.
       new Painter(g).path(LANE_RIVER, 1.7, T.Path, 0.4, 22, false);
       bb.tent(121.4, 100.4, Math.PI / 2, '#5a4a2a');
@@ -1137,55 +1103,32 @@ export function buildRealm1(builder: Builder): RealmData {
         // Nothing solid by people, doors, chests or where foes stand.
         return kind === 'soft' || !posts.some((o) => Math.hypot(x - o.x, z - o.z) < (kind === 'tree' ? 4 : 3));
       };
-      D.dressWorld(bb, g, r, MOBILE ? 0.5 : 1, fits);
-      for (const l of OUTSKIRT_ROAD) D.edgeStones(bb, g, l, 2.6);
-      // Lily pads on all the still water: the lake, the marsh pools, the moat.
-      for (let z = g.oz; z < g.oz + g.d; z += 3)
-        for (let x = g.ox; x < g.ox + g.w; x += 3) {
-          const px = x + r() * 3, pz = z + r() * 3, roll = r();
-          const still = (px < 14 && pz > 76 && pz < 124) || (pz > 104 && px < 62) || (px > 46 && px < 52 && pz < 47);
-          if (!still || roll > (MOBILE ? 0.12 : 0.22) || g.waterAt(px, pz) === NONE) continue;
-          D.lilyPads(bb, px, pz, 3 + Math.floor(r() * 3), 0.9);
-        }
-      // Wildlife all over the realm, not only where it was put by hand.
-      const wild: [CritterKind, number, number[]][] = [
-        ['rabbit', 10, [T.Grass]],
-        ['squirrel', 6, [T.DarkGrass]],
-        ['deer', 4, [T.Grass, T.DarkGrass]],
-        ['fox', 3, [T.Grass, T.Mud, T.Reeds]],
-      ];
-      const clear = (x: number, z: number, r: number) => {
-        const body = { x, y: g.groundAt(x, z), z, r };
-        g.resolve(body, 0.3, true);
-        return Math.hypot(body.x - x, body.z - z) < 0.01;
-      };
-      for (const [kind, n0, ground] of wild) {
-        // Phones get fewer: each animal is several draw calls.
-        const n = MOBILE ? Math.ceil(n0 * 0.5) : n0;
-        let placed = 0;
-        for (let tries = 0; tries < 500 && placed < n; tries++) {
-          const x = 4 + r() * (MAP_W - 8), z = 4 + r() * (MAP_D - 8);
-          if (!ground.includes(g.typeAt(x, z)) || g.waterAt(x, z) !== NONE || insidePoly(VILLAGE, x, z) || !fits(x, z, 'solid')) continue;
-          if (critters.some((c) => c.kind === kind && Math.hypot(c.x - x, c.z - z) < 20) || !clear(x, z, kind === 'deer' ? 0.5 : 0.3)) continue;
-          critters.push({ kind, x, z, area: [x - 4, z - 4, x + 4, z + 4] });
-          placed++;
-        }
-      }
-      // An owl on some of the dead trees, well apart.
-      for (const [px, py, pz] of bb.perches) {
-        const owls = critters.filter((c) => c.kind === 'owl');
-        if (owls.length >= (MOBILE ? 4 : 6)) break;
-        if (px < 2 || pz < 2 || px > MAP_W - 2 || pz > MAP_D - 2 || owls.some((o) => Math.hypot(o.x - px, o.z - pz) < 22)) continue;
-        critters.push({ kind: 'owl', x: px, z: pz, perch: py, area: [0, 0, 0, 0] });
-      }
+      dressRealm(bb, g, r, {
+        w: MAP_W,
+        d: MAP_D,
+        fits,
+        afterScatter: () => {
+          for (const l of OUTSKIRT_ROAD) D.edgeStones(bb, g, l, 2.6);
+        },
+        // Lily pads on all the still water: the lake, the marsh pools, the moat.
+        still: (px, pz) => (px < 14 && pz > 76 && pz < 124) || (pz > 104 && px < 62) || (px > 46 && px < 52 && pz < 47),
+        // Wildlife all over the realm, not only where it was put by hand.
+        wild: [
+          ['rabbit', 10, [T.Grass]],
+          ['squirrel', 6, [T.DarkGrass]],
+          ['deer', 4, [T.Grass, T.DarkGrass]],
+          ['fox', 3, [T.Grass, T.Mud, T.Reeds]],
+        ],
+        noWild: (x, z) => insidePoly(VILLAGE, x, z),
+        critters,
+      });
     },
     enemies,
     npcs,
     objects,
     regions,
-    tavern,
-    hall,
-    waterPoints,
+    structures: { tavern, hall },
+    waterPoints: waterPoints(grid, MAP_W, MAP_D),
     grassDensity,
     grassScale,
     fireflyZones: [
@@ -1195,20 +1138,20 @@ export function buildRealm1(builder: Builder): RealmData {
       { x: 34, z: 76, r: 8 },
       { x: 80, z: 30, r: 14 },
     ],
+    // The keep's towers and gate towers.
+    slits: [[44.4, 7.2, 9.6], [44.4, 7.2, 38.4], [15.6, 7.2, 38.4], [47.9, 6.6, 20.5], [47.9, 6.6, 28.5]],
+    chandeliers: [{ x: 24, z: 18.5, floor: 4 }, { x: 28.5, z: 18.5, floor: 4 }],
+    // The Hall of the Moon Throne. Dust falls from the rafters (x 20..32, z 12..25) when the king crashes.
+    arena: { x0: 16, z0: 10, x1: 32, z1: 27, y: 3.5, summons: [[30, 13], [30, 24]], dust: [20, 12, 9, 12, 13] },
+    drums: { x: 95, z: 27, group: 'camp' },
+    inn: { x: 77, z: 53.5, region: 'The Crescent & Crown' },
+    titleView: { x: 80, z: 66 },
+    viewer: [79, 64.5],
+    debugSpots: [[105.5, 105], [78, 66], [40, 78], [92, 32], [58, 16], [40, 26], [31, 18.5], [115.4, 7]],
+    // The Great Tree, where the thorn road goes: seen from afar, so never under the mist.
+    landmarks: [{ x: 117, z: -17.5, r: 7 }],
+    borders: [{ id: 'thornroad', to: 'forest', arrive: 'thornroad', x: 116.6, z: -9.6, r: 1.4, out: { x: 115.6, z: 6.8, fx: -0.25, fz: 0.97 }, card: ['Blackpine', 'The Old Wood'] }],
   };
-}
-
-function forest(b: Builder, r: Rng, x0: number, z0: number, x1: number, z1: number, density: number, ok: (x: number, z: number) => boolean, kind: 'pine' | 'mixed') {
-  for (let z = z0; z < z1; z += 1.7)
-    for (let x = x0; x < x1; x += 1.7) {
-      if (r() > density * 1.9) continue;
-      const tx = x + r() * 1.5, tz = z + r() * 1.5;
-      if (!ok(tx, tz)) continue;
-      const k = r();
-      if (kind === 'pine' || k < 0.55) b.pine(tx, tz, 0.9 + r() * 0.6);
-      else if (k < 0.8) b.oak(tx, tz, 0.9 + r() * 0.4);
-      else b.bush(tx, tz, 0.9);
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1409,18 +1352,6 @@ function buildWinchHut(b: Builder, grid: Grid, x: number, z: number) {
   for (const [bx, bz] of [[x + 2.4, z + 0.9], [x + 2.5, z + 0.2]] as Pt[]) b.barrel(bx, bz);
   b.crate(x + 2.5, z - 0.6, 0.6);
   grid.addCollider({ kind: 'b', x0: x - 2, z0: z - 1.5, x1: x + 2, z1: z + 1.5, y0: -5, y1: 10 });
-}
-
-/** A torch in an iron bracket on a wall, drawn into the wall's structure so it fades with it. */
-function wallTorch(b: Builder, s: Structure, x: number, y: number, z: number, nx: number, nz: number) {
-  s.core.beam([x - nx * 0.25, y - 0.4, z - nz * 0.25], [x, y - 0.15, z], 0.03, PAL.iron, { kind: K.Metal });
-  s.core.box(x, y - 0.35, z, 0.07, 0.45, 0.07, PAL.woodDark, { kind: K.Wood });
-  s.core.box(x, y - 0.02, z, 0.13, 0.1, 0.13, PAL.iron);
-  s.glow.box(x, y + 0.08, z, 0.1, 0.16, 0.1, GLOW.flame, { kind: 1 });
-  b.fx.addEmitter({ x, y: y + 0.12, z, rate: 14, spec: P.flame, spread: 0.08, vy: 0.4 });
-  b.fx.addEmitter({ x, y: y + 0.2, z, rate: 0.8, spec: P.ember, spread: 0.1, vy: 0.5 });
-  b.lights.add(x + nx * 0.3, y + 0.3, z + nz * 0.3, 0xff9a40, 10, 8, 0.3);
-  b.fires.push({ x, y, z, big: false });
 }
 
 function buildKeep(b: Builder, grid: Grid, r: Rng): Structure {

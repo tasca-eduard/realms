@@ -11,4 +11,4 @@ const iv = setInterval(() => {
   log.push(`${t.state}:${t.wave}`);
   if (t.state === 'wave') for (const e of g.enemies) if (e.group === 'trial' && e.alive) e.die(g);
 }, 700);
-window.__report = () => { clearInterval(iv); return { states: [...new Set(log)], relic: g.save.data.relic, crest: g.player.crest, quest: g.save.data.quests.stones }; };
+window.__report = () => { clearInterval(iv); return { states: [...new Set(log)], relic: g.save.data.relics.includes('crest'), crest: g.player.crest, quest: g.save.data.quests.stones }; };

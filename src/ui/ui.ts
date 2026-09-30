@@ -158,6 +158,7 @@ export class UI {
       maim: ['Maimed', '#ff8a8a', '<path d="M2 0h2v4h2v2H1V5h1z"/><path fill="#c02020" d="M5 1h1v1H5zM6 2h1v1H6z"/>'],
       daze: ['Dazed', '#fff0a0', '<path d="M1 1h1v1H1zM5 0h1v1H5zM3 3h1v1H3zM0 5h1v1H0zM5 5h1v1H5zM2 6h1v1H2z"/>'],
       burn: ['Burning', '#ff9a50', '<path d="M3 0h1v1h1v2h1v3H5v1H2V6H1V3h1V1h1z"/><path fill="#ffe080" d="M3 4h1v2H3z"/>'],
+      snare: ['Snared', '#d8c8a0', '<path d="M1 1h5v1H1zM0 2h1v3H0zM6 2h1v3H6zM1 5h5v1H1zM3 3h1v4H3z"/>'],
       poison: ['Poisoned', '#9ef07a', '<path d="M2 0h3v1h1v3H5v1H2V4H1V1h1z"/><path fill="#15132a" d="M2 2h1v1H2zM4 2h1v1H4z"/><path d="M2 6h1v1H2zM4 6h1v1H4z"/>'],
     };
     const on = Object.keys(ICONS).filter((k) => left[k] > 0);

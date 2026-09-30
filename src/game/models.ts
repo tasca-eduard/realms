@@ -404,6 +404,7 @@ function knightPose(r: Rig, a: Anim) {
 
 // ---------- goblins ----------
 
+/** The goblins' colours (switched per realm, see setFoePalette). */
 const GOB = { skin: '#5a9e3a', skinDark: '#3b6b2a', skinLight: '#8ccf5a', cloth: '#733e39', clothDark: '#4a2622', leather: '#6a4a2a', eye: [1.5, 1.1, 0.2] as [number, number, number] };
 
 function goblinBody(r: Rig, opts: { king?: boolean } = {}) {
@@ -677,7 +678,8 @@ function goblinPose(r: Rig, a: Anim, shield: boolean) {
 
 // ---------- skeleton archer ----------
 
-const BONE = '#d8d0b8', BONE_D = '#a89f88', HOOD = '#4a3f7a', HOOD_D = '#342c5c';
+/** The skeleton archers' colours (switched per realm, see setFoePalette). */
+const ARCH = { bone: '#d8d0b8', boneD: '#a89f88', hood: '#4a3f7a', hoodD: '#342c5c', eye: [3.4, 0.5, 0.5] as [number, number, number] };
 
 export function makeArcher(): Model {
   const r = new Rig({ shadow: 0.6 });
@@ -692,37 +694,37 @@ export function makeArcher(): Model {
   r.joint('armL', 'torso', 0.22, 0.46, 0);
   r.joint('handL', 'armL', 0, -0.5, 0);
   const leg = (g: Geo) => {
-    g.box(0, -0.82, 0, 0.07, 0.82, 0.07, BONE);
-    g.box(0, -0.45, 0, 0.1, 0.07, 0.1, BONE_D);
-    g.box(0, -0.82, 0.04, 0.1, 0.05, 0.18, BONE_D);
+    g.box(0, -0.82, 0, 0.07, 0.82, 0.07, ARCH.bone);
+    g.box(0, -0.45, 0, 0.1, 0.07, 0.1, ARCH.boneD);
+    g.box(0, -0.82, 0.04, 0.1, 0.05, 0.18, ARCH.boneD);
   };
   r.part('legR', leg);
   r.part('legL', leg);
   r.part('hips', (g) => {
-    g.box(0, -0.1, 0, 0.3, 0.12, 0.16, BONE_D);
-    g.box(0, -0.35, 0.02, 0.36, 0.4, 0.24, HOOD_D);
+    g.box(0, -0.1, 0, 0.3, 0.12, 0.16, ARCH.boneD);
+    g.box(0, -0.35, 0.02, 0.36, 0.4, 0.24, ARCH.hoodD);
   });
   r.part('torso', (g) => {
-    g.box(0, 0, 0, 0.06, 0.55, 0.06, BONE);
-    for (let i = 0; i < 4; i++) g.box(0, 0.18 + i * 0.08, 0.02, 0.3 - i * 0.02, 0.035, 0.18, BONE);
-    g.box(0, 0.4, 0, 0.42, 0.14, 0.24, HOOD);
+    g.box(0, 0, 0, 0.06, 0.55, 0.06, ARCH.bone);
+    for (let i = 0; i < 4; i++) g.box(0, 0.18 + i * 0.08, 0.02, 0.3 - i * 0.02, 0.035, 0.18, ARCH.bone);
+    g.box(0, 0.4, 0, 0.42, 0.14, 0.24, ARCH.hood);
   });
   r.part('cloak', (g) => {
-    g.box(0, -0.75, 0, 0.42, 0.75, 0.04, HOOD_D);
-    g.box(-0.14, -0.9, 0, 0.1, 0.15, 0.04, HOOD_D);
-    g.box(0.12, -0.85, 0, 0.1, 0.1, 0.04, HOOD_D);
+    g.box(0, -0.75, 0, 0.42, 0.75, 0.04, ARCH.hoodD);
+    g.box(-0.14, -0.9, 0, 0.1, 0.15, 0.04, ARCH.hoodD);
+    g.box(0.12, -0.85, 0, 0.1, 0.1, 0.04, ARCH.hoodD);
   });
   r.part('head', (g, gl) => {
-    g.box(0, 0, 0, 0.24, 0.26, 0.26, BONE);
-    g.box(0, -0.06, 0.04, 0.18, 0.08, 0.2, BONE_D);
+    g.box(0, 0, 0, 0.24, 0.26, 0.26, ARCH.bone);
+    g.box(0, -0.06, 0.04, 0.18, 0.08, 0.2, ARCH.boneD);
     g.box(0, 0.08, 0.131, 0.18, 0.07, 0.01, '#140c14');
-    for (const s of [-1, 1]) gl.box(s * 0.055, 0.1, 0.135, 0.04, 0.04, 0.01, [3.4, 0.5, 0.5]);
+    for (const s of [-1, 1]) gl.box(s * 0.055, 0.1, 0.135, 0.04, 0.04, 0.01, ARCH.eye);
     // Hood.
-    g.box(0, 0.12, -0.04, 0.32, 0.22, 0.32, HOOD);
-    g.box(0, -0.08, -0.12, 0.32, 0.22, 0.12, HOOD);
-    for (const s of [-1, 1]) g.box(s * 0.15, -0.04, 0.02, 0.03, 0.24, 0.24, HOOD);
+    g.box(0, 0.12, -0.04, 0.32, 0.22, 0.32, ARCH.hood);
+    g.box(0, -0.08, -0.12, 0.32, 0.22, 0.12, ARCH.hood);
+    for (const s of [-1, 1]) g.box(s * 0.15, -0.04, 0.02, 0.03, 0.24, 0.24, ARCH.hood);
   });
-  const arm = (g: Geo) => g.box(0, -0.5, 0, 0.06, 0.5, 0.06, BONE);
+  const arm = (g: Geo) => g.box(0, -0.5, 0, 0.06, 0.5, 0.06, ARCH.bone);
   r.part('armR', arm);
   r.part('armL', arm);
   r.part('handL', (g) => {
@@ -820,9 +822,12 @@ export function makeBat(): Model {
 
 // ---------- armored boar ----------
 
-export function makeBoar(): Model {
+interface BoarLook { body: string; dark: string; light: string; armor: string; armorD: string; spikes: string; thorny?: boolean }
+const ARMORED_BOAR: BoarLook = { body: '#6b4a3a', dark: '#4a3226', light: '#8a6a58', armor: '#8b9bb4', armorD: '#5a6680', spikes: '#c8ccd8' };
+
+export function makeBoar(look: BoarLook = ARMORED_BOAR): Model {
   const r = new Rig({ shadow: 1.2 });
-  const body = '#6b4a3a', dark = '#4a3226', light = '#8a6a58', armor = '#8b9bb4', armorD = '#5a6680';
+  const { body, dark, light, armor, armorD } = look;
   r.joint('body', 'root', 0, 0.62, 0);
   r.joint('head', 'body', 0, -0.05, 0.58);
   r.joint('legFR', 'body', -0.2, -0.28, 0.36);
@@ -835,7 +840,16 @@ export function makeBoar(): Model {
     g.box(0, 0.2, -0.05, 0.68, 0.14, 0.9, armor);
     g.box(-0.33, -0.05, -0.05, 0.05, 0.3, 0.86, armorD);
     g.box(0.33, -0.05, -0.05, 0.05, 0.3, 0.86, armorD);
-    for (let i = 0; i < 4; i++) g.cyl(0, 0.34, -0.35 + i * 0.25, 0.06, 0, 0.14, 4, '#c8ccd8');
+    if (look.thorny) {
+      // A hedge of thorns down the back and flanks, bone-pale at the tips.
+      for (let i = 0; i < 18; i++) {
+        const t = (i % 6) / 5, side = Math.floor(i / 6) - 1;
+        g.push().translate(side * 0.2, 0.3 - Math.abs(side) * 0.08, -0.45 + t * 0.85).rotateZ(-side * 0.5).rotateX(-0.3);
+        g.cyl(0, 0, 0, 0.05, 0, 0.3, 4, armorD);
+        g.box(0, 0.26, 0, 0.03, 0.08, 0.03, look.spikes);
+        g.pop();
+      }
+    } else for (let i = 0; i < 4; i++) g.cyl(0, 0.34, -0.35 + i * 0.25, 0.06, 0, 0.14, 4, look.spikes);
     g.box(0, 0.05, 0.45, 0.2, 0.22, 0.3, dark);
     g.box(0, -0.05, -0.62, 0.05, 0.05, 0.2, dark);
   });
@@ -895,6 +909,132 @@ function boarPose(r: Rig, a: Anim) {
       break;
     }
   }
+}
+
+
+// ---------- each realm's colours for its goblins, archers and beasts ----------
+
+/** Realm 1's colours, kept so a realm can switch back. */
+const CASTLE_GOB = { ...GOB };
+const CASTLE_ARCH = { ...ARCH };
+/** The Old Wood's goblins (the prototype's forest greens, mossy cloth) and its moss-grown archers. */
+const FOREST_GOB = { skin: '#7ab04a', skinDark: '#4a7a2a', skinLight: '#a8d870', cloth: '#4a5a2a', clothDark: '#2e3a1a', leather: '#5a3a26', eye: [2.4, 2.6, 0.5] as [number, number, number] };
+const FOREST_ARCH = { bone: '#c8c8a0', boneD: '#8a9068', hood: '#2f5a2e', hoodD: '#1f3d20', eye: [2.6, 2.8, 0.6] as [number, number, number] };
+
+/** Colour the foes built from now on for a realm (called before any are made). */
+export function setFoePalette(realm: string) {
+  Object.assign(GOB, realm === 'forest' ? FOREST_GOB : CASTLE_GOB);
+  Object.assign(ARCH, realm === 'forest' ? FOREST_ARCH : CASTLE_ARCH);
+}
+
+// ---------- the Old Wood's own foes ----------
+
+/**
+ * The Thorn Spitter: a rooted pod on a thorny stem that rears back and spits hard seeds,
+ * and snaps at anything that comes close. It never moves.
+ */
+export function makeSpitter(): Model {
+  const r = new Rig({ shadow: 0.7 });
+  const body = '#4a8a3a', dark = '#2f5a26', mouth = '#e43b44', spike = '#e8f060';
+  r.joint('stem', 'root', 0, 0.1, 0);
+  r.joint('head', 'stem', 0, 0.85, 0);
+  r.joint('jaw', 'head', 0, -0.02, 0.12);
+  r.joint('base', 'root', 0, 0, 0);
+  r.part('base', (g) => {
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      g.push().translate(Math.cos(a) * 0.3, 0.06, Math.sin(a) * 0.3).rotateY(-a).rotateZ(0.5);
+      g.box(0, 0, 0, 0.5, 0.06, 0.2, i % 2 ? body : dark, { kind: K.Leaves });
+      g.pop();
+    }
+    g.blob(0, 0.05, 0, 0.26, 0.14, 0.26, '#5a3a26', 3, { flatBottom: true });
+  });
+  r.part('stem', (g) => {
+    g.cyl(0, 0, 0, 0.1, 0.08, 0.9, 6, dark, { kind: K.Leaves });
+    for (let i = 0; i < 4; i++) g.box(0.1 * (i % 2 ? 1 : -1), 0.2 + i * 0.18, 0, 0.1, 0.03, 0.03, spike);
+  });
+  r.part('head', (g, gl) => {
+    g.blob(0, 0.15, -0.05, 0.3, 0.26, 0.32, body, 7, { detail: 1 });
+    g.box(0, 0.05, 0.14, 0.34, 0.1, 0.2, dark);
+    for (let i = 0; i < 5; i++) g.box(-0.2 + i * 0.1, 0.42, -0.08, 0.04, 0.12, 0.04, spike);
+    // The upper lip and its teeth; the eyes above.
+    g.box(0, 0.08, 0.28, 0.28, 0.06, 0.12, mouth);
+    for (let i = 0; i < 4; i++) g.box(-0.09 + i * 0.06, 0.03, 0.33, 0.025, 0.06, 0.025, '#e8e2d4');
+    for (const s of [-1, 1]) gl.box(s * 0.1, 0.24, 0.24, 0.05, 0.05, 0.02, [2.6, 2.8, 0.6]);
+  });
+  r.part('jaw', (g) => {
+    g.box(0, -0.06, 0.12, 0.26, 0.06, 0.22, body);
+    g.box(0, -0.02, 0.14, 0.22, 0.03, 0.16, mouth);
+    for (let i = 0; i < 4; i++) g.box(-0.09 + i * 0.06, 0.0, 0.22, 0.025, 0.06, 0.025, '#e8e2d4');
+  });
+  return new Model(r, (rig, a) => {
+    const sway = Math.sin(a.time * 1.6) * 0.08;
+    rig.j('stem').rotation.z = sway;
+    rig.j('stem').rotation.x = 0;
+    rig.j('head').rotation.x = 0;
+    rig.j('jaw').rotation.x = 0.1 + Math.max(0, Math.sin(a.time * 3)) * 0.1;
+    switch (a.name) {
+      case 'aim':
+      case 'windup': {
+        const k = ease(seg(a.t, 0, 0.35));
+        rig.j('stem').rotation.x = -0.45 * k;
+        rig.j('head').rotation.x = -0.3 * k;
+        rig.j('jaw').rotation.x = 0.6 * k;
+        break;
+      }
+      case 'strike': {
+        const k = 1 - ease(seg(a.t, 0, 0.3));
+        rig.j('stem').rotation.x = 0.35 * k;
+        rig.j('head').rotation.x = 0.2 * k;
+        rig.j('jaw').rotation.x = 0.8 * k;
+        break;
+      }
+      case 'hurt':
+        rig.j('stem').rotation.x = -0.4 * Math.max(0, 1 - a.t * 4);
+        break;
+      case 'stun':
+        rig.j('stem').rotation.z = Math.sin(a.time * 8) * 0.3;
+        break;
+      case 'dead': {
+        const k = easeOut(seg(a.t, 0, 0.5));
+        rig.j('stem').rotation.x = 1.3 * k;
+        rig.j('jaw').rotation.x = 0.5 * k;
+        break;
+      }
+    }
+  }, 0.6);
+}
+
+/** The snarer: a goblin with a coil of rope and a bola, whose throws hold you fast. */
+export function makeSnarer(): Model {
+  const r = new Rig({ shadow: 0.7 });
+  goblinBody(r);
+  r.part('head', (g) => {
+    // A hood of netting.
+    g.box(0, 0.16, -0.04, 0.46, 0.2, 0.42, '#6a6040', { kind: K.Cloth });
+    for (let i = 0; i < 4; i++) g.box(-0.18 + i * 0.12, 0.1, 0.19, 0.02, 0.2, 0.02, '#8a7a5a');
+  });
+  r.part('torso', (g) => {
+    // A coil of rope across the chest.
+    for (let i = 0; i < 3; i++) g.box(0, 0.12 - i * 0.06, 0.15, 0.42, 0.04, 0.05, '#8a7a5a');
+  });
+  r.part('handR', (g) => {
+    g.box(0, -0.2, 0, 0.02, 0.4, 0.02, '#8a7a5a');
+    g.blob(0.08, -0.42, 0, 0.07, 0.07, 0.07, '#5a5a66', 5);
+    g.blob(-0.08, -0.4, 0.04, 0.07, 0.07, 0.07, '#5a5a66', 6);
+  });
+  return new Model(r, (rig, a) => {
+    const name = a.name === 'aim' ? 'windup' : a.name;
+    goblinPose(rig, { ...a, name }, false);
+    // The bola whirls overhead while it takes aim.
+    if (a.name === 'aim') rig.j('handR').rotation.y = a.time * 18;
+  }, 0.8);
+}
+
+/** The thornback: a wild boar whose back has grown into a hedge of the Warden's thorns. */
+export function makeThornback(): Model {
+  const m = makeBoar({ body: '#5a4a32', dark: '#3a2e20', light: '#7a6a48', armor: '#4a5e2a', armorD: '#35451f', spikes: '#e8e2d4', thorny: true });
+  return m;
 }
 
 // ---------- the Goblin King ----------
@@ -1019,6 +1159,183 @@ function kingPose(r: Rig, a: Anim) {
   }
 }
 
+// ---------- the Thorn Warden ----------
+
+/**
+ * The Old Wood's tyrant (the prototype drew it with the bone archers' body): a bone archer
+ * three times a man's height, grown over with bark, moss and thorns, a crown of thorn-antlers
+ * and a longbow of living wood.
+ */
+export function makeWarden(): Model {
+  const r = new Rig({ shadow: 0.9 });
+  const bark = '#4a3a2a', barkD = '#33281c', moss = '#4a6a2e', thorn = '#c8c0a0', bone = ARCH.bone, boneD = ARCH.boneD;
+  r.joint('hips', 'root', 0, 0.86, 0);
+  r.joint('legR', 'hips', -0.12, 0, 0);
+  r.joint('legL', 'hips', 0.12, 0, 0);
+  r.joint('torso', 'hips', 0, 0.02, 0);
+  r.joint('head', 'torso', 0, 0.6, 0.04);
+  r.joint('cloak', 'torso', 0, 0.55, -0.14);
+  r.joint('armR', 'torso', -0.26, 0.5, 0);
+  r.joint('handR', 'armR', 0, -0.55, 0);
+  r.joint('armL', 'torso', 0.26, 0.5, 0);
+  r.joint('handL', 'armL', 0, -0.55, 0);
+  const leg = (g: Geo) => {
+    g.box(0, -0.86, 0, 0.08, 0.86, 0.08, bone);
+    g.box(0, -0.62, 0, 0.16, 0.34, 0.16, bark);
+    g.box(0, -0.86, 0.04, 0.16, 0.08, 0.24, barkD);
+    g.box(0.06, -0.5, 0.07, 0.03, 0.08, 0.03, thorn);
+  };
+  r.part('legR', leg);
+  r.part('legL', leg);
+  r.part('hips', (g) => {
+    g.box(0, -0.12, 0, 0.34, 0.14, 0.18, boneD);
+    g.box(0, -0.42, 0.02, 0.42, 0.44, 0.26, barkD);
+    for (let i = 0; i < 5; i++) g.box(-0.18 + i * 0.09, -0.62, 0.1, 0.06, 0.2, 0.04, i % 2 ? moss : bark);
+  });
+  r.part('torso', (g, gl) => {
+    g.box(0, 0, 0, 0.07, 0.6, 0.07, bone);
+    for (let i = 0; i < 4; i++) g.box(0, 0.2 + i * 0.09, 0.02, 0.34 - i * 0.02, 0.04, 0.2, bone);
+    // Bark plates over the ribs, moss on the shoulders, thorns.
+    g.box(-0.12, 0.3, 0.1, 0.12, 0.3, 0.05, bark);
+    g.box(0.13, 0.26, 0.1, 0.1, 0.26, 0.05, barkD);
+    g.box(0, 0.47, 0, 0.5, 0.14, 0.28, bark);
+    g.box(-0.2, 0.55, 0, 0.14, 0.06, 0.26, moss);
+    g.box(0.21, 0.55, 0, 0.12, 0.06, 0.24, moss);
+    for (const [x, y, z] of [[-0.22, 0.6, 0.05], [0.24, 0.6, -0.04], [0.1, 0.4, 0.13], [-0.05, 0.2, 0.13]]) g.box(x, y, z, 0.03, 0.12, 0.03, thorn);
+    // A green heart-light between the ribs.
+    gl.box(0, 0.32, 0.03, 0.08, 0.08, 0.06, [0.8, 2.6, 0.6]);
+  });
+  r.part('cloak', (g) => {
+    g.box(0, -0.85, 0, 0.5, 0.85, 0.05, barkD);
+    for (let i = 0; i < 5; i++) g.box(-0.2 + i * 0.1, -0.95 - (i % 2) * 0.1, 0, 0.08, 0.14, 0.05, i % 2 ? moss : barkD);
+  });
+  r.part('head', (g, gl) => {
+    g.box(0, 0, 0, 0.26, 0.28, 0.28, bone);
+    g.box(0, -0.07, 0.05, 0.2, 0.08, 0.2, boneD);
+    g.box(0, 0.08, 0.141, 0.2, 0.08, 0.01, '#140c14');
+    for (const s of [-1, 1]) gl.box(s * 0.06, 0.1, 0.145, 0.045, 0.045, 0.01, [0.9, 3.0, 0.7]);
+    // Hood of bark, and a crown of thorn-antlers.
+    g.box(0, 0.14, -0.05, 0.34, 0.22, 0.34, bark);
+    g.box(0, -0.06, -0.14, 0.34, 0.24, 0.12, barkD);
+    for (const s of [-1, 1]) {
+      g.beam([s * 0.1, 0.24, 0], [s * 0.3, 0.62, -0.04], 0.03, barkD);
+      g.beam([s * 0.22, 0.44, -0.02], [s * 0.4, 0.5, 0.06], 0.02, barkD);
+      g.beam([s * 0.26, 0.52, -0.03], [s * 0.26, 0.74, -0.1], 0.02, barkD);
+      g.box(s * 0.3, 0.62, -0.04, 0.03, 0.06, 0.03, thorn);
+    }
+  });
+  const arm = (g: Geo) => {
+    g.box(0, -0.55, 0, 0.07, 0.55, 0.07, bone);
+    g.box(0, -0.2, 0, 0.12, 0.18, 0.12, bark);
+  };
+  r.part('armR', arm);
+  r.part('armL', arm);
+  r.part('handL', (g, gl) => {
+    // The longbow: living wood with leaves, a glowing string.
+    g.box(0, -0.02, 0, 0.06, 0.06, 0.2, barkD);
+    g.push().translate(0, 0, 0.1).rotateX(0.32);
+    g.box(0, -0.02, 0.36, 0.045, 0.045, 0.72, '#5a4028');
+    g.box(0.03, -0.02, 0.5, 0.08, 0.05, 0.06, moss);
+    g.pop();
+    g.push().translate(0, 0, -0.1).rotateX(-0.32);
+    g.box(0, -0.02, -0.36, 0.045, 0.045, 0.72, '#5a4028');
+    g.box(0.03, -0.02, -0.5, 0.08, 0.05, 0.06, moss);
+    g.pop();
+    gl.box(0, -0.28, 0, 0.012, 0.012, 1.42, [0.8, 2.2, 0.6]);
+  });
+  const m = new Model(r, wardenPose, 0.9);
+  r.scale = 2.1;
+  return m;
+}
+
+function wardenPose(r: Rig, a: Anim) {
+  r.j('armR').rotation.x = -0.15;
+  r.j('armL').rotation.x = -0.5;
+  r.j('armL').rotation.z = 0.15;
+  r.j('cloak').rotation.x = -0.05 - a.speed * 0.4 + Math.sin(a.time * 2) * 0.05;
+  gait(r, a, { hunch: 0.12, arm: 0.35, leg: 0.7 });
+  switch (a.name) {
+    case 'sleep':
+      // Rooted: kneeling, head bowed, the bow planted like a staff.
+      r.j('hips').position.y = 0.5;
+      r.j('legR').rotation.x = -1.5;
+      r.j('legL').rotation.x = 0.2;
+      r.j('torso').rotation.x = 0.35 + Math.sin(a.time * 0.9) * 0.02;
+      r.j('head').rotation.x = 0.6;
+      r.j('armL').rotation.x = -0.9;
+      break;
+    case 'wake': {
+      const k = ease(seg(a.t, 0, 0.8));
+      r.j('hips').position.y = mix(0.5, 0.86, k);
+      r.j('legR').rotation.x = -1.5 * (1 - k);
+      r.j('legL').rotation.x = 0.2 * (1 - k);
+      r.j('torso').rotation.x = mix(0.35, -0.2, k);
+      r.j('head').rotation.x = mix(0.6, -0.35, k);
+      r.j('armR').rotation.x = mix(-0.15, -2.6, seg(a.t, 0.6, 1));
+      break;
+    }
+    case 'aim': {
+      // Volley: bow up, a long draw.
+      const k = ease(seg(a.t, 0, 0.3)), draw = seg(a.t, 0.2, 0.6);
+      r.j('armL').rotation.x = mix(-0.5, -1.57, k);
+      r.j('armR').rotation.x = mix(-0.15, -1.5, k);
+      r.j('armR').rotation.y = mix(0, 0.55 + 0.4 * draw, k);
+      r.j('torso').rotation.y = -0.35 * k;
+      r.j('head').rotation.y = 0.3 * k;
+      break;
+    }
+    case 'windup': {
+      // Rain: the bow raised to the sky.
+      const k = ease(seg(a.t, 0, 0.35));
+      r.j('armL').rotation.x = mix(-0.5, -2.9, k);
+      r.j('armR').rotation.x = mix(-0.15, -2.7, k);
+      r.j('armR').rotation.y = 0.5 * k;
+      r.j('torso').rotation.x = -0.25 * k;
+      r.j('head').rotation.x = -0.5 * k;
+      break;
+    }
+    case 'summon':
+    case 'slam': {
+      // Summon: arms wide; roots: the bow driven into the ground.
+      const k = ease(seg(a.t, 0, 0.4));
+      if (a.name === 'summon') {
+        r.j('armR').rotation.z = -1.3 * k;
+        r.j('armL').rotation.z = 1.3 * k;
+        r.j('head').rotation.x = -0.3 * k;
+        r.j('hips').position.y += Math.abs(Math.sin(a.t * 7)) * 0.03;
+      } else {
+        r.j('armL').rotation.x = mix(-0.5, -2.6, seg(a.t, 0, 0.3)) + 2.2 * easeOut(seg(a.t, 0.45, 0.55));
+        r.j('torso').rotation.x = 0.5 * seg(a.t, 0.45, 0.55);
+        r.j('hips').position.y -= 0.12 * seg(a.t, 0.45, 0.55);
+      }
+      break;
+    }
+    case 'windupM':
+    case 'strike': {
+      // A swipe with the bow when the knight gets too close.
+      const k = a.name === 'strike' ? easeOut(seg(a.t, 0, 0.1)) : 0;
+      r.j('armL').rotation.x = mix(-2.2, 0.2, k);
+      r.j('armL').rotation.z = mix(0.9, -0.4, k);
+      r.j('torso').rotation.y = mix(0.5, -0.5, k);
+      break;
+    }
+    case 'hurt':
+      r.j('torso').rotation.x = -0.3;
+      r.j('head').rotation.x = -0.3;
+      break;
+    case 'stun':
+      r.j('hips').position.y = 0.55;
+      r.j('legR').rotation.x = -1.2;
+      r.j('torso').rotation.x = 0.4;
+      r.j('head').rotation.z = Math.sin(a.time * 5) * 0.35;
+      r.j('armL').rotation.x = -0.2;
+      break;
+    case 'dead':
+      fallDown(r, a, 0.6);
+      break;
+  }
+}
+
 // ---------- the warhorse ----------
 
 export function makeHorse(): Model {
@@ -1065,6 +1382,68 @@ export function makeHorse(): Model {
     g.box(0, -0.98, 0, 0.14, 0.98, 0.16, coat);
     g.box(0, -1.0, 0.01, 0.16, 0.14, 0.18, hoof);
     g.box(0, -0.86, 0.01, 0.16, 0.1, 0.18, '#d8d0c0');
+  };
+  for (const l of ['legFL', 'legFR', 'legBL', 'legBR']) r.part(l, leg);
+  return new Model(r, horsePose, 1.6);
+}
+
+// ---------- the Thornstag ----------
+
+/**
+ * The Thornstag, the Old Wood's great beast (the prototype's second mount): the
+ * warhorse's frame, so it rides the same, but slimmer and taller, with a pale belly,
+ * antlers grown over with the Warden's thorns, and a mossy saddle-cloth.
+ */
+export function makeStag(): Model {
+  const r = new Rig({ shadow: 1.4 });
+  const coat = '#8a5a36', dark = '#5e3a22', belly = '#e8dcc0', antler = '#e8dcb0', thorn = '#4a5e2a', hoof = '#2a2420';
+  r.joint('body', 'root', 0, 1.2, 0);
+  r.joint('neck', 'body', 0, 0.2, 0.72);
+  r.joint('head', 'neck', 0, 0.7, 0.2);
+  r.joint('tail', 'body', 0, 0.1, -0.82);
+  r.joint('saddle', 'body', 0, 0.26, 0.02);
+  for (const [n, x, z] of [['legFL', 0.18, 0.58], ['legFR', -0.18, 0.58], ['legBL', 0.18, -0.6], ['legBR', -0.18, -0.6]] as [string, number, number][]) r.joint(n, 'body', x, -0.1, z);
+  r.part('body', (g) => {
+    g.box(0, -0.28, 0, 0.52, 0.56, 1.7, coat);
+    g.box(0, -0.52, 0, 0.44, 0.1, 1.5, belly);
+    // A saddle-cloth of moss and bark, fern fronds hanging from it.
+    g.box(0, -0.14, 0, 0.56, 0.4, 0.9, '#44603a', { kind: K.Cloth });
+    g.box(0, 0.24, 0.05, 0.44, 0.1, 0.56, '#5a3a26');
+    for (const s of [-1, 1]) for (let k = 0; k < 3; k++) g.box(s * 0.29, -0.42, -0.3 + k * 0.3, 0.02, 0.22, 0.1, '#5a8a3a', { wind: 0.5 });
+  });
+  r.part('neck', (g) => {
+    g.push().rotateX(-0.45);
+    g.box(0, 0, 0, 0.28, 0.82, 0.34, coat);
+    g.box(0, -0.05, 0.14, 0.2, 0.6, 0.1, belly);
+    g.pop();
+  });
+  r.part('head', (g, gl) => {
+    g.box(0, -0.14, 0.1, 0.26, 0.26, 0.52, coat);
+    g.box(0, -0.18, 0.36, 0.2, 0.18, 0.1, dark);
+    for (const s of [-1, 1]) {
+      g.box(s * 0.16, 0.02, -0.08, 0.14, 0.06, 0.1, coat); // ears
+      g.box(s * 0.135, -0.06, 0.12, 0.02, 0.05, 0.05, '#0a0808');
+      // Antlers: a beam up and out, tines forward, thorns and berries grown into them.
+      const base: [number, number, number] = [s * 0.08, 0.05, -0.02];
+      const mid: [number, number, number] = [s * 0.34, 0.5, -0.12];
+      const tip: [number, number, number] = [s * 0.5, 0.95, -0.02];
+      g.beam(base, mid, 0.035, antler);
+      g.beam(mid, tip, 0.03, antler);
+      g.beam(mid, [s * 0.3, 0.72, 0.18], 0.025, antler);
+      g.beam([s * 0.44, 0.78, -0.06], [s * 0.62, 0.86, 0.14], 0.022, antler);
+      g.beam([s * 0.2, 0.28, -0.07], [s * 0.36, 0.62, 0.02], 0.028, thorn);
+      g.box(s * 0.28, 0.46, -0.08, 0.06, 0.06, 0.06, '#d02a3a');
+      gl.box(s * 0.4, 0.7, -0.08, 0.05, 0.05, 0.05, [1.6, 2.2, 0.5]);
+    }
+  });
+  r.part('tail', (g) => {
+    g.push().rotateX(0.9);
+    g.box(0, -0.18, 0, 0.14, 0.2, 0.08, belly);
+    g.pop();
+  });
+  const leg = (g: Geo) => {
+    g.box(0, -1.06, 0, 0.11, 1.06, 0.13, coat);
+    g.box(0, -1.08, 0.01, 0.12, 0.1, 0.15, hoof);
   };
   for (const l of ['legFL', 'legFR', 'legBL', 'legBR']) r.part(l, leg);
   return new Model(r, horsePose, 1.6);

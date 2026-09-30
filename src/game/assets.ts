@@ -27,6 +27,12 @@ export const LOOKS: Record<string, Look> = {
   keeper: { skin: '#e0a880', hair: '#6a4a2a', cloth: '#7a4a3a', cloth2: '#6a3a2a', pants: '#3a2e28', boots: '#2a2018', h: 22, bald: true, beard: '#6a4a2a', apron: '#d8d0c0' },
   smith: { skin: '#c89070', hair: '#2a2a2a', cloth: '#4a4a52', cloth2: '#3a3a42', pants: '#2e2a28', boots: '#1e1a18', h: 23, beard: '#2a2a2a', apron: '#5a3a2a' },
   captive: { skin: '#e8b890', hair: '#c88a3a', cloth: '#7a6a4a', cloth2: '#6a5a3a', pants: '#4a3a2a', boots: '#3a2a20', h: 19 },
+  woodreeve: { skin: '#d8a888', hair: '#c8c8c0', cloth: '#3b6b2a', cloth2: '#2e5420', pants: '#3a3024', boots: '#2a2018', h: 21, hat: 'hood', hatCol: '#3b6b2a', beard: '#c8c8c0' },
+  woodwife: { skin: '#e0b090', hair: '#5a3a26', cloth: '#6b4226', cloth2: '#5a3620', pants: '#3a3024', boots: '#2a2018', h: 21, hat: 'hood', hatCol: '#5a7a3a', dress: true },
+  woodsmith: { skin: '#c89070', hair: '#3a2a1a', cloth: '#5a7a3a', cloth2: '#4a6a2e', pants: '#2e2a20', boots: '#1e1a14', h: 23, beard: '#3a2a1a', apron: '#6b4226' },
+  woodboy: { skin: '#f0c8a0', hair: '#6b4226', cloth: '#5a7a3a', cloth2: '#4a6a2e', pants: '#4a3a26', boots: '#2a2018', h: 16, hat: 'hood', hatCol: '#6b4226' },
+  woodgirl: { skin: '#f0c8a0', hair: '#8a5a2a', cloth: '#3b6b2a', cloth2: '#2e5420', pants: '#4a3a26', boots: '#2a2018', h: 17, longHair: true, dress: true },
+  herbwife: { skin: '#d8a888', hair: '#b8b8b0', cloth: '#5a4a6a', cloth2: '#4a3a5a', pants: '#3a3024', boots: '#2a2018', h: 20, hat: 'hood', hatCol: '#44603a', dress: true },
   guard: { skin: '#e0b090', hair: '#8a8a8a', cloth: '#6a2a2a', cloth2: '#5a2020', pants: '#3a3a44', boots: '#2a2a30', h: 22, hat: 'helmet', hatCol: '#8a8a9a', beard: '#9a9a9a' },
 };
 
