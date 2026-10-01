@@ -122,8 +122,8 @@ const FIRE = { x: 58.6, z: 78.8 };
 // The home trees: where round the lake (never evenly: most behind it, to the north and the sides,
 // few in front of it), how big, which way their doors face (toward the camera side).
 const HOMES = {
-  inn: { x: 35.2, z: 75.5, s: 1.2, face: 0.84, treehouse: true }, // on the bay, by the lane west
-  lodge: { x: 54.5, z: 55.8, s: 1.05, face: 1.3, treehouse: true },
+  inn: { x: 47, z: 94, s: 1.2, face: 0.84, treehouse: true }, // on the bay's south shore by the kilns lane (off the line from the camera to the Ring of Oaks)
+  lodge: { x: 31, z: 58, s: 0.9, face: 0.8, treehouse: false }, // the forester's, apart by the Whisper (on the north shore it hid the Gatherers' Clearing)
   smithy: { x: 77.8, z: 75.2, s: 1, face: 0.4, treehouse: false }, // by the road east
   ash: { x: 33.5, z: 87.5, s: 0.95, face: 0.73, treehouse: true },
   weaver: { x: 40, z: 60, s: 0.85, face: 0.9, treehouse: false },
@@ -163,6 +163,15 @@ const ROOST = { x0: 108, x1: 112, z0: 1, z1: 6 };
 const RING = { x: 22, z: 66, r: 6 };
 // The Stag's Thicket: where the Warden's thorns hold the Thornstag.
 const STAG = { x: 11, z: 73 };
+/** The stag's bed: a mossy dell in the western heights behind its thicket, through a cleft the Warden's
+ *  thorns have choked (only the Thornstag's thorn burst clears them). Its centre and size; the cleft's line. */
+const BED = { x: -4.6, z: 80.5, rx: 3.6, rz: 3.1, cz: 80.2, mouth: 5.6 };
+/** 1 in the stag's bed, 2 in the cleft that leads to it (through the wood's western wall), else 0. */
+const inStagBed = (px: number, pz: number) => {
+  const e = Math.hypot((px - BED.x) / BED.rx, (pz - BED.z) / BED.rz) + (fbm(px * 0.6, pz * 0.6, 2, 91) - 0.5) * 0.45;
+  if (e < 1) return 1;
+  return px > BED.x + BED.rx * 0.6 && px < BED.mouth && Math.abs(pz - BED.cz) < 1.3 + (fbm(px, 3, 1, 92) - 0.5) * 0.4 ? 2 : 0;
+};
 // Two ledges under the northern cliffs, reached only up their vines (a chest on one, a shard on the other).
 const LEDGES = [
   { x0: 41, x1: 46, z0: 7, z1: 11 }, // above the Overhang (whole cells: the face is at z = 11)
@@ -320,6 +329,19 @@ function pick<K>(list: [K, number][], u: number): K {
  * Wadeable shallows for the first 1.6 m, then down toward `deep` below the water. */
 const shelve = (e: number, level: number, deep: number) => (e > -1.6 ? level - 0.25 : level - 0.25 - Math.min(deep, (-e - 1.6) * 0.8));
 
+/** A waymark: a standing stone with a pale blaze cut into its face and a cap of moss. */
+function waystone(b: Builder, x: number, z: number) {
+  const g = b.g(x, z), y = b.y(x, z);
+  g.blob(x, y + 0.45, z, 0.3, 0.55, 0.24, PAL.rock, 7, { kind: K.Rock, flatBottom: true, jitter: 0.12 });
+  g.blob(x - 0.04, y + 0.98, z - 0.03, 0.22, 0.08, 0.18, '#4f7a30', 9, { kind: K.Leaves });
+  // The blaze, on the side that faces the camera: a stroke and a bar, like an arrow's feathers.
+  g.push().translate(x + 0.21, y + 0.42, z + 0.19).rotateY(Math.PI / 4);
+  g.box(0, 0, 0, 0.05, 0.38, 0.02, '#d8d0b0');
+  for (const s of [-1, 1]) g.box(s * 0.07, 0.26, 0, 0.12, 0.04, 0.02, '#d8d0b0');
+  g.pop();
+  b.collide({ kind: 'c', x, z, r: 0.3, y0: y - 1, y1: y + 1.1 });
+}
+
 export function buildRealm2(builder: Builder): RealmData {
   const grid = builder.grid;
   const p = new Painter(grid);
@@ -365,7 +387,8 @@ export function buildRealm2(builder: Builder): RealmData {
   p.each((x, z, i) => {
     const d = sdPoly(BLACKWATER, x + 0.5, z + 0.5) + (fbm(x * 0.12, z * 0.12, 2, 57) - 0.5) * 2.6;
     if (d < 0) {
-      grid.h[i] = shelve(d, FLOOR - 0.35, 2.1);
+      // Under the Warden's cliff the mere is deep right to the rock: no wading round to his stair.
+      grid.h[i] = shelve(sdPoly(HOLD, x + 0.5, z + 0.5) < 2.5 ? Math.min(d, -4) : d, FLOOR - 0.35, 2.1);
       grid.t[i] = T.Bed;
       grid.water[i] = FLOOR - 0.35;
       grid.noGrass[i] = 1;
@@ -506,8 +529,8 @@ export function buildRealm2(builder: Builder): RealmData {
       for (let dz = -d; dz <= d; dz++) for (let dx = -d; dx <= d; dx++) if (!plat(x + dx, z + dz)) return false;
       return true;
     };
-    // Kept level: round the Great Tree and its hollow, the grave, the spring and stream, the Sea
-    // Stair's sign, the gully's mouth, the path, where the garrison and the spitters stand.
+    // Kept level: round the Great Tree and its hollow, the grave, the spring and stream, the
+    // gully's mouth, the Warden's Seat, the path, where the garrison and the spitters stand.
     const keep: [number, number, number][] = [
       [GREAT.x, GREAT.z, 8.5], [BOWL.x, BOWL.z, 13], [GRAVE.x, GRAVE.z, 4.5], [SPRING.x, SPRING.z, 3.5], [CLEFT.x0, 15, 6], [SEAT.x, SEAT.z, 5.5],
       [18.2, 41.6, 2.5], [8.6, 37.4, 2.5],
@@ -613,6 +636,8 @@ export function buildRealm2(builder: Builder): RealmData {
       }
     }, STAG.x - 10, STAG.z - 10, STAG.x + 10, STAG.z + 10);
   }
+  // The cleft to the stag's bed, through the wood's western wall north of the thicket.
+  carveStagBed(grid, 0, Math.ceil(BED.mouth));
   // The stair climbs a cleft between two rocky, mossy hills at the heights' edge: highest at the
   // cleft's walls (too high to climb from the stair even on the stag, so the stair is the one way
   // up and the thorns across its top close it), falling away into the heights in ragged slopes; the
@@ -724,6 +749,10 @@ export function buildRealm2(builder: Builder): RealmData {
   const flat = (x: number, z: number, rad: number) => kit.flatAround(x, z, rad);
   // ---------- who lives where (placed before the props, which keep clear of them) ----------
   // A foe's index in this list is its save id: append, never reorder.
+  // The Old Grove's ambush (the prototype's): goblins crouch in bushes beside the road and burst out as
+  // the knight passes.
+  const AMBUSH: Pt[] = [[88.4, 99.4], [90.4, 104.2], [95.6, 105.2]];
+  for (const [x, z] of AMBUSH) b.bush(x, z, 1.3);
   const enemies: EnemySpawn[] = [
     // The Old Grove: goblins among the ancient oaks, a snarer, a spitter by a root, a thornback rooting about.
     { type: 'goblin', x: 84, z: 99.5, group: 'grove' },
@@ -753,29 +782,29 @@ export function buildRealm2(builder: Builder): RealmData {
     { type: 'shield', x: 48.5, z: 41.8, group: 'clearing' },
     { type: 'goblin', x: 44, z: 45, group: 'clearing' },
     { type: 'snarer', x: 50.5, z: 45.3, group: 'clearing' },
-    // The Thorn Ravine: spitters against the cliff, bats over the shelf.
+    // The Thorn Ravine: spitters against the cliff, rooks over the shelf.
     { type: 'spitter', x: 78.5, z: 14 },
-    { type: 'spitter', x: 60.5, z: 10.6 },
+    { type: 'spitter', x: 60.5, z: 11.8 },
     { type: 'spitter', x: 50, z: 11.8 },
     { type: 'bat', x: 70, z: 16 },
     { type: 'bat', x: 55, z: 16.5 },
-    // The Overhang: guards at the foot of the stair.
-    { type: 'shield', x: 38.4, z: 16.1 },
+    // The Overhang: guards at the foot of the stair, the big one at the end of the ravine's gauntlet.
+    { type: 'shield', x: 38.4, z: 16.1, elite: true },
     { type: 'goblin', x: 43.4, z: 17.2 },
-    // The Mossfen: bats over the pools, a darter in the reeds.
+    // The Mossfen: rooks over the pools, a spitter rooted in the reeds.
     { type: 'bat', x: 14, z: 102 },
     { type: 'bat', x: 24, z: 108 },
-    { type: 'darter', x: 26, z: 104.5 },
-    // The Bat Roost.
-    { type: 'bat', x: 109.5, z: 3.5 },
-    { type: 'bat', x: 110.8, z: 2.5 },
+    { type: 'spitter', x: 26, z: 104.5 },
+    // The Bat Roost: real bats, in the cliff.
+    { type: 'bat', x: 109.5, z: 3.5, plain: true },
+    { type: 'bat', x: 110.8, z: 2.5, plain: true },
     // The Withered Wood: spitters among the dead trees.
     { type: 'spitter', x: 18.2, z: 41.6 },
     { type: 'spitter', x: 8.6, z: 37.4 },
     // The Charcoal Kilns: goblins who took the burners' camp.
     { type: 'goblin', x: 44, z: 103, group: 'kilns' },
     { type: 'goblin', x: 46.8, z: 107.4, group: 'kilns' },
-    { type: 'bomber', x: 51.2, z: 101.4, group: 'kilns' },
+    { type: 'snarer', x: 51.2, z: 101.4, group: 'kilns' },
     { type: 'archer', x: 39.6, z: 99.4, group: 'kilns', guard: true },
     // The Stag's Thicket: the Warden's keepers of the bound stag.
     { type: 'snarer', x: 15.4, z: 67.6, group: 'stag' },
@@ -786,16 +815,18 @@ export function buildRealm2(builder: Builder): RealmData {
     // the Warden, at the back of its hollow.
     { type: 'shield', x: 28.4, z: 21.2, group: 'garrison' },
     { type: 'shield', x: 28.6, z: 27, group: 'garrison' },
-    { type: 'archer', x: 31.6, z: 25.4, group: 'garrison', guard: true },
+    { type: 'archer', x: 29, z: 24.8, group: 'garrison', guard: true },
     { type: 'archer', x: 26.6, z: 32.8, group: 'garrison', guard: true },
     { type: 'thornback', x: 30.4, z: 30.6, group: 'garrison' },
     { type: 'warden', x: BOWL.x - 3.5, z: BOWL.z - 1, group: 'boss' },
-    // A thornback minds the Warden's Seat; the Rookery's "rooks" (bats: they take coin); goblins camped by the brook.
+    // A thornback minds the Warden's Seat; the Rookery's rooks (they take coin); goblins camped by the brook.
     { type: 'thornback', x: SEAT.x + 1.8, z: SEAT.z + 4.1 },
     { type: 'bat', x: ROOKERY.x - 2, z: ROOKERY.z + 1.5, group: 'rookery' },
     { type: 'bat', x: ROOKERY.x + 2.5, z: ROOKERY.z - 1, group: 'rookery' },
     { type: 'goblin', x: BROOKCAMP.x - 1.8, z: BROOKCAMP.z - 0.6, group: 'brookcamp' },
     { type: 'goblin', x: BROOKCAMP.x + 2, z: BROOKCAMP.z + 0.4, group: 'brookcamp' },
+    // ---- added 2026-10-01 (appended: a foe's index is its save id) ----
+    ...AMBUSH.map(([x, z]): EnemySpawn => ({ type: 'goblin', x, z, group: 'ambush', ambush: true })),
   ];
   const critters: CritterDef[] = [
     ...([[88, 84], [30, 60], [74, 108], [84.5, 79], [84, 72]] as Pt[]).map(([x, z]): CritterDef => ({ kind: 'deer', x, z, area: [x - 5, z - 4, x + 5, z + 4] })),
@@ -821,6 +852,7 @@ export function buildRealm2(builder: Builder): RealmData {
     Math.hypot(x - GRAVE.x, z - GRAVE.z) < 3.5 ||
     Math.hypot(x - GLADE.x, z - GLADE.z) < 6 ||
     Math.hypot(x - STAG.x, z - STAG.z) < 6.5 ||
+    inStagBed(x, z) > 0 || Math.hypot(x - BED.mouth, z - BED.cz) < 2.5 || // the stag's bed and the mouth of its cleft
     LEDGES.some((l) => x > l.x0 - 2 && x < l.x1 + 2 && z < l.z1 + 2.5) ||
     (x > NICHE.x0 - 1.5 && x < NICHE.x1 + 1.5 && z < NICHE.z1 + 2.5) ||
     Math.hypot(x - CLEARING.x, z - CLEARING.z) < 6 ||
@@ -996,7 +1028,7 @@ export function buildRealm2(builder: Builder): RealmData {
     }
   }
   // The Old Grove's ancient oaks, each alone in a pool of moonlight.
-  for (const [x, z, s] of [[64, 100, 1.1], [76, 106, 1.25], [88, 97, 1], [96, 108, 1.15], [70, 111, 0.9]] as [number, number, number][]) giantOak(b, x, z, s, 3);
+  for (const [x, z, s] of [[64, 100, 1.1], [88, 106, 1.25], [88, 97, 1], [96, 108, 1.15], [70, 111, 0.9]] as [number, number, number][]) giantOak(b, x, z, s, 3);
   for (const [x, z] of [[80, 102], [92, 104], [70, 98]] as Pt[]) b.moonflowers(x, z, 8, 1.6);
   // The Warden's Stone: a tall mossy waystone where the road comes over the brook.
   {
@@ -1162,7 +1194,7 @@ export function buildRealm2(builder: Builder): RealmData {
   const kids: [number, number][] = [0.4, 2.0, 3.4, 4.9].map((a) => [FIRE.x + Math.cos(a) * 3.3, FIRE.z + Math.sin(a) * 3.3]);
   const garden: [number, number][] = [off(home.ash, HOMES.ash.face, 2.6, 1.9), off(home.ash, HOMES.ash.face, 3.6, 3.2), off(home.ash, HOMES.ash.face, 1.2, 3.4)];
   const carry: [number, number][] = [
-    off(home.smithy, HOMES.smithy.face, -1.2, 1.4), ...[0.35, 0.7, 1.05, 1.4, 1.75, 2.1, 2.45, 2.8].map((a) => byLake(a, 2.4)), off(home.inn, HOMES.inn.face, 1.4, 1.6),
+    off(home.smithy, HOMES.smithy.face, -1.2, 1.4), ...[0.35, 0.7, 1.05, 1.4, 1.75].map((a) => byLake(a, 2.4)), off(home.inn, HOMES.inn.face, 1.4, 1.6),
   ];
   carry.push(...carry.slice(1, -1).reverse());
   const watchSpot: Pt = [BRIDGE_END_E + 1.4, BRIDGE_Z + 1.4];
@@ -1619,12 +1651,14 @@ export function buildRealm2(builder: Builder): RealmData {
   for (const [x, z] of [[14, 104], [22, 108], [18, 100]] as Pt[]) b.fx.addEmitter({ x, y: FLOOR + 0.4, z, rate: 0.4, spec: P.wisp, spread: 3, vy: 0.1 });
 
   // ---------- data ----------
+  // The Old Wood's folk cut their waymarks into standing stones, not planed boards.
+  for (const [x, z] of [[109.3, 112.4], [102.5, 36]] as Pt[]) waystone(b, x, z);
   const objects: ObjDef[] = [
     { kind: 'moonfire', id: 'stone', name: "The Warden's Stone", x: 105.5, z: 106 },
     { kind: 'moonfire', id: 'bough', name: 'Hollowbough', x: 72.4, z: 92.4 },
     { kind: 'moonfire', id: 'bridge', name: 'Rookfall', x: 103.5, z: 33.5 },
     { kind: 'moonfire', id: 'overhang', name: 'The Overhang', x: 41.5, z: 15.8 },
-    { kind: 'sign', x: 110.2, z: 110.5, text: 'Hollowbough, west through the Old Grove. Keep to the path: the ground bites.' },
+    { kind: 'sign', x: 109.3, z: 112.4, text: 'Hollowbough, west through the Old Grove. Keep to the path: the ground bites.' },
     { kind: 'sign', x: 102.5, z: 36, text: 'Rookfall. The rope bridge holds, most nights.' },
     { kind: 'lore', id: 'wlore1', x: 70, z: 99, text: 'The Old Wood is older than the kingdom. It remembers everything.' },
     { kind: 'bindings', id: 'stag', x: STAG.x, z: STAG.z, mount: 'stag' },
@@ -1664,6 +1698,9 @@ export function buildRealm2(builder: Builder): RealmData {
     { kind: 'lore', id: 'wlore2', x: 43.5, z: 12.2, text: 'The Thorn Warden was once a guardian. Something twisted it.' },
     { kind: 'lore', id: 'wlore7', x: SEAT.x + 1.9, z: SEAT.z + 1.6, text: 'Here the Warden sat and listened to the wood. The wood stopped talking to it. It never stopped listening.' },
     { kind: 'chest', id: 'wc_seat', x: SEAT.x - 1.9, z: SEAT.z - 1.3, rot: 0.8, coins: 60, power: 'magnet' },
+    { kind: 'thorns', id: 'w_bedthorns', x: BED.mouth - 1.4, z: BED.cz, alongX: false, w: 3.4, by: 'stag' },
+    { kind: 'chest', id: 'wc_bed', x: BED.x - 1.4, z: BED.z - 0.6, rot: 0.8, coins: 55, power: 'wind' },
+    { kind: 'lore', id: 'wlore9', x: BED.x + 1.2, z: BED.z - 1.6, text: 'Moss pressed flat in the shape of a great beast, and white hairs caught in the thorns. The stag slept here before the Warden bound it.' },
     { kind: 'lore', id: 'wlore8', x: ROOKERY.x + 2.6, z: ROOKERY.z + 3, text: 'The rooks of Rookfall took everything that glittered. Their nests came down in the storm; what they took did not go far.' },
     { kind: 'chest', id: 'wc_rooks', x: ROOKERY.x - 0.6, z: ROOKERY.z + 0.2, rot: -0.5, coins: 45 },
     { kind: 'chest', id: 'wc_kingfisher', x: 117.6, z: 95.4, rot: -Math.PI / 2, coins: 35 }, // in the reeds by the east river
@@ -1671,6 +1708,9 @@ export function buildRealm2(builder: Builder): RealmData {
   ];
   for (const [x, z, what] of [[...off(home.inn, HOMES.inn.face, -1.6, 0.4), 'barrel'], [...off(home.inn, HOMES.inn.face, -2.2, 0.9), 'pot'], [...off(home.smithy, HOMES.smithy.face, -1.2, 2.6), 'crate'], [47.2, 40.9, 'crate'], [44.6, 40.4, 'barrel'], [105.6, 31.4, 'barrel'], [106.2, 32.1, 'pot'], [43.4, 18.6, 'pot']] as [number, number, 'pot' | 'crate' | 'barrel'][])
     objects.push({ kind: 'breakable', x, z, what });
+  // The forge's yard and the fisher's tree stand where the Deer Meadow's grass begins: they keep the village's name.
+  const yard = off(home.smithy, HOMES.smithy.face, 0, 1);
+  const eastHomes = (x: number, z: number) => Math.hypot(x - yard[0], z - yard[1]) < 3.2 || Math.hypot(x - HOMES.fisher.x, z - HOMES.fisher.z) < 4;
   const regions: RegionDef[] = [
     { name: 'The Withered Wood', music: 'wilds', amb: 'woods', test: (x, z, y) => z > 32 && insidePoly(HOLD, x, z) && y > 4 },
     { name: 'The Fallen Giant', music: 'wilds', amb: 'woods', test: (x, z) => x > 34 && x < 42 && z > LOG.z0 - 2 && z < LOG.z1 + 2 },
@@ -1679,7 +1719,7 @@ export function buildRealm2(builder: Builder): RealmData {
     { name: 'The Charcoal Kilns', music: 'wilds', amb: 'fields', test: (x, z) => Math.hypot(x - KILNS.x, z - KILNS.z) < 9 },
     { name: 'The Bat Roost', music: 'hall', amb: 'indoor', test: (x, z) => x >= ROOST.x0 && x < ROOST.x1 && z < ROOST.z1 + 1 },
     { name: "The Whisper's Fall", music: 'wilds', amb: 'woods', test: (x, z) => x > 82 && x < 92 && z > 45 && z < 58 },
-    { name: 'The Deer Meadow', music: 'fields', amb: 'fields', test: (x, z) => insidePoly(DEER_MEADOW, x, z) },
+    { name: 'The Deer Meadow', music: 'fields', amb: 'fields', test: (x, z) => insidePoly(DEER_MEADOW, x, z) && lakeSd(x, z) >= 11 && !eastHomes(x, z) },
     { name: 'The Mirror Pool', music: 'wilds', amb: 'woods', test: (x, z) => Math.hypot((x - MIRROR.x) / (MIRROR.rx + 2), (z - MIRROR.z) / (MIRROR.rz + 2)) < 1 },
     { name: 'The Niche', music: 'hall', amb: 'indoor', test: (x, z) => x >= NICHE.x0 && x < NICHE.x1 && z >= NICHE.z0 && z < NICHE.z1 },
     { name: 'The Roots of the Great Tree', music: 'keep', amb: 'keep', test: (x, z, y) => bowlE(x, z) < 1.05 && y > 4 },
@@ -1690,12 +1730,13 @@ export function buildRealm2(builder: Builder): RealmData {
     { name: "The Gatherers' Clearing", music: 'fields', amb: 'fields', test: (x, z) => Math.hypot(x - CLEARING.x, z - CLEARING.z) < 7 },
     { name: 'The Blackwater', music: 'fields', amb: 'fields', test: (x, z) => sdPoly(BLACKWATER, x, z) < 7 },
     { name: 'The East Woods', music: 'wilds', amb: 'woods', test: (x, z) => x >= 100 && z < 56 },
-    { name: 'Hollowbough', music: 'village', amb: 'village', test: (x, z) => lakeSd(x, z) < 11 },
+    { name: 'Hollowbough', music: 'village', amb: 'village', test: (x, z) => lakeSd(x, z) < 11 || eastHomes(x, z) },
     { name: 'The High Canopy', music: 'wilds', amb: 'woods', test: (x, z) => x > 88 && z > 56 && z < 96 },
     { name: "The Stag's Thicket", music: 'road', amb: 'woods', test: (x, z) => Math.hypot(x - STAG.x, z - STAG.z) < 6 },
     { name: 'The Ring of Oaks', music: 'road', amb: 'fields', test: (x, z) => Math.hypot(x - RING.x, z - RING.z) < RING.r + 3 },
     { name: "The Herbwife's Glade", music: 'road', amb: 'fields', test: (x, z) => Math.hypot(x - GLADE.x, z - GLADE.z) < 6 },
     { name: 'The Mossfen', music: 'fields', amb: 'fields', test: (x, z) => insidePoly(MOSSFEN, x, z) },
+    { name: "The Stag's Bed", music: 'fields', amb: 'woods', test: (x, z) => x < BED.mouth && inStagBed(x, z) > 0 },
     { name: 'The Deep Wood', music: 'wilds', amb: 'woods', test: (x, z) => insidePoly(DEEP_WEST, x, z) },
     { name: 'The Old Grove', music: 'road', amb: 'woods', test: (x, z) => x > 54 && z > 88 && x < 104 },
     { name: 'The Thorn Road', music: 'road', amb: 'road', test: (x, z) => x > 100 && z > 96 },
@@ -1727,8 +1768,8 @@ export function buildRealm2(builder: Builder): RealmData {
         'His hold is in the north-west: over the Rookfall bridge, through the Thorn Ravine, up the stair by the Overhang.',
       ] },
       { id: 'keeper2', look: 'woodwife', name: 'Moss the Innkeeper', x: home.inn.door.x, z: home.inn.door.z, face: 1, shop: 'flask', lines: [
-        'Come in out of the dark, friend. The thorns keep off the lake, most nights.',
-        'Flasks, refilled or new. Coin still counts, even up here.',
+        'Sit, sit. You have the look of someone who walked the Old Grove at night.',
+        'I fill the Moon Flasks from the Heartpool, and the moon does the rest. A new one costs coin, mind.',
       ] },
       { id: 'thornsmith', look: 'woodsmith', name: 'Bryony the Thorn-smith', x: off(home.smithy, HOMES.smithy.face, 1.4, 1.2)[0], z: off(home.smithy, HOMES.smithy.face, 1.4, 1.2)[1], face: 1, shop: 'sword', upTo: 5, lines: [
         'We live up in the trees now. The ground is not safe.',
@@ -1749,13 +1790,13 @@ export function buildRealm2(builder: Builder): RealmData {
         'Mind the wet stones, sir knight.',
         'Wren tears her frock on every bramble in the wood. I wash it, she tears it.',
       ] },
-      { id: 'pip', look: 'woodchild', name: 'Pip', x: FIRE.x + 3, z: FIRE.z + 1.2, roam: kids, pause: 0.8, speed: 2.8, pose: 'play', lines: [
+      { id: 'pip', look: 'woodchild', name: 'Sprig', x: FIRE.x + 3, z: FIRE.z + 1.2, roam: kids, pause: 0.8, speed: 2.8, pose: 'play', lines: [
         'You are a real knight! Is that sword heavy?',
         'Linnet says the Warden eats children. I said he would have to catch me first.',
       ] },
       { id: 'linnet', look: 'woodlass', name: 'Linnet', x: FIRE.x - 2.9, z: FIRE.z - 0.8, roam: [...kids.slice(2), ...kids.slice(0, 2)], pause: 1.1, speed: 2.6, pose: 'play', lines: [
         'We are not allowed past the bridges. Because of the goblins.',
-        'Pip is it. I am never it.',
+        'Sprig is it. I am never it.',
       ] },
       { id: 'burdock', look: 'woodelder', name: 'Old Burdock', x: sitSpot[0], z: sitSpot[1], pose: 'sit', heading: sitSpot[2], lines: [
         'When I was a boy the Warden walked these banks and the wood sang for him.',
@@ -1779,23 +1820,26 @@ export function buildRealm2(builder: Builder): RealmData {
       ] },
       { id: 'sorrel', look: 'old', name: 'Old Sorrel the Weaver', x: home.weaver.door.x, z: home.weaver.door.z, pose: 'sit', heading: HOMES.weaver.face, lines: [
         'Spider silk and nettle thread. It keeps the thorns off better than wool.',
+        'Wrap your boots in it and the brambles let you by. Quicker on your feet. For a little coin.',
         'The Reeve on the island will tell you what needs doing. He always does.',
-      ] },
+      ], wares: ['boots'] },
       { id: 'wrenhome', look: 'woodgirl', name: 'Wren', x: off(home.ash, HOMES.ash.face, 1, 0.4)[0], z: off(home.ash, HOMES.ash.face, 1, 0.4)[1], face: 1, hidden: true, lines: ['Thank you, sir knight. The berries were worth it. Almost.'] },
       { id: 'wren', look: 'woodgirl', name: 'Wren', x: CAGE.x, z: CAGE.z, face: 1, caged: true, lines: [
-        'You came! Ash sent you, didn\'t he.',
-        'The goblins took this purse off a traveller. It is yours.',
-        'I will run home. Mind the thorns in the ravine!',
+        'A knight, out here? Ash put you up to this. He worries.',
+        'They hid their takings in that hollow log. Have them: they are more yours than theirs.',
+        'I know the deer paths home. Watch for the thorns in the ravine!',
       ] },
       { id: 'herbwife', look: 'herbwife', name: 'Old Nettle', x: GLADE.x + 1, z: GLADE.z + 1.6, face: -1, lines: [
         'A stag is held in the Warden\'s thorns, in a hollow of the Deep Wood west of the oaks. His goblins keep it. Cut it loose and it will carry you.',
         'And the oaks themselves: stand in their ring and they will test you. The seed they keep makes a heart stronger.',
-      ] },
+        'Nettle tonic, if you want it. Clears the head; your second wind comes sooner. It costs, mind.',
+      ], wares: ['focus'] },
       { id: 'owl', look: 'owl', name: 'Old Owl', x: OWL[0], z: OWL[1], perch: OWL_PERCH, lines: [
         'Hoo! The Reeve lives in the Heart Oak. The rope bridges take you over.',
         'Hoo! Cracked stone hides things. Strike it hard.',
         'Hoo! Vines hold, if you hold on. Keep jumping.',
         'Hoo! Thorns have a heart. Tear it out, and they wither.',
+        'Hoo! Thorns answer thorns. The stag tears away what a sword only scratches.',
       ] },
     ],
     objects,
@@ -1805,8 +1849,8 @@ export function buildRealm2(builder: Builder): RealmData {
       z: RING.z,
       relic: 'heartwood',
       quest: 'oaks',
-      prompt: 'Face the trial of the Ring of Oaks',
-      wake: ['The oaks stir', 'Three waves. Stand your ground.'],
+      prompt: 'Wake the oaks at their altar',
+      wake: ['The oaks stir', 'Their roots close the ring. Hold it until they rest.'],
       win: ['The Heartwood Seed', 'Relic won: your heart is stronger (one more heart). The oaks give up 100 coins of old offerings.'],
       purse: 100,
       waves: [
@@ -1836,6 +1880,15 @@ export function buildRealm2(builder: Builder): RealmData {
     fireflyZones: [{ x: 80, z: 102, r: 16 }, { x: POND.x, z: POND.z, r: 17 }, { x: 20, z: 104, r: 12 }, { x: RING.x, z: RING.z, r: 8 }, { x: 60, z: 32, r: 16 }],
     critters,
     afterOutskirts: (g: Grid, bb: Builder) => {
+      // The stag's bed: moss and ferns, mushrooms, a fallen bough to lie against.
+      for (const [dx, dz, s] of [[-2.2, -1.6, 1], [2.1, -2, 0.9], [-2.6, 1.8, 1.1], [1.4, 2.2, 0.8]] as [number, number, number][]) D.fern(bb, BED.x + dx, BED.z + dz, s);
+      D.fallenLog(bb, BED.x - 1.2, BED.z - 2.3, 3.2, 0.4);
+      bb.mushrooms(BED.x + 2.3, BED.z + 1.6, 5, false);
+      giantMushroom(bb, BED.x - 2.8, BED.z + 0.6, 0.6, true);
+      bb.moonflowers(BED.x + 0.3, BED.z + 0.6, 7, 1.4);
+      // ...and the cleft: boulders and ferns at the feet of its walls.
+      for (const [x, z, k] of [[0.8, 78.8, 0.45], [2.6, 81.6, 0.4], [-1.8, 81.7, 0.5]] as [number, number, number][]) bb.rock(x, z, k);
+      for (const [x, z] of [[1.8, 79], [3.2, 81.4], [-0.6, 79.2], [-2.6, 79.4]] as [number, number][]) D.fern(bb, x, z, 0.8);
       // The thorn road beyond the brook: south along the gorge's rim to the arch of thorns.
       const road: Pt[] = [[112.5, 119], [113.3, 125.5]];
       new Painter(g).each((x, z, i) => {
@@ -1959,8 +2012,8 @@ export function buildRealm2(builder: Builder): RealmData {
 }
 
 /**
- * The land beyond Whisperwood's edges: the gorge along the east (the same gorge as
- * realm 1's), the Old Wood's heights to the north and west, low wood across the brook.
+ * The land beyond Whisperwood's edges: the Greywater, a broad river along the east, the Old
+ * Wood's heights to the north and west, low wood across the brook.
  */
 export function paintForestOutskirts(grid: Grid, W: number, D: number) {
   for (let gz = grid.oz; gz < grid.oz + grid.d; gz++)
@@ -1997,6 +2050,21 @@ export function paintForestOutskirts(grid: Grid, W: number, D: number) {
       } else if (gz > D - 1) set(FLOOR + 3 + Math.round(n * 1.5), T.DarkGrass); // the brook's far bank: too steep to climb (even on the stag), too low to hide the knight
       else set(Math.round(Math.max(edgeH, 6) + 1 + out * 0.5 + n * 5), n2 > 0.7 ? T.Rock : T.DarkGrass);
     }
+  carveStagBed(grid, Math.floor(BED.x - BED.rx - 2), 0);
+}
+
+/** The stag's bed and its cleft carved out of the ground between x0 and x1 (the map's wall, or the heights beyond). */
+function carveStagBed(grid: Grid, x0: number, x1: number) {
+  for (let gz = Math.floor(BED.z - BED.rz - 2); gz <= Math.ceil(BED.z + BED.rz + 2); gz++)
+    for (let gx = x0; gx < x1; gx++) {
+      const i = grid.i(gx, gz), px = gx + 0.5, pz = gz + 0.5, k = inStagBed(px, pz);
+      if (!k) continue;
+      grid.h[i] = FLOOR;
+      grid.t[i] = k === 1 && fbm(px * 0.9, pz * 0.9, 1, 93) > 0.35 ? T.Moss : T.DarkGrass;
+      grid.side[i] = S.Rock;
+      grid.dir[i] = -1;
+      grid.noGrass[i] = 0;
+    }
 }
 
 export function decorateForestOutskirts(b: Builder, grid: Grid, W: number, D: number, r: Rng) {
@@ -2008,12 +2076,14 @@ export function decorateForestOutskirts(b: Builder, grid: Grid, W: number, D: nu
       const h = grid.groundAt(tx, tz);
       if (h < 0) continue;
       if (grid.typeAt(tx, tz) === T.Path) continue;
+      if (Math.hypot((tx - BED.x) / (BED.rx + 0.6), (tz - BED.z) / (BED.rz + 0.6)) < 1 || (tx > BED.x && Math.abs(tz - BED.cz) < 2)) continue; // the stag's bed
       if (tx > W - 1 && tx < W + 16) {
         // The Greywater's banks: reeds, no trees (the camera's side).
         if (h >= FLOOR - 0.1 && h <= FLOOR + 0.1 && k < 0.3) b.reeds(tx, tz, 6, 0.6);
         continue;
       }
       if (tx > 106 && tx < 120 && tz > 118 && tz < 130) continue; // the thorn road's last stretch
+      if (tx > 52 && tx < 76 && tz > D - 1 && tz < D + 9) continue; // the brook's far bank below the goblins' camp: the camera's side of it
       if (k < 0.5) b.pine(tx, tz, 1 + r() * 0.7);
       else if (k < 0.62) b.oak(tx, tz, 1 + r() * 0.4);
     }

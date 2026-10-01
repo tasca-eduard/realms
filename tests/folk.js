@@ -1,6 +1,6 @@
 // Whisperwood's folk (run with &realm=forest): prompts name each of them; Alder the Reeve moves
 // the main quest on; the old owl gives one hint a talk, the next one each time; the thorn-smith
-// sharpens a blunt sword and tempers a keen one past realm 1's top (levels 4 and 5, +15% each),
+// sharpens a blunt sword and tempers a keen one past realm 1's top (levels 4 and 5, +25% each),
 // then no further; the innkeeper sells flasks.
 const g = window.__game, p = g.player, out = {};
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));

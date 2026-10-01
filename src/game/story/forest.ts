@@ -11,10 +11,10 @@ import type { BossInfo, RealmStory } from './story';
  */
 export class ForestStory implements RealmStory {
   title = 'II &middot; WHISPERWOOD';
-  victoryTitle = 'The Wood Is Free';
-  victoryText = 'The Thorn Warden has fallen, and dawn comes to the Old Wood.<br>The second of eight realms is free.';
+  victoryTitle = 'The Old Wood Wakes';
+  victoryText = 'The Thorn Warden is soil again, and the first light in years comes down through the leaves.<br>The second of eight realms is free.';
   cagedPlea = 'Please, get me out!';
-  cageHolds = 'The lock is rusted. Harder!';
+  cageHolds = 'Goblin knots and a rusty lock. Again!';
   boss: BossInfo = {
     name: 'Thorn Warden',
     intro: ['The Thorn Warden', 'TYRANT OF THE OLD WOOD'],
@@ -74,7 +74,7 @@ export class ForestStory implements RealmStory {
         g.talking = null;
         g.player.coins += 40;
         g.audio.sfx('coin');
-        g.ui.toast('40 coins', "a traveller's purse");
+        g.ui.toast('40 coins', "the goblins' hidden takings");
         g.save.data.flags.rescued = true;
         g.quest('sister', 1);
         g.writeSave();
@@ -92,7 +92,7 @@ export class ForestStory implements RealmStory {
     if (id === 'stag') g.quest('stag', 1);
   }
   areaSub(g: Game, r: RegionDef) {
-    return r.name === "The Warden's Hold" && !g.victory ? 'Seat of the Thorn Warden' : '';
+    return r.name === "The Warden's Hold" && !g.victory ? 'Where the thorns grow from' : '';
   }
   talk(g: Game, n: Npc, lines: string[]): string[] | 'handled' {
     const id = n.def.id, f = g.save.data.flags;
@@ -115,7 +115,7 @@ export class ForestStory implements RealmStory {
   victoryLine(id: string) {
     const L: Record<string, string> = {
       reeve: 'The thorns are drying up already. We will come down from the trees.',
-      keeper2: 'Drinks on the house. Well, in the tree.',
+      keeper2: 'The good elderflower jug, for you. I was saving it for the end of the world.',
       thornsmith: 'Bring that blade back any time. It has heartwood in it now.',
       ash: 'You did it! Wren says she helped.',
       wrenhome: 'Morning in the Old Wood. I had forgotten the colour of it.',
@@ -130,7 +130,7 @@ export class ForestStory implements RealmStory {
     g.writeSave();
     const w = g.thornWall;
     g.after(0.5, () => {
-      if (w) g.focus(w.x, w.y + 1.5, w.z, 3.6, () => g.ui.toast('The thorns wither', "The way into the Warden's hold is open"));
+      if (w) g.focus(w.x, w.y + 1.5, w.z, 3.6, () => g.ui.toast('The thorns wither', "Nothing bars the stair to the Warden's hold now"));
       g.after(0.8, () => g.thornWall?.setOpen(true, g));
     });
   }

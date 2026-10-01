@@ -7,7 +7,7 @@ import type { Game } from './game';
 import type { EnemyType } from '../world/realm';
 
 type St = 'idle' | 'alert' | 'chase' | 'windup' | 'strike' | 'recover' | 'hurt' | 'stun' | 'dead' | 'aim' | 'retreat' | 'swoop' | 'paw' | 'charge' | 'return'
-  | 'slam' | 'summon' | 'sleep' | 'wake' | 'jump' | 'flee' | 'chant' | 'blink' | 'windupM' | 'vault';
+  | 'slam' | 'summon' | 'sleep' | 'wake' | 'jump' | 'flee' | 'chant' | 'blink' | 'windupM' | 'vault' | 'lurk';
 
 interface Spec {
   hp: number;
@@ -72,8 +72,10 @@ export class Enemy {
   private potRing: THREE.Mesh | null = null;
   /** Index in the realm's enemy list for placed foes; undefined for summoned ones. */
   spawnId?: number;
+  /** Waits hidden in a bush (state 'lurk') until the knight passes close. */
+  ambush = false;
 
-  constructor(public type: EnemyType, x: number, z: number, g: Game, public group?: string, public guard = false, elite = false) {
+  constructor(public type: EnemyType, x: number, z: number, g: Game, public group?: string, public guard = false, elite = false, plain = false, ambush = false) {
     this.spec = SPECS[type];
     this.x = x;
     this.z = z;
@@ -88,7 +90,7 @@ export class Enemy {
       type === 'goblin' ? makeGoblin(false)
       : type === 'shield' ? makeGoblin(true)
       : type === 'archer' ? makeArcher()
-      : type === 'bat' ? makeBat()
+      : type === 'bat' ? makeBat(plain)
       : type === 'boar' ? makeBoar()
       : type === 'brute' ? makeBrute()
       : type === 'bomber' ? makeBomber()
@@ -123,10 +125,15 @@ export class Enemy {
       this.model.rig.face(1, 0, 0);
     }
     if (this.flying) this.y += 1.3;
+    if (ambush) {
+      this.ambush = true;
+      this.state = 'lurk';
+    }
   }
 
+  /** Up and about: not dead, and not still hidden in its bush (a lurker can't be hit, aimed at or counted). */
   get alive() {
-    return this.state !== 'dead';
+    return this.state !== 'dead' && this.state !== 'lurk';
   }
   /** A realm's tyrant (the Goblin King, the Thorn Warden). */
   get isBoss() {
@@ -202,7 +209,7 @@ export class Enemy {
   }
 
   update(dt: number, g: Game) {
-    if (this.state === 'idle' || this.state === 'sleep') {
+    if (this.state === 'idle' || this.state === 'sleep' || this.state === 'lurk') {
       const fx = g.cam.focus.x - this.x, fz = g.cam.focus.z - this.z;
       if (fx * fx + fz * fz > 45 * 45 && Math.hypot(g.player.x - this.x, g.player.z - this.z) > 45) return;
     }
@@ -218,6 +225,20 @@ export class Enemy {
     const p = g.player;
     const d = this.distTo(g);
 
+    if (this.state === 'lurk') {
+      // Hidden in its bush until the knight comes close; then out it bursts, and its first blow still
+      // flashes before it lands.
+      if (p.alive && !g.flying && d < 3.2 && Math.abs(p.y - this.y) < 1.5) {
+        this.set('chase');
+        this.cooldown = 0.6;
+        this.faceTo(p.x, p.z);
+        g.fx.burst(P.leaf, this.x, this.y + 0.7, this.z, 22, 2.2, 2.5);
+        g.audio.sfx('rustle', this.x, this.z);
+        g.audio.sfx('alert', this.x, this.z);
+      }
+      this.render(g, dt);
+      return;
+    }
     if (this.state === 'dead') {
       this.deathT += dt;
       if (this.deathT > (this.isBoss ? 3 : 0.9)) this.removed = true;
@@ -292,7 +313,7 @@ export class Enemy {
     const by = this.flying ? this.y + Math.sin(g.time * 5 + this.bob) * 0.12 : this.y;
     // Sink into the ground once fallen.
     const sink = this.state === 'dead' && !this.flying ? Math.max(0, this.deathT - 0.5) * 0.8 : 0;
-    rig.place(g.cam, this.x, by - sink, this.z, gy, true);
+    rig.place(g.cam, this.x, by - sink, this.z, gy, this.state !== 'lurk');
     if (this.state === 'stun') rig.tint.setRGB(0.75, 0.82, 1.25);
     else if (this.golden) rig.tint.setRGB(1.7, 1.3, 0.45);
     else if (this.elite) rig.tint.setRGB(1.15, 0.8, 0.8);

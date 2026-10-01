@@ -25,7 +25,7 @@ interface Track {
   bassStyle?: 'whole' | 'half' | 'pulse' | 'eighths';
   ost?: string;
   ostVol?: number;
-  perc?: 'boss' | 'march' | 'none';
+  perc?: 'boss' | 'march' | 'light' | 'none';
   percVol?: number;
 }
 
@@ -79,6 +79,54 @@ export const TRACKS: Record<string, Track> = {
     bpm: 128, key: 55, scale: MAJOR, prog: [[0, 'M'], [5, 'M'], [-5, 'M'], [0, 'M']], steps: 12,
     arp: 'orchestral_harp', arpVol: 0.3, arpStyle: 'oompah', lead: 'flute', leadVol: 0.3, leadOct: 1, density: 0.7,
     bass: 'pizzicato_strings', bassVol: 0.36, bassStyle: 'pulse',
+  },
+};
+
+/**
+ * A realm's own versions of the moods (any it leaves out play as above). Whisperwood's grow from the
+ * prototype's forest track: 88 bpm, D Dorian, a flute over cello and harp, light hand drums.
+ */
+export const REALM_TRACKS: Record<string, Record<string, Track>> = {
+  forest: {
+    wilds: {
+      bpm: 76, key: 62, scale: DORIAN, prog: [[0, 'm'], [5, 'M'], [0, 'm'], [-2, 'M']],
+      arp: 'orchestral_harp', arpVol: 0.24, arpStyle: 'broken', lead: 'flute', leadVol: 0.18, leadOct: 1, density: 0.22,
+      bass: 'cello', bassVol: 0.2, bassStyle: 'whole', perc: 'light', percVol: 0.14,
+    },
+    road: {
+      bpm: 88, key: 62, scale: DORIAN, prog: [[0, 'm'], [5, 'M'], [0, 'm'], [-2, 'M']],
+      arp: 'orchestral_harp', arpVol: 0.28, arpStyle: 'up', lead: 'flute', leadVol: 0.24, leadOct: 1, density: 0.4,
+      bass: 'cello', bassVol: 0.22, bassStyle: 'half', perc: 'light', percVol: 0.2,
+    },
+    village: {
+      bpm: 92, key: 62, scale: DORIAN, prog: [[0, 'm'], [5, 'M'], [3, 'M'], [-2, 'M']],
+      pad: 'string_ensemble_1', padVol: 0.1, arp: 'orchestral_harp', arpVol: 0.3, arpStyle: 'waltz',
+      lead: 'flute', leadVol: 0.26, leadOct: 1, density: 0.5, bass: 'pizzicato_strings', bassVol: 0.28, bassStyle: 'half', perc: 'light', percVol: 0.16,
+    },
+    fields: {
+      bpm: 62, key: 57, scale: DORIAN, prog: [[0, 'm'], [-2, 'M'], [5, 'M'], [0, 'm']],
+      pad: 'string_ensemble_1', padVol: 0.12, arp: 'orchestral_harp', arpVol: 0.24, arpStyle: 'up',
+      lead: 'flute', leadVol: 0.16, leadOct: 1, density: 0.2, bass: 'cello', bassVol: 0.2, bassStyle: 'whole',
+    },
+    keep: {
+      bpm: 80, key: 50, scale: MINOR, prog: [[0, 'm'], [1, 'M'], [-2, 'M'], [0, 'm']],
+      pad: 'choir_aahs', padVol: 0.12, lead: 'oboe', leadVol: 0.2, leadOct: 1, density: 0.3,
+      bass: 'cello', bassVol: 0.26, bassStyle: 'half', ost: 'pizzicato_strings', ostVol: 0.14, perc: 'light', percVol: 0.3,
+    },
+    hall: {
+      bpm: 52, key: 62, scale: DORIAN, prog: [[0, 'm'], [-2, 'M'], [5, 'M'], [0, 'm']],
+      pad: 'choir_aahs', padVol: 0.16, lead: 'celesta', leadVol: 0.12, leadOct: 1, density: 0.12, bass: 'cello', bassVol: 0.2, bassStyle: 'whole',
+    },
+    boss: {
+      bpm: 132, key: 55, scale: HARM, prog: [[0, 'm'], [-4, 'M'], [-2, 'M'], [-5, 'M']],
+      pad: 'choir_aahs', padVol: 0.14, lead: 'french_horn', leadVol: 0.3, leadOct: 0, density: 0.55,
+      bass: 'cello', bassVol: 0.3, bassStyle: 'eighths', ost: 'orchestral_harp', ostVol: 0.16, perc: 'boss', percVol: 0.5,
+    },
+    dawn: {
+      bpm: 80, key: 62, scale: MAJOR, prog: [[0, 'M'], [5, 'M'], [-3, 'm'], [-5, 'M']],
+      pad: 'string_ensemble_1', padVol: 0.14, arp: 'orchestral_harp', arpVol: 0.32, arpStyle: 'up',
+      lead: 'flute', leadVol: 0.28, leadOct: 1, density: 0.45, bass: 'cello', bassVol: 0.22, bassStyle: 'half',
+    },
   },
 };
 
@@ -212,6 +260,9 @@ class Channel {
         const pv = T.percVol ?? 0.3;
         if (T.perc === 'march') {
           if (s === 0 || s === 8) m.play('timpani', root - 12 + (s ? 7 : 0), t, sd * 6, pv, dest, 0.005);
+        } else if (T.perc === 'light') {
+          // Soft hand drums: a low beat on one, a lighter one off the beat.
+          if (s === 0 || s === 10) m.play('taiko_drum', 48, t + hum(), sd * 3, pv * (s ? 0.55 : 1), dest, 0.002);
         } else {
           const k = 'x..x..x.x..x..x.'[s] === 'x';
           if (k) m.play('taiko_drum', 48, t, sd * 4, pv * (s === 0 ? 1.2 : 0.8), dest, 0.002);
@@ -235,6 +286,8 @@ export class Music {
   ready = false;
   want = '';
   rate = 1;
+  /** The realm being played: its own versions of the moods replace the shared ones. */
+  realm = '';
 
   constructor(public ctx: AudioContext, private dest: AudioNode, reverb: ConvolverNode) {
     this.rev = ctx.createGain();
@@ -308,8 +361,11 @@ export class Music {
       this.main.out.gain.setTargetAtTime(0, this.ctx.currentTime, 0.9);
     }
     this.main = null;
-    if (!name || !TRACKS[name]) return;
-    const ch = new Channel(name, TRACKS[name], this, this.dest);
+    const own = REALM_TRACKS[this.realm]?.[name];
+    const track = own ?? TRACKS[name];
+    if (!name || !track) return;
+    // (A realm's own track gets its own name, so its melodies differ too.)
+    const ch = new Channel(own ? `${this.realm}:${name}` : name, track, this, this.dest);
     ch.nextT = this.ctx.currentTime + 0.6;
     ch.out.gain.setTargetAtTime(1, this.ctx.currentTime + 0.5, 1.2);
     this.channels.push(ch);

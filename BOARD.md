@@ -6,7 +6,168 @@ items move to **Done** with the date.
 
 ## In progress
 
-Nothing: the review is done (see Done), waiting for the next request.
+Nothing yet: the realm 3 plan (below) is written, waiting for the word to start group 28. Open choice from the
+follow-up: the Ash family's home tree still covers Old Nettle's glade (group 21).
+
+## Realm 3 plan (agreed 2026-10-01)
+
+Realm 3 is **the Sunken Reef**, the prototype's third realm (`aqua`): "The sea swallowed a kingdom. Its lord still
+waits below." The prototype built it all under the sea (light rays, a blue tint, bubbles from the knight's helmet,
+floaty physics, currents over the trenches, bubble columns, the sunken ship, the Jelly, giant clams, the Tide
+Serpent, the Tidelord). Asked for on 2026-10-01: the whole realm under the sea ("let's do A for now, we'll see how
+it goes"), air pockets "just like an annoying thing, not that hardcore", no fire under the sea, and the sword's
+progression left to my recommendation. Built the way realms 1 and 2 were, with REALMS.md's 40/60 aim from the
+start: about 40% the shared grammar (the quest's shape, the village's services, rest and rewards), the rest its own.
+
+**Decisions**
+- **Under the sea.** The realm is the sea floor and the knight walks it. The iso view never shows a sky, so the
+  sea is made of light and motion: a blue-green grade that deepens with depth, shafts of light slanting down
+  from the surface, light rippling over the sand (the renderer's last pass already knows each pixel's place in
+  the world, as the cloud shadows and ground mist do), drifting specks, swaying kelp, rising bubbles, fish
+  schools. Sound muffled.
+- **Floaty physics.** Lower gravity, a slow fall, higher and longer jumps, the knight 15% slower, arrows and
+  thrown things slower (the prototype: gravity x0.53, jump x0.77, fall x0.4, speed x0.85), as realm numbers.
+- **Air, a nuisance not a killer.** An air bar that empties in about 90 s; air pockets fill it again: bubble
+  vents in every part of the realm, the coral village's air-bell houses, the wreck's cabin, the moonfires. Empty,
+  the knight is **Breathless**: stamina stops refilling, he slows, the view narrows. No hearts lost (a heart
+  cost can come later if it proves toothless).
+- **No fire.** No firepot throwers, nothing burns, no Fire Blade in its chests; light from glowing coral,
+  jellies and anglerfish lamps instead of torches and fires.
+- **The sword.** The reef's coral-smith sets a coral edge on it: levels 6 and 7, +25% each, so each realm's
+  smith takes it two levels further (the grammar stays, the look of it changes). The realm's foes are as tough
+  as the sword they're met with: `foeHp` 2.25 for a level-5 sword, so a goblin still takes three blows.
+- **The swimmer: the Tide Serpent**, the realm's beast. On its back, tap jump to stroke up (stamina), sink
+  slowly between strokes; a shadow and a ring on the sea floor show where it is and how high, and the camera
+  eases up with it. It reaches what nothing else does, and its gate is the way on to realm 4.
+- **A frame of its own.** In from the top, down the Sea Stair from Whisperwood's cliffs, and down toward the
+  deep on the camera's side (low ground there, so nothing tall hides it): depth is the journey. Sunlit shallows
+  and the coral village near the start, coral gardens, the kelp forest, the drowned kingdom's streets, the
+  sunken ship, the trench, and the Tidelord's flooded throne hall at the bottom. A map that isn't 120 x 120
+  (about 140 x 110) and counts of its own.
+- **Mostly its own foes.** The Jelly (the prototype's: hops, splits in two), crabs with an armoured claw, eels
+  that strike from crevices, harpooners, pufferfish; the Tidelord's crew are barnacled drowned goblins, so the
+  goblin army is the common thread.
+- **Borders.** In by the Sea Stair, past the Withered Wood where the heights drop to the sea, broken by the
+  rockfall: only the Thornstag's second leap clears the gap (the stag's border job). Out toward the Scorched
+  Dunes by a way only the serpent can swim, shut until realm 4 is built.
+
+**Groups** (each reviewed afterwards; checks recorded under Done)
+- [ ] **28 Groundwork.** `aqua` in the registry (its map builder, story module, quests, light, its own map
+  size); the realm lists that only knew two realms (foe looks and palettes, relics, music) made per realm; the
+  underwater look as a realm setting in the renderer (grade by depth, light shafts, ripples over the sand,
+  drifting specks, bubbles); the underwater physics as realm numbers; no fire as a realm rule; muffled sound,
+  its music (the prototype's: 70 bpm, Lydian, a celesta over a choir, echo) and ambience (bubbles and drips over
+  a low drone). A rough sea floor to try it on. Checks: the realm builds and loads, the physics, screenshots.
+- [ ] **29 Air.** The air bar on desktop and phones, the pockets, Breathless, the warnings (the bar pulses,
+  bubbles from the helmet, a sound). Checks: air drains, a pocket refills it, Breathless does what it says and
+  never kills.
+- [ ] **30 The way down.** The Sea Stair in Whisperwood (a stair cut down the sea cliff past the Withered Wood,
+  broken by the rockfall; only the stag's second leap crosses), the walk down into the water, the way back, the
+  world map. Checks: the border both ways, the leap needed, reach in both realms.
+- [ ] **31 The Sunken Reef's land.** Zones by depth, each its own ground, growth and light: the coral village
+  (air-bell houses on the coral, kelp gardens, glowing lanterns, room to move); coral gardens; the kelp forest;
+  the drowned kingdom's streets and plaza (ruins under coral and barnacles); the sunken ship (inside, currents
+  both ways and a bubble lift, air in the cabin); the lighthouse; the trench and its abyss. Currents over the
+  trenches, bubble columns up onto reef terraces, secrets with no path, real edges (reef walls, sea cliffs, the
+  abyss), and the design rules (zones read as zones, nothing sprinkled evenly, dressed edges, nothing tall on
+  the camera's side). Checks: the overhead map, screenshots, reach.
+- [ ] **32 Foes and hazards.** The Jelly, the crab (blocks from the front until a heavy blow; scuttles
+  sideways), the eel (hides in a crevice, lunges, pulls back), the harpooner (a harpoon on a line that drags
+  the knight toward it), the pufferfish (swells into spikes when close; strike it while it's small), drowned
+  goblins and archers (the crew in barnacles and kelp), an elite at the end of the gauntlet; giant clams (snap
+  shut on you; struck open, a pearl); `foeHp` 2.25. Checks: each foe in a live encounter.
+- [ ] **33 The Tide Serpent.** Held in the crew's nets and guarded (the rule for a mount's prison); freed, it
+  swims (strokes, sinking, the height ring, the camera); Bubble shot, Whirlpool, Bubble shell; places only it
+  reaches; the shut way toward realm 4. Checks: freeing it, each move, swimming up onto a ledge, reach on the
+  serpent (no way out of the world).
+- [ ] **34 People, quests and secrets.** The coral village going about an underwater day; its leader, innkeeper,
+  coral-smith (levels 6 and 7), a parent whose son was taken toward the deep trenches, a hint-giver; the coral
+  shrine that heals your mount (the prototype's); wares of its own (an air bladder for more air; the prototype's
+  coin magnet); the son in the trench; the trial and its relic, the Tide Pearl (one more hit for your mount);
+  three Moon Shards; chests paid by how hidden; lore; its own words.
+- [ ] **35 The Tidelord.** The way into the drowned palace (its own lever: the sunken bell rung to open the
+  floodgate), its garrison, a roomy flooded throne hall (low on the camera's side), the fight (charge, orbs,
+  slam; enraged, "the tide turns": a current sweeps the floor and turns), the fairness rules and the bots;
+  victory, and dawn light flooding down through the water.
+- [ ] **36 Review and balance.** The economy (chests, quests and the trial pay for the coral-smith and the wares
+  with a modest surplus), toughness, the Tidelord's bot, how much is common with realms 1 and 2 (aim about 40%),
+  performance (particles, lights) and phones, README, REALMS.md.
+
+## Follow-up plan (agreed 2026-10-01: "note all of this, and start doing everything")
+
+From the realm comparison (REALMS.md): realm 2 is about two thirds the same as realm 1 against an aim of
+about 40% common, and the extra sameness sits in its foes, its music, its words and the map's frame. Each
+group is reviewed afterwards; checks are recorded under Done. Realm 2's frame (its size, its direction,
+its counts) stays as it is: how later realms vary theirs is a note in REALMS.md for when realm 3 is
+planned, and the way on to realm 3 waits for that too.
+
+- [x] **20 Notes.** Done 2026-10-01: REALMS.md (the comparison, the 40/60 aim, difficulty and how it
+  scales); the aim added to the design rules; this plan.
+- [x] **21 Fixes from the comparison.** Done 2026-10-01 (each checked in the game; reach, spawns and the new
+  ambush check pass in both realms):
+  - Realm 2's ground mist: each realm's light now sets the mist's height (`mistLevel`, `src/game/realms.ts`);
+    Whisperwood's lies 1.2 m over its 2 m floor, as the Keep's does over its fields (it showed only in Rookfall).
+  - Things on the camera's line: the lodge home tree moved off the Gatherers' Clearing (to the Whisper's bank,
+    without its treehouse), the inn tree off the Ring of Oaks (to the bay's south shore by the kilns lane; Bram's
+    round shortened to match), a grove giant oak off the Old Owl's snag, the border pines off the brook below
+    the goblins' camp. (Checked by casting rays from the camera: the clearing went from 16 of 17 points hidden
+    to 1, the ring 16 to 5, the owl 17 to 2.)
+  - Garrison archer #46 out of the Blackwater onto the plateau's lip (29, 24.8); spitter #23 off the cliff top
+    onto the ravine's shelf (60.5, 11.8), where it fights.
+  - The shortcut round the east loop: real (the Blackwater's shallows ran along the foot of the Warden's cliff,
+    64 m from the village to his stair against 139 m round). The quest never stuck (a later step completes the
+    earlier ones), but the realm's route and half its content were skippable: the mere is now deep right up to
+    the cliff, and the quickest way passes the Thorn Ravine (128 m). The Fallen Giant stays a pathless find.
+  - The Rookfall bridge can be walked round at the gorge's north end (28 m against 13): left as it is, it's
+    how you find the Rookery's chest and lore.
+  - Region names: Bryony's forge and the fisher's tree read Hollowbough (the Deer Meadow's name covered them);
+    realm 1's drawbridge deck reads the Outer Bailey (it fell through to "The King's Road").
+  - Realm 1's empty ground behind the keep's west wall (about 330 m², reachable north from the Overlook) is
+    now the Kings' Orchard: old oaks gone wild, moonflowers, a lore stone, no path and no coins.
+  - Signs: the Old Lodge's sign has its post; Whisperwood's two signs, which had no model at all, are standing
+    stones with a pale blaze cut in them (the arrival's moved 2 m off the warhorse's spot).
+  - Realm 1's stream runs on into the Mirrow (it stopped a metre short, leaving a dry way round it); the dead
+    `arenaGate` object is gone; a smith never sells past the price list (a level without a price would have
+    cost nothing); stale notes about the Sea Stair and the east gorge corrected in the code.
+  - Left open: the Ash family's home tree's crown still covers Old Nettle's glade (12 of 17 points). Crowns fade
+    when the knight walks under them; moving the tree or the glade reshuffles the village's crown shapes.
+- [x] **22 Realm 2's own words.** Done 2026-10-01: Wren's three lines, Moss's welcome, the trial's prompt and
+  toasts, the cage's line, the victory card, the innkeeper's and the thorn wall's lines, the quest steps that
+  copied realm 1's, all written for the Old Wood; the child called Pip at the fire is now Sprig. (The Reeve's,
+  Bryony's and Ash's first lines are the prototype's own and stay.)
+- [x] **23 Realm 2's own music and sounds.** Done 2026-10-01: Whisperwood plays its own versions of the moods
+  (`REALM_TRACKS` in `src/audio/music.ts`), grown from the prototype's forest track: the road 88 bpm in D Dorian
+  with a flute over harp and cello and soft hand drums, the village a 92 bpm waltz, the woods slower and
+  sparser, an oboe in the Warden's hold, its own fight and dawn; its nights have birdsong (more at dawn). The
+  Keep's music is unchanged. Checked in the game: each place picks the realm's track, no errors (still never
+  heard: the test browser is muted).
+- [x] **24 Realm 2's own foes.** Done 2026-10-01: goblins with bark masks, crowns of leaves and twigs and
+  thorned clubs, shield goblins with bark shields set with thorns, moss-grown archers with crowns of branches
+  and branch bows (`woodGoblin`, `FOE_LOOK` in `src/game/models.ts`); the thieves outside the Bat Roost are
+  rooks (the Roost keeps bats: `plain` on a spawn); the Mossfen's darter is a spitter in the reeds, the Kilns'
+  firepot thrower a snarer; the prototype's ambush: three goblins hidden in bushes by the Old Grove's road (a
+  'lurk' state: unseen, can't be struck, don't block, don't stop a rest) burst out as the knight passes
+  (tests/ambush.js); an elite shield goblin at the end of the Thorn Ravine. Rechecked: foes2, oaks, the Hold,
+  sister, folk, corners, hidden places, both economies, explore mode, spawns, reach. Foes went from about 75%
+  common to about 41% (REALMS.md).
+- [x] **25 Coins and tempers.** Done 2026-10-01: the tempers add +25% a level, as sharpening does (level 5:
+  x2.25, was x2.05). Wares (`src/game/wares.ts`, carried from realm to realm in the save): Keepsfoot's smith
+  sells barding (each piece one more hit for every mount, 90 and 210); Hollowbough's weaver silk-wrapped boots
+  (+8% on foot a level, 80 and 200), Old Nettle a nettle tonic (the blue bar fills 40% faster a level, 90, 200,
+  340), so she has a part to play. With the tempers that is about 1,870 to spend in Whisperwood against about
+  1,520 earned there plus what Blackpine leaves over: a modest surplus for a knight who buys everything. The
+  prototype's coin magnet and combo keeper are left for later realms' villages. (tests/wares.js, wares1.js.)
+- [x] **26 The Thornstag's purpose.** Done 2026-10-01: north of the Stag's Thicket a cleft runs through the
+  wood's western wall into the heights, choked with living thorns a sword only scratches and the warhorse's
+  charge can't break; the freed stag's thorn burst tears them away (saved), and beyond lies the stag's old bed,
+  a mossy dell with a chest (55 coins, Wind Boots) and a lore stone. The owl has a hint for it. On the stag
+  nothing climbs round it (reachstag2), and nothing is unreachable (reach2). (tests/stagbed.js.)
+- [x] **27 Review.** Done 2026-10-01: the full suite, 62 checks (4 new: ambush, stagbed, wares, wares1), every
+  report read, none failing. The Warden's bot still wins at level 3 in 67 s losing 5 hearts; the dodger isn't hit;
+  nothing unreachable and no way out in either realm, on foot or on the stag. Found in review and fixed: the
+  mount's health bar said "Warhorse" on the Thornstag too. Familiarity measured again: realm 2 is about 58% realm
+  1 (was 67%), foes about 41% (was 75%), sound about 60% (was 85%); what's left over is the shared frame and
+  structure, kept on purpose (REALMS.md). README and REALMS.md brought up to date.
 
 ## Realm 2 plan (agreed 2026-09-28)
 
@@ -74,15 +235,15 @@ and then reviewed together. "Confirmed" = reproduced in a live game.
 
 ### High
 
-_Realm 2 groups above._
+_The follow-up groups above (the 2026-10-01 comparison's findings are in groups 21 to 26)._
 
 ### Medium
 
-_All done (2026-09-28)._
+_None open._
 
 ### Low
 
-_All done (2026-09-28)._
+_None open._
 
 ### Can't be checked here
 - [ ] Every sound (effects, ambience, music): the test browser is muted, so none of it has been heard.
@@ -92,6 +253,20 @@ _All done (2026-09-28)._
 
 ## Done
 
+- 2026-10-01: **Realm 1 vs realm 2 compared** (asked: what is common, what is unique, difficulty per realm and how
+  it scales, and how familiar realm 2 is against a 40% common / 60% unique aim, "to see if we are on the right
+  track", not to plan realm 3 yet). The code was read by 9 agents (3 inventories checked by a second agent),
+  plus 28 screenshots. Nothing in `src/` changed. Found:
+  - **About two thirds common** (estimate; same = 1, same role in a new form = ½, new = 0): map and route ~75%,
+    kinds of place ~40%, terrain and look ~55%, sound ~85%, foes ~75%, stronghold and tyrant ~60%, mechanics
+    ~55%, quests ~80%, village and people ~60%, rewards ~85%.
+  - **New, and working:** the land (tree village round a lake, canopy and rope walk, the chasm inside the map,
+    the ravine, water on 18% of the map against 7%), realm 2's own rules (snares, thorn strips, vines, rope
+    bridges, the Thornstag), and the Warden, a keep-away archer where the King was a brawler.
+  - **Most repeated:** foes, music, the map's frame and counts, the quest text (see Backlog).
+  - **Difficulty is flat by design:** a goblin takes 3 blows on arrival in both realms (`foeHp` 1.6 against the
+    level-3 sword). Realm 2 is harder in kind, not in numbers: packs (8 to 5), elites (3 to 0) and
+    status-effect foes (49% to 35%) went down. Upgrades cut realm 1's work by 29% but realm 2's by 3%.
 - 2026-09-30: **Review, balance, flaws** (full suite: 58 reports, all read; the lights check's limit then set above frame-time jitter, 5 a second (a pop reads tens), and rerun) (asked: "review, balance, find flaws"). Measured first:
   - **Economy.** Blackpine pays ~1,145 coins (chests 720, foes ~225, quests and trial ~200) for 770 of
     things to buy (the sword to level 3, flasks to six). Whisperwood paid ~1,930 (chests 1,550!, foes

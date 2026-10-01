@@ -8,6 +8,8 @@ export interface AmbState {
   wind: number;
   crickets: number;
   owls: number;
+  /** Birdsong (Whisperwood's nights have it). */
+  birds: number;
   water: number;
   fire: number;
   drums: number;
@@ -40,8 +42,11 @@ export class Audio {
   private nextDrum = 0;
   private drumStep = 0;
   private nextFrog = 5;
+  private nextBird = 3;
+  /** The realm being played (its own music). */
+  realm = '';
   private muffle!: BiquadFilterNode;
-  amb: AmbState = { x: 0, z: 0, wind: 0.5, crickets: 0.5, owls: 0.5, water: 0, fire: 0, drums: 0, indoor: false };
+  amb: AmbState = { x: 0, z: 0, wind: 0.5, crickets: 0.5, owls: 0.5, birds: 0, water: 0, fire: 0, drums: 0, indoor: false };
 
   constructor() {
     try {
@@ -110,6 +115,7 @@ export class Audio {
     this.applyVolumes();
     this.startBeds();
     this.music = new Music(ctx, this.musicBus, this.reverb);
+    this.music.realm = this.realm;
     this.music.load();
   }
 
@@ -598,6 +604,22 @@ export class Audio {
       this.tone(g, t, 'sine', f, f * 0.93, 0.35, 1, 0.06);
       this.tone(g, t + 0.55, 'sine', f * 1.02, f * 0.9, 0.22, 0.8, 0.04);
       this.tone(g, t + 0.85, 'sine', f, f * 0.88, 0.5, 1, 0.05);
+    }
+    if (!s.indoor && s.birds > 0.05 && t > this.nextBird) {
+      // A small bird: two to four quick rising chirps somewhere in the trees.
+      this.nextBird = t + 1.8 + Math.random() * (2.7 / s.birds);
+      const g = this.ctx!.createGain();
+      g.gain.value = 0.045 * s.birds;
+      const p = this.ctx!.createStereoPanner();
+      p.pan.value = Math.random() * 1.8 - 0.9;
+      g.connect(p).connect(this.ambBus);
+      const n = 2 + Math.floor(Math.random() * 3), f = 2400 + Math.random() * 1200;
+      let at = t;
+      for (let k = 0; k < n; k++) {
+        const a = f * (0.9 + Math.random() * 0.3);
+        this.tone(g, at, 'sine', a, a * (1.15 + Math.random() * 0.3), 0.07, 0.8, 0.01);
+        at += 0.07 + Math.random() * 0.06;
+      }
     }
     if (s.water > 0.3 && !s.indoor && t > this.nextFrog) {
       this.nextFrog = t + 2 + Math.random() * 6;

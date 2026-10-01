@@ -458,6 +458,10 @@ function goblinBody(r: Rig, opts: { king?: boolean } = {}) {
 export function makeGoblin(shield: boolean): Model {
   const r = new Rig({ shadow: 0.7 });
   goblinBody(r);
+  if (FOE_LOOK === 'forest') {
+    woodGoblin(r, shield);
+    return new Model(r, (rig, a) => goblinPose(rig, a, shield), 0.8);
+  }
   r.part('handR', (g) => {
     g.box(0, -0.14, 0, 0.05, 0.2, 0.05, '#4a3424');
     g.box(0, -0.52, 0.04, 0.04, 0.4, 0.17, '#8a8a96');
@@ -472,6 +476,55 @@ export function makeGoblin(shield: boolean): Model {
       g.box(0.08, -0.52, 0, 0.02, 0.5, 0.06, '#4a3424');
     });
   return new Model(r, (rig, a) => goblinPose(rig, a, shield), 0.8);
+}
+
+/** The Old Wood's goblins: a carved bark mask, a crown of leaves and twigs, a mantle of leaves, a
+ *  thorned club; the shield goblins carry a slab of bark set with thorns. */
+function woodGoblin(r: Rig, shield: boolean) {
+  const bark = '#6a4a30', barkD = '#4a3020', leaf = '#3f6a2a', leafL = '#5a8a36', thorn = '#e8e2d4';
+  r.part('head', (g, gl) => {
+    g.box(0, 0.06, 0.205, 0.38, 0.25, 0.035, bark, { kind: K.Wood });
+    for (const s of [-1, 1]) g.box(s * 0.13, 0.06, 0.224, 0.025, 0.25, 0.01, barkD);
+    g.box(0, 0.09, 0.224, 0.16, 0.025, 0.01, '#2a1a10');
+    for (const s of [-1, 1]) gl.box(s * 0.08, 0.17, 0.226, 0.06, 0.045, 0.01, GOB.eye);
+    g.blob(0, 0.37, -0.02, 0.25, 0.09, 0.23, leaf, 11, { kind: K.Leaves });
+    g.blob(0.11, 0.42, 0.05, 0.11, 0.07, 0.11, leafL, 12, { kind: K.Leaves });
+    for (const s of [-1, 1]) {
+      g.push().translate(s * 0.1, 0.36, -0.06).rotateZ(s * -0.45);
+      g.box(0, 0, 0, 0.04, 0.3, 0.04, barkD, { kind: K.Wood });
+      g.push().translate(0, 0.17, 0).rotateZ(s * -0.8);
+      g.box(0, 0, 0, 0.03, 0.13, 0.03, barkD, { kind: K.Wood });
+      g.pop();
+      g.pop();
+    }
+  });
+  r.part('torso', (g) => {
+    for (const s of [-1, 1]) g.blob(s * 0.17, 0.41, 0, 0.15, 0.09, 0.17, s > 0 ? leaf : leafL, 20 + s, { kind: K.Leaves });
+    g.box(0, 0.02, -0.15, 0.36, 0.38, 0.04, '#34521f', { kind: K.Leaves });
+    g.box(0, 0.16, 0.14, 0.42, 0.05, 0.02, '#4a3a20');
+  });
+  r.part('handR', (g) => {
+    g.box(0, -0.14, 0, 0.05, 0.2, 0.05, barkD);
+    g.cyl(0, -0.64, 0.03, 0.1, 0.05, 0.52, 6, bark, { kind: K.Wood });
+    g.blob(0, -0.6, 0.03, 0.11, 0.09, 0.11, '#5a3e28', 4, { kind: K.Wood });
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2, y = -0.58 + (i % 2) * 0.13;
+      g.beam([0, y, 0.03], [Math.cos(a) * 0.17, y - 0.03, 0.03 + Math.sin(a) * 0.17], 0.014, thorn);
+    }
+  });
+  if (shield)
+    r.part('handL', (g) => {
+      g.push().rotateZ(Math.PI / 2);
+      g.cyl(-0.25, -0.1, 0, 0.33, 0.3, 0.08, 7, bark, { kind: K.Wood });
+      for (const dz of [-0.14, 0, 0.14]) g.box(-0.25, -0.12, dz, 0.56, 0.03, 0.035, barkD);
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2 + 0.3, cx = -0.25 + Math.cos(a) * 0.17, cz = Math.sin(a) * 0.17;
+        g.beam([cx, -0.1, cz], [cx, -0.22, cz], 0.016, thorn);
+      }
+      g.blob(-0.48, -0.1, 0.12, 0.1, 0.06, 0.1, leaf, 31, { kind: K.Leaves });
+      g.pop();
+      g.box(0.08, -0.52, 0, 0.02, 0.5, 0.06, barkD);
+    });
 }
 
 // ---------- goblin kinds ----------
@@ -727,17 +780,46 @@ export function makeArcher(): Model {
   const arm = (g: Geo) => g.box(0, -0.5, 0, 0.06, 0.5, 0.06, ARCH.bone);
   r.part('armR', arm);
   r.part('armL', arm);
+  const wood = FOE_LOOK === 'forest';
+  const limb = wood ? '#4a3a24' : '#6a4a2a';
   r.part('handL', (g) => {
     // Bow: limbs run along local z so it stands upright when the arm points forward.
     g.box(0, -0.02, 0, 0.05, 0.05, 0.16, '#4a3424');
     g.push().translate(0, 0, 0.08).rotateX(0.35);
-    g.box(0, -0.02, 0.25, 0.035, 0.035, 0.5, '#6a4a2a');
+    g.box(0, -0.02, 0.25, 0.035, 0.035, 0.5, limb);
+    if (wood) g.blob(0, 0, 0.5, 0.07, 0.06, 0.08, '#4a7a2a', 41, { kind: K.Leaves });
     g.pop();
     g.push().translate(0, 0, -0.08).rotateX(-0.35);
-    g.box(0, -0.02, -0.25, 0.035, 0.035, 0.5, '#6a4a2a');
+    g.box(0, -0.02, -0.25, 0.035, 0.035, 0.5, limb);
+    if (wood) g.blob(0, 0, -0.5, 0.07, 0.06, 0.08, '#4a7a2a', 42, { kind: K.Leaves });
     g.pop();
     g.box(0, -0.22, 0, 0.01, 0.01, 1.0, '#d8d8e0');
   });
+  if (wood) {
+    // The Old Wood's archers: grown over with moss, a crown of branches on the hood, rags of leaves.
+    const moss = '#4f7a30', mossD = '#3a5e22', twig = '#5a4030';
+    r.part('head', (g) => {
+      g.blob(0, 0.34, -0.05, 0.17, 0.06, 0.17, moss, 43, { kind: K.Leaves });
+      for (const s of [-1, 1]) {
+        g.push().translate(s * 0.1, 0.33, -0.05).rotateZ(s * -0.5);
+        g.box(0, 0, 0, 0.035, 0.3, 0.035, twig, { kind: K.Wood });
+        g.push().translate(0, 0.17, 0).rotateZ(s * -0.8);
+        g.box(0, 0, 0, 0.03, 0.13, 0.03, twig, { kind: K.Wood });
+        g.pop();
+        g.push().translate(0, 0.08, 0).rotateZ(s * 0.9);
+        g.box(0, 0, 0, 0.025, 0.1, 0.025, twig, { kind: K.Wood });
+        g.pop();
+        g.pop();
+      }
+    });
+    r.part('torso', (g) => {
+      for (const s of [-1, 1]) g.blob(s * 0.2, 0.52, 0, 0.11, 0.07, 0.13, s > 0 ? moss : mossD, 44 + s, { kind: K.Leaves });
+      g.box(0.1, 0.05, 0.1, 0.03, 0.42, 0.03, mossD, { kind: K.Leaves });
+    });
+    r.part('cloak', (g) => {
+      for (let i = 0; i < 4; i++) g.box(-0.15 + i * 0.1, -1.02 + (i % 2) * 0.06, 0.01, 0.08, 0.2, 0.03, i % 2 ? moss : mossD, { kind: K.Leaves });
+    });
+  }
   return new Model(r, archerPose, 0.9);
 }
 
@@ -778,7 +860,8 @@ function archerPose(r: Rig, a: Anim) {
 
 // ---------- bat ----------
 
-export function makeBat(): Model {
+export function makeBat(plain = false): Model {
+  if (FOE_LOOK === 'forest' && !plain) return makeRook();
   const r = new Rig({ shadow: 0.45 });
   r.joint('body', 'root', 0, 0, 0);
   r.joint('wingL', 'body', 0.1, 0.05, 0);
@@ -812,6 +895,47 @@ export function makeBat(): Model {
       rig.j('body').rotation.x = 0.6;
       rig.j('wingL').rotation.z = -0.5;
       rig.j('wingR').rotation.z = 0.5;
+    }
+    if (a.name === 'dead') {
+      rig.j('body').rotation.z = a.t * 8;
+      rig.j('body').position.y = -a.t * 2.5;
+    }
+  });
+}
+
+/** The Old Wood's thieves: rooks, black and glossy with pale beaks, that swoop like bats and take coin. */
+function makeRook(): Model {
+  const r = new Rig({ shadow: 0.45 });
+  r.joint('body', 'root', 0, 0, 0);
+  r.joint('wingL', 'body', 0.1, 0.05, 0);
+  r.joint('wingR', 'body', -0.1, 0.05, 0);
+  const black = '#1a1a22', blackD = '#121218', sheen = '#2a3048';
+  r.part('body', (g, gl) => {
+    g.blob(0, 0, 0, 0.14, 0.13, 0.22, black, 3, { detail: 1 });
+    g.blob(0, 0.08, 0.2, 0.1, 0.1, 0.1, '#1e1e28', 5);
+    g.box(0, 0.04, 0.33, 0.05, 0.05, 0.13, '#c8c0b0');
+    g.box(0, 0.06, 0.26, 0.09, 0.07, 0.04, '#9a948a');
+    for (const s of [-1, 1]) gl.box(s * 0.06, 0.11, 0.27, 0.025, 0.025, 0.01, [2.4, 2.2, 1.6]);
+    g.box(0, -0.02, -0.32, 0.17, 0.03, 0.22, blackD);
+    g.box(0, 0.12, -0.02, 0.16, 0.02, 0.2, sheen);
+  });
+  const wing = (s: number) => (g: Geo) => {
+    g.box(s * 0.26, -0.01, -0.02, 0.52, 0.025, 0.26, black);
+    for (let k = 0; k < 4; k++) g.box(s * (0.44 + k * 0.07), -0.015, -0.08 - k * 0.03, 0.06, 0.02, 0.26 - k * 0.03, blackD);
+    g.box(s * 0.2, 0.012, 0.02, 0.3, 0.01, 0.12, sheen);
+  };
+  r.part('wingL', wing(1));
+  r.part('wingR', wing(-1));
+  return new Model(r, (rig, a) => {
+    const fast = a.name === 'windup' ? 2 : 1;
+    const f = Math.sin(a.time * 11 * fast);
+    rig.j('wingL').rotation.z = f * 0.8;
+    rig.j('wingR').rotation.z = -f * 0.8;
+    rig.j('body').position.y = -f * 0.05;
+    if (a.name === 'swoop') {
+      rig.j('body').rotation.x = 0.5;
+      rig.j('wingL').rotation.z = -0.6;
+      rig.j('wingR').rotation.z = 0.6;
     }
     if (a.name === 'dead') {
       rig.j('body').rotation.z = a.t * 8;
@@ -912,7 +1036,7 @@ function boarPose(r: Rig, a: Anim) {
 }
 
 
-// ---------- each realm's colours for its goblins, archers and beasts ----------
+// ---------- each realm's colours for its goblins and archers ----------
 
 /** Realm 1's colours, kept so a realm can switch back. */
 const CASTLE_GOB = { ...GOB };
@@ -921,8 +1045,12 @@ const CASTLE_ARCH = { ...ARCH };
 const FOREST_GOB = { skin: '#7ab04a', skinDark: '#4a7a2a', skinLight: '#a8d870', cloth: '#4a5a2a', clothDark: '#2e3a1a', leather: '#5a3a26', eye: [2.4, 2.6, 0.5] as [number, number, number] };
 const FOREST_ARCH = { bone: '#c8c8a0', boneD: '#8a9068', hood: '#2f5a2e', hoodD: '#1f3d20', eye: [2.6, 2.8, 0.6] as [number, number, number] };
 
-/** Colour the foes built from now on for a realm (called before any are made). */
+/** Which realm's shapes the shared foes take: the Old Wood's goblins, archers and rooks look its own. */
+let FOE_LOOK = 'castle';
+
+/** Colour (and shape) the foes built from now on for a realm (called before any are made). */
 export function setFoePalette(realm: string) {
+  FOE_LOOK = realm;
   Object.assign(GOB, realm === 'forest' ? FOREST_GOB : CASTLE_GOB);
   Object.assign(ARCH, realm === 'forest' ? FOREST_ARCH : CASTLE_ARCH);
 }

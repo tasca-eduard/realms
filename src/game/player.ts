@@ -67,6 +67,8 @@ interface StrikeOpts {
   breaks?: boolean;
   /** A warhorse's charge: the only thing that tears through the Warden's thorns. */
   charge?: boolean;
+  /** The Thornstag's thorn burst (it tears away the thorns that only thorns can answer). */
+  burst?: boolean;
   radial?: boolean;
   yLo?: number;
   yHi?: number;
@@ -91,6 +93,8 @@ export class Player {
   flasks = 3;
   flasksMax = 3;
   swordLevel = 0;
+  /** Wares bought, by level (src/game/wares.ts). */
+  kit: Record<string, number> = {};
   coins = 0;
   /** Relic: blocking costs less. */
   crest = false;
@@ -173,9 +177,12 @@ export class Player {
     return !!this.power && this.power.kind === k && this.power.t > 0;
   }
   get damage() {
-    // Realm 1's smith gives +25% a level (to 3); the Old Wood's thorn-smith +15% a level after that.
-    const L = this.swordLevel;
-    return (1 + Math.min(3, L) * 0.25 + Math.max(0, L - 3) * 0.15) * (this.powerOn('fire') ? 1.5 : 1);
+    // +25% a level: realm 1's smith sharpens to 3, the Old Wood's thorn-smith tempers to 5.
+    return (1 + this.swordLevel * 0.25) * (this.powerOn('fire') ? 1.5 : 1);
+  }
+  /** Running speed on foot (silk-wrapped boots add to it). */
+  get footSpeed() {
+    return PLAYER.runSpeed * (1 + 0.08 * (this.kit.boots ?? 0));
   }
   get reachMul() {
     return this.powerOn('giant') ? 1.6 : 1;
@@ -215,7 +222,7 @@ export class Player {
     this.guardBroken = Math.max(0, this.guardBroken - dt);
     this.staminaWait -= dt;
     if (this.staminaWait <= 0 && this.state !== 'block' && this.state !== 'roll') this.stamina = Math.min(this.maxStamina, this.stamina + PLAYER.staminaRegen * dt * (this.effects.poison > 0 ? EFFECTS.poisonRegen : 1));
-    this.energy = Math.min(100, this.energy + 3 * dt);
+    this.energy = Math.min(100, this.energy + 3 * (1 + 0.4 * (this.kit.focus ?? 0)) * dt);
     if (this.power) {
       this.power.t -= dt;
       if (this.power.t <= 0) {
@@ -280,7 +287,7 @@ export class Player {
       case 'idle':
       case 'run': {
         if (moving) {
-          speed = PLAYER.runSpeed;
+          speed = this.footSpeed;
           tvx = wx;
           tvz = wz;
           const l = Math.hypot(wx, wz);
@@ -301,7 +308,7 @@ export class Player {
         this.fx = this.aim.x;
         this.fz = this.aim.y;
         if (moving) {
-          speed = PLAYER.runSpeed * PLAYER.blockSpeed;
+          speed = this.footSpeed * PLAYER.blockSpeed;
           tvx = wx;
           tvz = wz;
         }
@@ -362,7 +369,7 @@ export class Player {
         this.fx = this.aim.x;
         this.fz = this.aim.y;
         if (moving) {
-          speed = PLAYER.runSpeed * 0.4;
+          speed = this.footSpeed * 0.4;
           tvx = wx;
           tvz = wz;
         }
@@ -911,7 +918,7 @@ export class Player {
         // Thorns rise from the ground in a ring round the stag.
         speed = 0;
         if (this.rideT >= 0.25 && this.rideT - dt < 0.25) {
-          this.strike(g, { cx: this.x, cz: this.z, reach: 3 * this.reachMul, arc: -2, dmg: 2.2 * this.damage, kb: 10, set: this.swingHits, breaks: true, radial: true });
+          this.strike(g, { cx: this.x, cz: this.z, reach: 3 * this.reachMul, arc: -2, dmg: 2.2 * this.damage, kb: 10, set: this.swingHits, breaks: true, burst: true, radial: true });
           g.audio.sfx('thorns', this.x, this.z);
           g.shake(0.5);
           for (let i = 0; i < 24; i++) {
@@ -1230,7 +1237,7 @@ export class Player {
       const along = h.alongX ? o.cx - h.x : o.cz - h.z, across = h.alongX ? o.cz - h.z : o.cx - h.x;
       if (Math.abs(along) > h.w / 2 + 0.3 || Math.abs(across) > o.reach + 0.9 || Math.abs(h.y - this.y) > 1.5) continue;
       o.set.add(h);
-      if (o.charge) g.breakHedge(h);
+      if (h.by === 'stag' ? o.burst : o.charge) g.breakHedge(h);
       else h.hold(g, this.fx, this.fz);
     }
     for (const t of g.snareTraps) if (t.armed && inArea(t.x, t.y, t.z, 0.4)) t.spring(g);

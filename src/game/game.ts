@@ -31,6 +31,7 @@ import { ROUTE, type MapRealm } from '../ui/worldmap';
 import { Critter } from './critters';
 import { QuestBook } from './quests';
 import { REALMS, isRealm, type RealmDef } from './realms';
+import { WARES } from './wares';
 import type { RealmStory } from './story/story';
 import { reachability } from './reach';
 import { makeArcher, makeBat, makeBoar, makeBomber, makeBrute, makeDarter, makeGoblin, makeKing, makeKnight, makeShaman, makeSnarer, makeSpitter, makeThornback, makeVillager, setFoePalette, type Model } from './models';
@@ -255,6 +256,9 @@ export class Game {
     this.quests = new QuestBook(this.def.quests);
     // Each realm's goblins, archers and beasts wear its own colours.
     setFoePalette(this.def.id);
+    // ...and plays its own music where it has some.
+    this.audio.realm = this.def.id;
+    if (this.audio.music) this.audio.music.realm = this.def.id;
     this.screens.setRealm(this.story.title, this.story.victoryTitle, card);
     this.screens.setTravel(Object.values(REALMS).filter((r) => r.id !== this.def.id).map((r) => ({ id: r.id, name: r.name })));
 
@@ -364,7 +368,7 @@ export class Game {
           this.bindings.push(new Bindings(o.id, o.x, o.z, this));
           break;
         case 'thorns': {
-          const h = new ThornHedge(o.id, o.x, o.z, o.alongX, o.w, this);
+          const h = new ThornHedge(o.id, o.x, o.z, o.alongX, o.w, this, o.by ?? 'horse');
           this.hedges.push(h);
           this.interactables.push(h);
           break;
@@ -462,7 +466,7 @@ export class Game {
     this.enemies = [];
     this.realm.enemies.forEach((s, id) => {
       if (s.off || this.save.data.killed.includes(id) || !this.story.spawns(this, s)) return;
-      const e = new Enemy(s.type, s.x, s.z, this, s.group, s.guard, s.elite);
+      const e = new Enemy(s.type, s.x, s.z, this, s.group, s.guard, s.elite, s.plain, s.ambush);
       e.spawnId = id;
       e.model.rig.addTo(this.scene);
       this.enemies.push(e);
@@ -601,6 +605,7 @@ export class Game {
     this.player.flasksMax = d.flasksMax;
     this.player.flasks = d.flasksMax;
     this.player.swordLevel = d.sword;
+    this.player.kit = { ...d.kit };
     this.applyRelics();
     this.player.hp = this.player.maxHp;
     for (const s of this.shards) if (d.shards.includes(s.id)) s.remove(this);
@@ -610,6 +615,7 @@ export class Game {
     for (const m of this.moonfires) if (d.lit.includes(m.id)) m.setLit(true, this);
     for (const b of this.bindings) if (d.mounts.includes('stag')) b.free(this, true);
     if (d.mounts.includes('stag')) this.addStag();
+    this.applyKit();
     this.story.apply(this);
     this.spawnEnemies();
   }
@@ -628,6 +634,8 @@ export class Game {
   freeBeast(b: Bindings) {
     if (!this.save.data.mounts.includes('stag')) this.save.data.mounts.push('stag');
     const s = this.addStag()!;
+    this.applyKit();
+    s.hp = s.maxHp;
     s.arriveAt(b.x, b.z, this);
     s.home = { x: b.x, z: b.z };
     this.audio.sfx('bellow', b.x, b.z);
@@ -645,6 +653,14 @@ export class Game {
     this.player.crest = d.relics.includes('crest');
     // Hearts: five, one for each realm's three Moon Shards, one for the Heartwood Seed.
     this.player.maxHp = 5 + this.save.shardSets + (d.relics.includes('heartwood') ? 1 : 0);
+  }
+
+  /** Wares that change a mount: barding, one more hit for each piece. */
+  private applyKit() {
+    for (const m of this.mounts) {
+      m.maxHp = 3 + (this.player.kit.barding ?? 0);
+      m.hp = Math.min(m.hp, m.maxHp);
+    }
   }
 
   /** A relic won (from a realm's trial): kept, and its effect applied. */
@@ -683,6 +699,7 @@ export class Game {
     this.save.data.coins = this.player.coins;
     this.save.data.flasksMax = this.player.flasksMax;
     this.save.data.sword = this.player.swordLevel;
+    this.save.data.kit = { ...this.player.kit };
     this.save.write();
   }
 
@@ -1334,13 +1351,31 @@ export class Game {
       ];
     }
     if (d.shop === 'sword' && !this.victory) {
-      const top = d.upTo ?? 3, cost = [80, 150, 240, 400, 560][p.swordLevel] ?? 0;
-      const bonus = (L: number) => Math.round((Math.min(3, L) * 0.25 + Math.max(0, L - 3) * 0.15) * 100);
+      // A smith never sells past the price list (a level without a price would go for nothing).
+      const prices = [80, 150, 240, 400, 560], top = Math.min(d.upTo ?? 3, prices.length), cost = prices[p.swordLevel] ?? 0;
+      const bonus = (L: number) => L * 25;
       const maxed = p.swordLevel >= top;
       options = [
         { label: maxed ? (top > 3 ? 'The heartwood temper is as fine as it gets' : 'The blade is as sharp as it gets') : `${p.swordLevel >= 3 ? 'Temper' : 'Sharpen'} my sword (level ${p.swordLevel + 1})`, cost: !maxed ? cost : undefined, disabled: maxed || p.coins < cost, act: () => this.buy(cost, () => { p.swordLevel++; this.ui.toast(p.swordLevel > 3 ? 'Sword tempered' : 'Sword sharpened', `+${bonus(p.swordLevel)}% damage`); }) },
         { label: 'Not now', act: done },
       ];
+    }
+    // Wares (sold whether or not the realm's tyrant has fallen).
+    if (d.wares) {
+      const wares: DialogOption[] = d.wares.map((id) => {
+        const w = WARES[id], lvl = p.kit[id] ?? 0, cost = w.prices[lvl], maxed = cost === undefined;
+        return {
+          label: maxed ? `${w.name}: as good as they get` : `${w.name}${lvl ? ` (level ${lvl + 1})` : ''}: ${w.what}`,
+          cost: maxed ? undefined : cost,
+          disabled: maxed || p.coins < cost,
+          act: () => this.buy(cost, () => {
+            p.kit[id] = lvl + 1;
+            this.applyKit();
+            this.ui.toast(w.name, w.prices.length > 1 ? `Level ${lvl + 1}: ${w.what}` : w.what);
+          }),
+        };
+      });
+      options = options ? [...options.slice(0, -1), ...wares, options[options.length - 1]] : [...wares, { label: 'Not now', act: done }];
     }
     this.ui.say(n.name, lines, done, options);
     this.audio.sfx('ui');
@@ -1605,7 +1640,7 @@ export class Game {
         e.x = e.home.x;
         e.z = e.home.z;
         e.y = e.flying ? this.grid.groundAt(e.x, e.z) + 1.3 : this.grid.groundAt(e.x, e.z);
-        e.state = e.isBoss ? 'sleep' : 'idle';
+        e.state = e.isBoss ? 'sleep' : e.ambush ? 'lurk' : 'idle';
         e.enraged = false;
         e.model.rig.lift = 0;
       }
@@ -1934,7 +1969,7 @@ export class Game {
       }
     }
 
-    this.ui.hud(p, p.riding ? { hp: p.riding.hp, max: p.riding.maxHp } : null);
+    this.ui.hud(p, p.riding ? { hp: p.riding.hp, max: p.riding.maxHp, name: p.riding.kind === 'stag' ? 'Thornstag' : 'Warhorse' } : null);
     this.ui.effects(p.effects, p.effectMax);
     if (this.pipe.flash > 0) this.pipe.flash = Math.max(0, this.pipe.flash - real * 1.5);
     this.pipe.desat = damp(this.pipe.desat, this.state === 'dead' ? 0.85 : p.hp <= 1 ? 0.35 : 0, 3, real);
@@ -2154,7 +2189,7 @@ export class Game {
     const drums = dr && this.enemies.some((e) => e.alive && e.group === dr.group) ? 1 / (1 + (Math.hypot(p.x - dr.x, p.z - dr.z) / 12) ** 2) : 0;
     const dawnMul = 1 - this.dawn * 0.8;
     a.update(real, {
-      x: p.x, z: p.z, wind, crickets: crickets * dawnMul, owls: owls * dawnMul, water: this.ambCache.water, fire: this.ambCache.fire,
+      x: p.x, z: p.z, wind, crickets: crickets * dawnMul, owls: owls * dawnMul, birds: this.def.birds * (0.4 + crickets * 0.6) * (1 + this.dawn), water: this.ambCache.water, fire: this.ambCache.fire,
       drums, indoor: amb === 'indoor',
     });
     // The inn's tune leaks out into the street.
@@ -2187,6 +2222,7 @@ export class Game {
     a.warmth = lerp(n.warmth, d.warmth, k);
     a.exposure = lerp(n.exposure, d.exposure, k);
     a.mistAmount = lerp(n.mistAmount, d.mistAmount, k);
+    a.mistLevel = lerp(n.mistLevel, d.mistLevel, k);
     a.cloud = lerp(n.cloud, d.cloud, k);
   }
 

@@ -49,8 +49,9 @@ It won't go indoors, and it finds you when you rest at a far-off moonfire. Resti
 **The Thornstag** (Whisperwood: cut it free of the Warden's thorns west of the Ring of Oaks;
 once freed it goes with you to every realm): attack gores with its antlers, guard raises a
 thorn shield (knocks arrows and darts away, pricks what's close), special is a thorn burst all
-round, and jump twice to leap again in the air. Whichever beast you rode last is the one that
-comes when you rest at a far-off moonfire.
+round (only it tears away the living thorns that choke the cleft to the stag's old bed), and jump
+twice to leap again in the air. Whichever beast you rode last is the one that comes when you rest
+at a far-off moonfire.
 
 **Vines** hang down some cliff faces in Whisperwood: hold jump against them to climb.
 
@@ -83,10 +84,10 @@ remembered on this device). Effects hold still while you read, talk or watch a c
 
 | Foe | Where | What to know |
 | --- | --- | --- |
-| Goblin | Everywhere | Flashes before it swings |
+| Goblin | Everywhere | Flashes before it swings. Whisperwood's wear bark masks and crowns of leaves and swing thorned clubs; three lie hidden in the Old Grove's bushes by the road and burst out as you pass |
 | Shield goblin | Camp, marsh, bailey, courtyard | Blocks from the front until the third hit of a combo breaks the shield |
 | Skeleton archer | Towers, camps, the farm | Shows a red aim line; its arrows **maim** 30% of the time. (The keep's arrow slits glint before they fire and don't maim.) |
-| Bat | Barrow Fields, woods, marsh | Harmless but a pest: a swoop shoves you, costs stamina and interrupts what you're doing (a flask you were drinking isn't used up). Some **steal coins** and fly off; catch them before they escape and the coins drop |
+| Bat | Barrow Fields, woods, marsh | Harmless but a pest: a swoop shoves you, costs stamina and interrupts what you're doing (a flask you were drinking isn't used up). Some **steal coins** and fly off; catch them before they escape and the coins drop. In Whisperwood the thieves are rooks (only the Bat Roost keeps bats) |
 | Armored boar | Camp, lodge, courtyard | Paws the ground, then charges; a charge that hits **knocks you down**. Hits into a wall stun it |
 | **Hammer brute** | Camp, bailey winch, gorge, courtyard | Slow, can't be interrupted while it winds up, and stops turning just before the blow: step aside. A hit may **daze**; blocking it costs over twice the stamina. A parry stuns it for almost two seconds |
 | **Firepot thrower** | Farm, camp, bailey, overlook, river | Keeps its distance and lobs a pot where you're heading; a red ring marks the spot. The flames **burn** you, and they also scorch other goblins |
@@ -109,7 +110,8 @@ Every number here (health, speed, wind-ups, chances, durations) is in `src/confi
   Light the moonfire at the wayshrine; if you fall, you rise at the last moonfire you lit.
 - **Keepsfoot**: the village. The road from the bridge climbs into a short street past the
   smithy's open forge to the square: the tavern (the innkeeper sells Moon Flasks), the Elder's
-  hall, the smith (he sharpens your sword), the market stall, and the chapel by the north road.
+  hall, the smith (he sharpens your sword, and sells barding: each piece one more hit for your
+  mount), the market stall, and the chapel by the north road.
 - **Blackpine Wood and Gnasher's Camp**: someone is locked in a cage there.
 - **The Outer Bailey**: the winch that lowers the drawbridge (arrow slits watch it).
 - **The Moonlit Keep**: clear the courtyard garrison to open the great hall and the
@@ -120,7 +122,7 @@ Every number here (health, speed, wind-ups, chances, durations) is in `src/confi
   Old Lodge (an elite beast), the Barrow Fields and its graveyard, the Overlook (a ruined
   watch post up the Pilgrims' Stair), the Hollow (a cave in the cliff below it),
   Mirrormere with its pier, the Sallow Marsh, the raided farm, a goblin camp on the
-  river bank, and the gorge lookout.
+  river bank, the gorge lookout, and the Kings' Orchard gone wild behind the keep's west wall.
 - **Moon Shards**: three are hidden: by still water, behind old stone, above a long
   drop. All three give an extra heart. A cracked wall breaks to a heavy blow (finisher,
   full spin, dash strike or plunge).
@@ -137,14 +139,16 @@ Every number here (health, speed, wind-ups, chances, durations) is in `src/confi
   a broad island, a green in front of it round the gathering fire, reached by two rope bridges.
   Alder the Reeve, in the Heart Oak, knows where the Thorn Warden holds out; Moss the innkeeper
   sells Moon Flasks; Bryony the thorn-smith sharpens swords and, past realm 1's smith, tempers
-  them twice more (levels 4 and 5, +15% each); Ash's sister Wren is missing; the old owl on the
+  them twice more (levels 4 and 5, +25% each); Ash's sister Wren is missing; the old owl on the
   snag where the road comes in gives a hint each time you ask. The village goes about its day:
   a fisher on the jetty, washing at the bay, children chasing round the fire, the old man by it,
   a gardener, a carrier on the lakeside path, the watch at the east bridge, the beekeeper at her
-  hives by the Whisper, the weaver at her door.
+  hives by the Whisper, the weaver at her door (she wraps boots in spider silk: quicker on your
+  feet).
 - **The Gatherers' Clearing**, past the Whisper on the Blackwater's shore: Wren in a goblin cage.
 - **The Ring of Oaks**, west of the village: a three-wave trial for the Heartwood Seed (one
-  more heart) and 100 coins. Old Nettle lives in the glade south of it.
+  more heart) and 100 coins. Old Nettle lives in the glade south of it (her nettle tonic fills the
+  blue bar faster).
 - **Moon Shards**: three more, among the fen's pools, up where the vines climb, and on a giant's
   shelf in the High Canopy that only the rope walk over the Mirror Pool reaches (another heart).
   A cracked rock under the Overhang hides a niche.
@@ -160,7 +164,9 @@ Every number here (health, speed, wind-ups, chances, durations) is in `src/confi
   goblins, and when enraged makes roots burst under you (their spots fill up too). One attack at a
   time. The fight is on foot: the stag waits outside.
 - **The Stag's Thicket**: a hollow among mossy rocks in the Deep Wood, where the Warden's keepers
-  guard the bound stag.
+  guard the bound stag. North of it a cleft runs into the western heights, choked with living
+  thorns a sword only scratches; the freed stag's thorn burst tears them away, and the stag's old
+  bed lies beyond.
 - **Off the paths**: the Deer Meadow's hunter's stand, the Whisper's Fall into Rookfall, a rock
   pillar in the gorge a running jump from the rim, the Rookery in the pines north of it (the
   rooks' hoard), the Bat Roost in the north cliff, the Fallen Giant lying across the Whisper, the
@@ -168,6 +174,8 @@ Every number here (health, speed, wind-ups, chances, durations) is in `src/confi
   Wood and the Warden's Seat behind the Great Tree (both on the Warden's heights), the Mushroom
   Dell, the kingfisher's bank of the east river, and a goblin camp by the brook. Each hides a
   chest, as do the Charcoal Kilns down a lane south of the village (goblins have taken them).
+- **Its own music**: Whisperwood plays its own versions of the moods (a flute over harp and cello in
+  D Dorian, soft hand drums), and its nights have birdsong.
 
 The **pause menu** has a map of the eight realms (the prototype's): the realms you have been to
 show their land, whether their tyrant has fallen, Moon Shards and chests found, and a click on
@@ -212,6 +220,7 @@ src/
              moveset and riding), enemies.ts (AI), models.ts (3D characters and their
              animations), objects.ts (chests, moonfires, doors, the cave wall...),
              combat.ts (arrows, waves, pickups, power-ups), mount.ts (the warhorse),
+             wares.ts (what village folk sell besides flasks and the sword),
              trial.ts (the Seven Stones), hazards.ts (arrow slits, chandeliers),
              critters.ts (chickens, rabbits), quests.ts, save.ts, fow.ts (fog of war),
              reach.ts (the reachability check)

@@ -16,6 +16,8 @@ export interface Carried {
   playTime: number;
   /** Every foe felled on this journey (the victory screen's count). */
   kills: number;
+  /** Wares bought, by level (see src/game/wares.ts). */
+  kit: Record<string, number>;
 }
 
 /** Everything about one realm. */
@@ -49,10 +51,10 @@ interface Stored extends Carried {
 }
 
 const KEY = 'realms-save';
-const CARRIED: (keyof Carried)[] = ['coins', 'flasksMax', 'sword', 'relics', 'mounts', 'deaths', 'playTime', 'kills'];
+const CARRIED: (keyof Carried)[] = ['coins', 'flasksMax', 'sword', 'relics', 'mounts', 'deaths', 'playTime', 'kills', 'kit'];
 const PLACE: (keyof Place)[] = ['checkpoint', 'chests', 'lit', 'read', 'walls', 'shards', 'quests', 'killed', 'fow', 'flags'];
 
-const freshCarried = (): Carried => ({ coins: 0, flasksMax: 3, sword: 0, relics: [], mounts: [], deaths: 0, playTime: 0, kills: 0 });
+const freshCarried = (): Carried => ({ coins: 0, flasksMax: 3, sword: 0, relics: [], mounts: [], deaths: 0, playTime: 0, kills: 0, kit: {} });
 const freshPlace = (): Place => ({ checkpoint: '', chests: [], lit: [], read: [], walls: [], shards: [], quests: {}, killed: [], fow: '', flags: {} });
 
 /** A version-1 save (realm 1 only, everything at the top) as version 2. Nothing is dropped. */
@@ -74,6 +76,7 @@ export function migrateV1(d: Record<string, unknown>): Stored {
     playTime: num(d.playTime, 0),
     // Saves from before the count was kept: at least the placed foes are known.
     kills: num(d.kills, killed.length),
+    kit: {},
     realms: {
       castle: {
         checkpoint: typeof d.checkpoint === 'string' ? d.checkpoint : '',

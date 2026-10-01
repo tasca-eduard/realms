@@ -97,9 +97,9 @@ export class UI {
     this.coinsEl.classList.toggle('off', !on);
   }
 
-  hud(s: { hp: number; maxHp: number; stamina: number; maxStamina: number; flasks: number; flasksMax: number; coins: number; energy: number; power: { kind: string; t: number } | null }, horse: { hp: number; max: number } | null = null) {
+  hud(s: { hp: number; maxHp: number; stamina: number; maxStamina: number; flasks: number; flasksMax: number; coins: number; energy: number; power: { kind: string; t: number } | null }, horse: { hp: number; max: number; name: string } | null = null) {
     if (horse) {
-      const html = `<span>Warhorse</span>${Array.from({ length: horse.max }, (_, i) => `<i class="${i < horse.hp ? 'on' : ''}"></i>`).join('')}`;
+      const html = `<span>${horse.name}</span>${Array.from({ length: horse.max }, (_, i) => `<i class="${i < horse.hp ? 'on' : ''}"></i>`).join('')}`;
       if (this.horseEl.innerHTML !== html) this.horseEl.innerHTML = html;
       this.horseEl.classList.remove('off');
     } else this.horseEl.classList.add('off');

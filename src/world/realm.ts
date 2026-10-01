@@ -26,6 +26,10 @@ export interface EnemySpawn {
   guard?: boolean;
   /** Bigger, tougher, drops a power-up. */
   elite?: boolean;
+  /** Keeps its kind's shared look where the realm gives that kind its own (the Bat Roost's bats among Whisperwood's rooks). */
+  plain?: boolean;
+  /** Lies hidden in a bush and bursts out when the knight passes close (the Old Grove's goblins). */
+  ambush?: boolean;
   /** Retired from the realm (kept in the list so later save ids don't shift). */
   off?: boolean;
 }
@@ -41,6 +45,8 @@ export interface NpcDef {
   /** Extra lines after the captive is rescued. */
   after?: string[];
   shop?: 'flask' | 'sword';
+  /** Wares this one sells besides (see WARES in src/game/wares.ts). */
+  wares?: string[];
   /** The sword shop's top level here (realm 1's smith stops at 3). */
   upTo?: number;
   /** Sits this high above the ground (the owl on the inn's roof). */
@@ -71,13 +77,12 @@ export type ObjDef =
   | { kind: 'breakable'; x: number; z: number; what: 'pot' | 'crate' | 'barrel' }
   | { kind: 'windmill'; x: number; z: number }
   | { kind: 'sign'; x: number; z: number; text: string }
-  | { kind: 'arenaGate'; x: number; z: number; y: number }
   | { kind: 'shard'; id: string; x: number; z: number }
   | { kind: 'cracked'; id: string; x: number; z: number; alongX: boolean }
   /** Thorn knots binding a great beast: strike them all and it's free (and yours to ride). */
   | { kind: 'bindings'; id: string; x: number; z: number; mount: 'stag' }
-  /** The Old Wood's thorns across a way: only a charging warhorse breaks through. */
-  | { kind: 'thorns'; id: string; x: number; z: number; alongX: boolean; w: number };
+  /** The Old Wood's thorns across a way: only a charging warhorse breaks through (or, by: 'stag', only the Thornstag's thorn burst). */
+  | { kind: 'thorns'; id: string; x: number; z: number; alongX: boolean; w: number; by?: 'stag' };
 
 /** A realm's relic trial: an altar, a sealed ring, three waves, a relic and a purse. */
 export interface TrialDef {

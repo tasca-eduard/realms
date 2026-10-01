@@ -563,7 +563,7 @@ export class ThornHedge implements Interactable {
   group: THREE.Group;
   collider: Collider;
   private holdT = -9;
-  constructor(public id: string, public x: number, public z: number, public alongX: boolean, public w: number, g: Game) {
+  constructor(public id: string, public x: number, public z: number, public alongX: boolean, public w: number, g: Game, public by: 'horse' | 'stag' = 'horse') {
     this.y = g.grid.groundAt(x, z);
     const b = new Builder(g.grid, g.lights, g.fx, mulberry32(id.length * 97 + 13), 1000);
     // Drawn in its own builder so the whole hedge can vanish when it's torn through.
@@ -583,6 +583,10 @@ export class ThornHedge implements Interactable {
   prompt(g: Game) {
     if (this.broken) return null;
     const touch = g.input.usingTouch;
+    if (this.by === 'stag') {
+      if (g.player.riding?.kind === 'stag') return touch ? '!Thorn burst (the star button, standing still) to tear the thorns away' : `!Thorn burst (${g.input.label('special')}, standing still) to tear the thorns away`;
+      return '!Living thorns, thick as a wall. Thorns answer thorns: the Thornstag could tear them away.';
+    }
     if (g.player.riding) return touch ? '!Charge (the star button) to break through the thorns' : `!Charge (${g.input.label('special')}) to break through the thorns`;
     return '!Thorns as thick as a wall. A charging warhorse could break through.';
   }

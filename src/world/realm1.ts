@@ -24,7 +24,7 @@ export const MAP_D = 120;
 const VILLAGE: Pt[] = [[54, 46], [100, 44], [108, 56], [104, 66], [96, 71], [86, 73], [74, 79], [62, 84], [54, 80], [50, 66]];
 const WOODS: Pt[] = [[58, 0], [120, 0], [120, 58], [110, 56], [102, 48], [90, 45], [76, 43], [62, 42], [58, 36]];
 const PLATEAU: Pt[] = [[0, 0], [63, 0], [63, 36], [60, 44], [56, 50], [44, 53], [26, 55], [10, 56], [0, 57]];
-const STREAM: Pt[] = [[122, 63], [106, 72], [96, 78], [88, 79], [80, 86], [72, 98], [66, 110], [62, 122]];
+const STREAM: Pt[] = [[125, 61.3], [106, 72], [96, 78], [88, 79], [80, 86], [72, 98], [66, 110], [62, 122]];
 const ROAD_IN: Pt[] = [[119, 119], [110, 110], [104, 102], [98, 92], [93.5, 85], [93, 78], [93, 72], [92, 70.6], [88.5, 70.4], [85, 70.2]];
 const ROAD_WEST: Pt[] = [[76, 65], [66, 66], [58, 67.5], [52, 67.5], [44, 71], [42, 76]];
 const ROAD_NORTH: Pt[] = [[80, 62], [84.5, 59], [86, 52], [85.5, 46], [86, 40], [89, 34], [93, 29]];
@@ -654,6 +654,7 @@ export function buildRealm1(builder: Builder): RealmData {
     owlLodge = b.deadTree(113.4, 14.2, 1.1);
     b.crate(106, 12.2);
     b.barrel(106.8, 12.4);
+    b.sign(114.2, 9.6, 0.8);
   }
 
   // ---------- the Hollow ----------
@@ -774,6 +775,16 @@ export function buildRealm1(builder: Builder): RealmData {
   kit.lanterns(b, ROAD_IN, [25, 33, 41], 2.1);
   kit.lanterns(b, ROAD_WEST, [28], 2);
 
+  // ---------- the Kings' Orchard: the keep's old orchard behind its west wall, gone wild ----------
+  // Found, not signposted (no path): north from the Overlook along the outside of the wall.
+  for (const [x, z, s] of [[6.6, 15.8, 1.25], [9.4, 18.6, 1.05], [7.2, 21.4, 0.9], [6.4, 30.2, 1.3], [9.2, 32.6, 1], [6.9, 35.4, 0.85]] as [number, number, number][]) b.oak(x, z, s);
+  for (const [x, z, s] of [[8.4, 14.6, 0.8], [5.8, 19.2, 1], [10.6, 30.4, 0.7], [8, 34.4, 0.9], [11.2, 24, 0.6]] as [number, number, number][]) b.bush(x, z, s);
+  b.deadTree(10.2, 26.4, 0.9);
+  b.moonflowers(8.6, 25.4, 9, 1.8);
+  b.moonflowers(8.2, 10.6, 6, 1.2);
+  b.mushrooms(6.2, 31.6, 5, false);
+  b.rock(5.9, 9.8, 0.8);
+
   // ---------- data ----------
   const enemies: EnemySpawn[] = [
     // Barrow Fields
@@ -887,8 +898,9 @@ export function buildRealm1(builder: Builder): RealmData {
     },
     {
       id: 'smith', look: 'smith', name: 'Garrow the Smith', x: 94.7, z: 66.5, face: 1,
-      lines: ['That blade has seen better nights.', 'Bring me coin and I will put an edge on it that goblin hide will remember.'],
+      lines: ['That blade has seen better nights.', 'Bring me coin and I will put an edge on it that goblin hide will remember.', 'And barding for that horse of yours, if you mean to keep it on its feet.'],
       shop: 'sword',
+      wares: ['barding'],
     },
     {
       id: 'brother', look: 'captive', name: 'Tam', x: 101, z: 26, face: -1, caged: true,
@@ -926,11 +938,11 @@ export function buildRealm1(builder: Builder): RealmData {
     { kind: 'thorns', id: 'w_thorns', x: HEDGE.x, z: HEDGE.z, alongX: true, w: HEDGE.w },
     { kind: 'sign', x: 114.2, z: 9.6, text: 'North, along the gorge: the Old Wood. (Scratched under it, newer: THE THORNS BITE.)' },
     { kind: 'lore', id: 'lore4', x: 106.8, z: 85.6, text: 'Seven stones for seven kings who kept the road. The eighth stone was never raised.' },
+    { kind: 'lore', id: 'lore5', x: 8.6, z: 9.4, text: "The keep's old orchard. Nobody has pruned it since the King's men fled, and the apples have gone small and sour." },
     { kind: 'lever', id: 'winch', x: 56.5, z: 10.2 },
     { kind: 'drawbridge', x0: 47, z0: 23, x1: 51, z1: 26, deck: 4 },
     { kind: 'cage', id: 'cage', x: 101, z: 26 },
     { kind: 'hallDoor', x: 34, z: 18.5, y: 4 },
-    { kind: 'arenaGate', x: 34, z: 18.5, y: 4 },
     { kind: 'windmill', x: 40.5, z: 95 },
     { kind: 'sign', x: 101.5, z: 104.5, text: 'North-west: Keepsfoot. Beyond it, the Moonlit Keep.' },
     { kind: 'sign', x: 119.8, z: 122, text: 'The Mirrow bridge. The goblins burned it behind you, the night the keep fell. There is no way back but through.' },
@@ -956,7 +968,8 @@ export function buildRealm1(builder: Builder): RealmData {
     { name: 'Riverside', music: 'road', amb: 'road', test: (x, z) => x > 119.5 && z > 58 },
     { name: 'The Raided Farm', music: 'road', amb: 'fields', test: (x, z) => x > 68 && x < 109 && z > 109 },
     { name: 'The Moonlit Keep', music: 'keep', amb: 'keep', test: (x, z) => x > 13 && x < 47 && z > 7 && z < 41 },
-    { name: 'The Outer Bailey', music: 'keep', amb: 'keep', test: (x, z, y) => x > 50 && x < 63 && z < 47 && y > 3.5 },
+    { name: "The Kings' Orchard", music: 'keep', amb: 'woods', test: (x, z, y) => y > 3.5 && x < 47 && z > 3 && (x < 13.5 ? z < 41.5 : z < 7.5) },
+    { name: 'The Outer Bailey', music: 'keep', amb: 'keep', test: (x, z, y) => x >= 47 && x < 63 && z < 47 && y > 3.5 },
     { name: "Gnasher's Camp", music: 'wilds', amb: 'woods', test: (x, z) => (x - CAMP.x) ** 2 + (z - CAMP.z) ** 2 < 11 * 11 },
     { name: 'Blackpine Wood', music: 'wilds', amb: 'woods', test: (x, z, y) => insidePoly(WOODS, x, z) && y > 1.5 },
     { name: 'The Overlook', music: 'keep', amb: 'keep', test: (x, z, y) => y > 3.5 && z > 40 && x < 47 },
