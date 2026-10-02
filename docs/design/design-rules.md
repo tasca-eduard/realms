@@ -274,7 +274,8 @@ drawn over everything.
 
 ### B3. Every attack shown, with time to react
 Marks fill up over 1.2 s or more and are as big as what they hit (the Warden's rain 1.5 s, 1.25 s enraged; Old
-Inkarm's lines and rings 1.2 s; Brassbelly's steam ring 1.2 s, raised from 0.95 s); aim lines are fixed well
+Inkarm's lines and rings 1.2 s; Brassbelly's steam ring 1.2 s, raised from 0.95 s, and his anchor's wind-up 1.2 s,
+raised from 1.0 s on 2026-10-02); aim lines are fixed well
 before release (the Warden's volley 0.45 s; the Tidelord's charge lane and trident sweep 0.8 s). An attack that
 follows the knight shows where it is going before it goes.
 - **Said:** "they can hit me from anywhere, don't have time to react" (2026-09-30).
@@ -298,7 +299,7 @@ calm, 0 to 1 enraged, in 22 s); one that stands still is hit (3 to 4 times in 14
 ### B6. Tuned alone, to about a minute
 Each tyrant and mini-boss is tuned by hand, so that a player-like bot wins in about a minute at the expected
 sword level, losing well under the hearts it has. As measured: the Warden (54 health) 68-73 s at level 3, 6-8 hearts; the Tidelord (105)
-52-61 s at level 6, 0-4 hearts; Brassbelly (42, x2.25) 34-45 s at level 5, 0-4 hearts; Old Inkarm (44, x2.25)
+52-61 s at level 6, 0-4 hearts; Brassbelly (42, x2.25) 35-52 s at level 5, 0-5 hearts (30 runs, 2026-10-02); Old Inkarm (44, x2.25)
 49-69 s, 0-2 hearts. (The Goblin King, 29 s and 6 hearts at level 2, was left as it is: realm 1 had been called
 done.)
 - **Said:** "review, balance, find flaws" (2026-09-30), from which the standing note sets the target.

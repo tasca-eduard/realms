@@ -133,8 +133,10 @@ export const FOES = {
   thornback: { hp: 8, r: 0.52, speed: 2.3, aggro: 9, reach: 1.2, windup: 0.9, coins: [7, 11], prickStamina: 25 },
   // The Sunken Reef's: Brassbelly the salvager (the lighthouse isle's mini-boss): a brute's anchor blows, and
   // when he's struck three times in quick succession (or the knight hangs about close for `ventClose` s) his
-  // suit hisses for `ventWind` s (a ring on the ground), then blows off steam all round (`ventR` m).
-  salvager: { hp: 42, r: 0.56, speed: 2.0, aggro: 10, reach: 2.1, windup: 1.0, coins: [30, 40], dazeChance: 0.4, guardCost: 2.6, ventR: 2.8, ventWind: 1.2, ventEvery: 6, ventClose: 6 },
+  // suit hisses for `ventWind` s (a ring on the ground), then blows off steam all round (`ventR` m). His anchor
+  // is drawn back as long as his ring shows (a brute's 1.0 s left a knight caught in his own combo no time to
+  // get clear of it on the cluttered yard).
+  salvager: { hp: 42, r: 0.56, speed: 2.0, aggro: 10, reach: 2.1, windup: 1.2, coins: [30, 40], dazeChance: 0.4, guardCost: 2.6, ventR: 2.8, ventWind: 1.2, ventEvery: 6, ventClose: 6 },
   // The crew's divers: goblins in a bucket, a kettle or a fishbowl, a hose up to a cork float on the surface;
   // they walk into deep water and fight as goblins do, with a boathook.
   diver: { hp: 3, r: 0.34, speed: 2.7, aggro: 8.5, reach: 1.45, windup: 0.55, coins: [3, 5] },

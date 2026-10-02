@@ -123,14 +123,14 @@ const swing = (s) => {
       if (t - ringSeen > 0.25 && Math.hypot(p.x - b.x, p.z - b.z) < 2.8 + 0.8) [vx, vz, busy, roll] = [...away(b), true, true];
     } else ringSeen = -1;
     const foes = g.enemies.filter((e) => e.alive);
-    // (His anchor drawn back is plain to see: away once it's been seen a quarter second. The crew's quick jabs:
-    // at their flash.)
+    // (His anchor drawn back is plain to see: away once it's been seen a quarter second, and not back in under it
+    // until it falls (its blow reaches about 3 m with his lunge). The crew's quick jabs: at their flash.)
     if (b.alive && b.state === 'windup') { if (windSeen < 0) windSeen = t; } else windSeen = -1;
     const winding = (e) => (e === b ? windSeen >= 0 && t - windSeen >= 0.25 : e.telegraph > 0 && e.state !== 'vent');
     for (const e of foes)
-      if (!busy && winding(e) && Math.hypot(e.x - p.x, e.z - p.z) < (e === b ? 3.2 : 2.4)) {
+      if (!busy && winding(e) && Math.hypot(e.x - p.x, e.z - p.z) < (e === b ? 4.2 : 2.4)) {
         backOff = t + 0.25;
-        if (rollAway(e, t)) busy = true;
+        if (Math.hypot(e.x - p.x, e.z - p.z) < (e === b ? 3.2 : 2.4) && rollAway(e, t)) busy = true;
       }
     if (!busy && t < backOff) {
       const e = foes.sort((u, v) => Math.hypot(u.x - p.x, u.z - p.z) - Math.hypot(v.x - p.x, v.z - p.z))[0];

@@ -16,7 +16,7 @@ The knight's strength, the foes' toughness, bosses, hazards and coins in each bu
 | Ranged foes; of them standing still | 36%; 5 of 20 | 41%; 14 of 22 | 13%; 7 of 8 |
 | Hazards | 5 arrow slits, 2 chandeliers, the gorge, 6 firepot throwers | 7 snare traps, 3 thorn strips, the chasm, 1 thrower | 6 giant clams, the abyss, air (never a heart); nothing burns |
 | Tyrant (a player-like bot at the expected sword) | 48 health: 29 s, 6 hearts lost | 54 health: 68-73 s, 6-8 hearts lost | 105 health: 52-61 s at level 6, 0-4 hearts lost (group 35's 95 health: 58 s, 2-3 hearts) |
-| Mini-bosses (the same bot, with the sword a knight brings) | None (3 elites) | None | Brassbelly 42 health (94.5 at x2.25; 30 before group 36): 34-45 s at level 5, 0-4 hearts lost; Old Inkarm 44 (99; 26 before): 49-69 s, 0-2 hearts |
+| Mini-bosses (the same bot, with the sword a knight brings) | None (3 elites) | None | Brassbelly 42 health (94.5 at x2.25; 30 before group 36): 35-52 s at level 5, 0-5 hearts lost (30 runs; his anchor's wind-up 1.2 s since 2026-10-02); Old Inkarm 44 (99; 26 before): 49-69 s, 0-2 hearts |
 | Trial | 11 foes, 56 health | 11 foes, 86 health | 11 foes, 119 health |
 | Coins: earned, to spend, left over | ~1,215; 630-770; 375-733 | ~1,445; 960; 850-1,370 with nothing left to buy | ~2,700 (chests 1,840, quests 290, the trial 100, foes ~400, pearls 72); 1,860; about 840 of its own on top of what the knight brings (chests, quests and the trial alone pay 20% over what it sells) |
 
