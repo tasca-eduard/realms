@@ -11,7 +11,7 @@ export interface Look {
   boots: string;
   /** Rough height class: under 18 is a child. */
   h: number;
-  hat?: 'hood' | 'helmet';
+  hat?: 'hood' | 'helmet' | 'souwester';
   hatCol?: string;
   bald?: boolean;
   beard?: string;
@@ -44,6 +44,43 @@ export const LOOKS: Record<string, Look> = {
   woodgardener: { skin: '#e0b090', hair: '#6a4a2a', cloth: '#5a6a3a', cloth2: '#4a5a2e', pants: '#3a3024', boots: '#2a2018', h: 21, apron: '#a8c080', dress: true, hat: 'hood', hatCol: '#8a6a3a', prop: 'basket' },
   woodward: { skin: '#d8a888', hair: '#4a3a2a', cloth: '#3b5b2a', cloth2: '#2e4a20', pants: '#2e2a20', boots: '#1e1a14', h: 22, hat: 'hood', hatCol: '#2e4a20' },
   woodcarrier: { skin: '#c89070', hair: '#3a2a1a', cloth: '#7a6a4a', cloth2: '#6a5a3a', pants: '#3a3024', boots: '#2a2018', h: 22, bald: true, beard: '#3a2a1a', prop: 'sack' },
+  // The Sunken Reef's coral village: oilskins and sou'westers in faded sea colours (the prototype's fisher look).
+  reefmaster: { skin: '#d8a888', hair: '#c8c8c0', cloth: '#3a5a78', cloth2: '#2e4a66', pants: '#3a3a44', boots: '#2a2a30', h: 22, hat: 'souwester', hatCol: '#2e4a66', beard: '#c8c8c0' },
+  reefwife: { skin: '#e0b090', hair: '#8a4a2a', cloth: '#e8a060', cloth2: '#c88a50', pants: '#4a3a30', boots: '#2a2018', h: 21, apron: '#d8d0c0', dress: true, longHair: true },
+  reefsmith: { skin: '#c89070', hair: '#2a2a2a', cloth: '#6a7aa8', cloth2: '#5a6a96', pants: '#2e2a30', boots: '#1e1a20', h: 22, apron: '#7a5a4a', longHair: true },
+  reefdiver: { skin: '#d8a080', hair: '#2a1a14', cloth: '#3a8aa8', cloth2: '#2e7290', pants: '#3a3a44', boots: '#2a2a30', h: 21, longHair: true, dress: true },
+  reefboy: { skin: '#e0a880', hair: '#2a1a14', cloth: '#3a8aa8', cloth2: '#2e7290', pants: '#4a4a3a', boots: '#2a2018', h: 16 },
+  reefold: { skin: '#d8a888', hair: '#e0e0e0', cloth: '#6a7aa8', cloth2: '#5a6a96', pants: '#3a3a44', boots: '#2a2a30', h: 20, hat: 'souwester', hatCol: '#e8c060', dress: true },
+  reefdiver2: { skin: '#c89070', hair: '#d0d0d0', cloth: '#e8a060', cloth2: '#c88a50', pants: '#3a3a44', boots: '#2a2a30', h: 21, hat: 'souwester', hatCol: '#e8c060', beard: '#d0d0d0' },
+  reefcomber: { skin: '#d8a888', hair: '#6a5a4a', cloth: '#7a7a5a', cloth2: '#6a6a4a', pants: '#3a3024', boots: '#2a2018', h: 22, hat: 'souwester', hatCol: '#c8a040', beard: '#6a5a4a', prop: 'sack' },
+  reefmender: { skin: '#e0b090', hair: '#4a2a1a', cloth: '#3a8aa8', cloth2: '#2e7290', pants: '#3a3a44', boots: '#2a2a30', h: 21, apron: '#c8b890', dress: true, hat: 'souwester', hatCol: '#e8c060' },
+  reefchild: { skin: '#f0c8a0', hair: '#c88a3a', cloth: '#e8a060', cloth2: '#c88a50', pants: '#4a4a3a', boots: '#2a2018', h: 15 },
+  // ...and its night: the inn's regulars, fishers with their rods, children, the cook, the boatwright, the carver.
+  reefsalt: { skin: '#c89070', hair: '#d0d0d0', cloth: '#2e3a5a', cloth2: '#26304a', pants: '#3a3a44', boots: '#2a2a30', h: 22, bald: true, beard: '#d0d0d0' },
+  reeflad: { skin: '#e0b090', hair: '#8a5a2a', cloth: '#5a7aa0', cloth2: '#4a6a8a', pants: '#3a3a44', boots: '#2a2a30', h: 21 },
+  reefold2: { skin: '#d8a888', hair: '#b0b0a8', cloth: '#7a7a5a', cloth2: '#6a6a4a', pants: '#3a3a44', boots: '#2a2a30', h: 20, hat: 'souwester', hatCol: '#3a5a78', beard: '#b0b0a8' },
+  reeffisher: { skin: '#d8a888', hair: '#4a3a2a', cloth: '#d8b040', cloth2: '#b89030', pants: '#3a3a44', boots: '#2a2a30', h: 22, hat: 'souwester', hatCol: '#d8b040', beard: '#4a3a2a', prop: 'rod' },
+  reeffisher2: { skin: '#e0b090', hair: '#2a1a14', cloth: '#3a5a78', cloth2: '#2e4a66', pants: '#3a3a44', boots: '#2a2a30', h: 21, hat: 'souwester', hatCol: '#e8a060', longHair: true, prop: 'rod' },
+  reeffisher3: { skin: '#c89070', hair: '#3a2a1a', cloth: '#5a6a5a', cloth2: '#4a5a4a', pants: '#3a3024', boots: '#2a2018', h: 22, hat: 'souwester', hatCol: '#3a4a3a', beard: '#3a2a1a', prop: 'rod' },
+  reefgirl: { skin: '#f0c8a0', hair: '#5a3a1a', cloth: '#3a8aa8', cloth2: '#2e7290', pants: '#4a4a3a', boots: '#2a2018', h: 16, dress: true, longHair: true, prop: 'rod' },
+  reeflass: { skin: '#f0c8a0', hair: '#5a3a1a', cloth: '#3a8aa8', cloth2: '#2e7290', pants: '#4a4a3a', boots: '#2a2018', h: 16, dress: true, longHair: true },
+  reefgirl2: { skin: '#e0a880', hair: '#2a1a14', cloth: '#b86a5c', cloth2: '#9a5a4c', pants: '#4a4a3a', boots: '#2a2018', h: 15, dress: true, longHair: true },
+  reefchild2: { skin: '#f0c8a0', hair: '#d8a050', cloth: '#5a7aa0', cloth2: '#4a6a8a', pants: '#4a4a3a', boots: '#2a2018', h: 15 },
+  reefchild3: { skin: '#e0b090', hair: '#6a3a1a', cloth: '#8a9a6a', cloth2: '#7a8a5a', pants: '#4a4a3a', boots: '#2a2018', h: 16, hat: 'souwester', hatCol: '#d8b040' },
+  reefcook: { skin: '#e0b090', hair: '#6a3a2a', cloth: '#b86a5c', cloth2: '#9a5a4c', pants: '#4a3a30', boots: '#2a2018', h: 21, apron: '#d8d0c0', dress: true, longHair: true },
+  reefwright: { skin: '#c89070', hair: '#2a2a2a', cloth: '#4a4a3a', cloth2: '#3a3a2e', pants: '#2e2a28', boots: '#1e1a18', h: 23, beard: '#2a2a2a', apron: '#3a2a20' },
+  reefcarver: { skin: '#d8a080', hair: '#c8c0b0', cloth: '#8a9a6a', cloth2: '#7a8a5a', pants: '#3a3a44', boots: '#2a2a30', h: 21, apron: '#e0d0c8', dress: true, longHair: true },
+  reefgran: { skin: '#d8a888', hair: '#e8e8e8', cloth: '#5a4a6a', cloth2: '#4a3a5a', pants: '#3a3a44', boots: '#2a2a30', h: 19, dress: true, hat: 'souwester', hatCol: '#6a7aa8', apron: '#b8b0a0' },
+  // The reef's errands (src/world/errands.ts): Brill the fisher, Wrasse the diver lad, Cockle the diver and his wife Winkle.
+  reeffisher4: { skin: '#c89070', hair: '#5a4a3a', cloth: '#5a7a6a', cloth2: '#4a6a5a', pants: '#3a3a44', boots: '#2a2a30', h: 22, hat: 'souwester', hatCol: '#e8c060', beard: '#5a4a3a', prop: 'rod' },
+  reeflad2: { skin: '#d8a080', hair: '#8a5a2a', cloth: '#3a6a8a', cloth2: '#2e5a76', pants: '#3a3a44', boots: '#2a2018', h: 18 },
+  reefdiver3: { skin: '#d8a888', hair: '#3a2a1e', cloth: '#e07050', cloth2: '#c05a40', pants: '#4a4a58', boots: '#2a2a30', h: 21, beard: '#3a2a1e', hat: 'souwester', hatCol: '#e8e0c8' },
+  reefwife2: { skin: '#e0b090', hair: '#3a2a1e', cloth: '#6a8aa8', cloth2: '#5a7a96', pants: '#4a3a30', boots: '#2a2018', h: 20, apron: '#c8b890', dress: true, longHair: true, hat: 'hood', hatCol: '#a85a4a' },
+  // The castaway in the sea cave: thirty years of beard, rags of old sailcloth.
+  reefhermit: { skin: '#c08868', hair: '#e8e4d8', cloth: '#9a8a68', cloth2: '#7a6c50', pants: '#5a4e3a', boots: '#4a3a2a', h: 20, beard: '#e8e4d8', longHair: true },
+  // The lighthouse's keeper (a navy pea-coat, a white beard) and a fisher of the boats that come home.
+  reefkeeper: { skin: '#d8a080', hair: '#e8e8e8', cloth: '#4a5c80', cloth2: '#3c4c6c', pants: '#2a2a30', boots: '#1e1a18', h: 21, bald: true, beard: '#e8e8e8' },
+  reeffisher5: { skin: '#e0b090', hair: '#3a2a1a', cloth: '#a84a3a', cloth2: '#8a3a2e', pants: '#3a3a44', boots: '#2a2a30', h: 21, hat: 'souwester', hatCol: '#a84a3a', prop: 'rod' },
   guard: { skin: '#e0b090', hair: '#8a8a8a', cloth: '#6a2a2a', cloth2: '#5a2020', pants: '#3a3a44', boots: '#2a2a30', h: 22, hat: 'helmet', hatCol: '#8a8a9a', beard: '#9a9a9a' },
 };
 

@@ -10,6 +10,7 @@ import * as D from './details';
 import { MOBILE } from '../config';
 import { MapKit, dressRealm, forest, waterPoints, type EnemySpawn, type ObjDef, type RealmData, type RegionDef } from './realm';
 import { bough, bramble, deadShrub, diceAt, giantMushroom, giantOak, greatTree, homeTree, rootFrom, ropeBridge, thicket, witheredOak, WOOD } from './wood';
+import { dressWoodStair, onWoodStair, paintWoodStair, WOOD_STAIR, WOOD_STAIR_HEAD, woodStairBare } from './seastair';
 
 // ---------------------------------------------------------------------------
 // Realm 2: Whisperwood, the Old Wood (the prototype's second realm).
@@ -32,7 +33,8 @@ import { bough, bramble, deadShrub, diceAt, giantMushroom, giantOak, greatTree, 
 //   north-west   the Warden's heights: a rock stair through a cleft between two hills, the
 //                Thorn Heart in the thorns across its top, a short path to the Great Tree and
 //                the hollow of roots at its feet (the Warden's arena); the Withered Wood and the
-//                fallen knight's cairn south of it, the Warden's Seat north of it
+//                fallen knight's cairn south of it, the Warden's Seat north of it; past the Withered
+//                Wood the Sea Stair, down the sea cliff toward the Sunken Reef (src/world/seastair.ts)
 //   west         the Ring of Oaks, the herbwife's glade, the Deep Wood with the Stag's Thicket,
 //                the Mushroom Dell, the Mossfen (no path: a secret)
 //   south edge   goblins camped by the brook
@@ -240,6 +242,8 @@ const LANE_STAG: Pt[] = [[16.2, 66.5], [13.5, 69], [12, 70.8]];
 const STAIR = { x0: 33, x1: 37, z0: 13, z1: 17 };
 // From the top of the stair straight to the hollow's mouth.
 const HOLD_PATH: Pt[] = [[33, 15], [29.5, 16.2], [27.8, 19.5], [27, 23.2], [25.6, 24]];
+// Off it, round the Great Tree's roots and through the Withered Wood to the head of the Sea Stair.
+const LANE_SEA: Pt[] = [[27, 23.2], [27.6, 28.4], [24.8, 33.4], [18.6, 36.4], [12.4, 36.3], [6.4, 34.3], [WOOD_STAIR_HEAD.x, WOOD_STAIR_HEAD.z]];
 
 // How wooded each part of the Old Wood is (the same scale as forest()'s density): deep only where
 // the wood is the point (the East Woods' pines and patrols; the Deep Wood round the Stag's
@@ -517,7 +521,7 @@ export function buildRealm2(builder: Builder): RealmData {
   p.flattenAlong(RAVINE_PATH.slice(2, -1), 4.2, FLOOR);
   // Paths (after the ground they cross).
   p.path(ROAD_IN, 2.4, T.Path, 0.5, 3);
-  for (const [l, w, k] of [[ROAD_EAST, 2, 4], [ROAD_NORTH, 2, 5], [RAVINE_PATH, 2.2, 6], [LANE_BANK, 1.7, 7], [LANE_WEST, 1.7, 8], [LANE_GLADE, 1.5, 9], [HOLD_PATH, 1.8, 10], [LANE_STAG, 1.5, 11], [LANE_KILNS, 1.6, 12], [LAKE_RING, 1.7, 14]] as [Pt[], number, number][])
+  for (const [l, w, k] of [[ROAD_EAST, 2, 4], [ROAD_NORTH, 2, 5], [RAVINE_PATH, 2.2, 6], [LANE_BANK, 1.7, 7], [LANE_WEST, 1.7, 8], [LANE_GLADE, 1.5, 9], [HOLD_PATH, 1.8, 10], [LANE_STAG, 1.5, 11], [LANE_KILNS, 1.6, 12], [LAKE_RING, 1.7, 14], [LANE_SEA, 1.5, 15]] as [Pt[], number, number][])
     p.path(l, w, T.Path, 0.45, k, false);
   // ---------- the Warden's heights: the land ----------
   {
@@ -745,7 +749,7 @@ export function buildRealm2(builder: Builder): RealmData {
     }, cx - rr - 1, cz - rr - 1, cx + rr + 1, cz + rr + 1);
 
   // ---------- props ----------
-  const kit = new MapKit(grid, [ROAD_IN, ROAD_EAST, ROAD_NORTH, RAVINE_PATH, LANE_BANK, LANE_WEST, LANE_GLADE, HOLD_PATH, LANE_STAG, LANE_KILNS, LAKE_RING]);
+  const kit = new MapKit(grid, [ROAD_IN, ROAD_EAST, ROAD_NORTH, RAVINE_PATH, LANE_BANK, LANE_WEST, LANE_GLADE, HOLD_PATH, LANE_STAG, LANE_KILNS, LAKE_RING, LANE_SEA]);
   const flat = (x: number, z: number, rad: number) => kit.flatAround(x, z, rad);
   // ---------- who lives where (placed before the props, which keep clear of them) ----------
   // A foe's index in this list is its save id: append, never reorder.
@@ -1660,6 +1664,7 @@ export function buildRealm2(builder: Builder): RealmData {
     { kind: 'moonfire', id: 'overhang', name: 'The Overhang', x: 41.5, z: 15.8 },
     { kind: 'sign', x: 109.3, z: 112.4, text: 'Hollowbough, west through the Old Grove. Keep to the path: the ground bites.' },
     { kind: 'sign', x: 102.5, z: 36, text: 'Rookfall. The rope bridge holds, most nights.' },
+    { kind: 'sign', x: 1.4, z: 31, text: 'The Sea Stair, down to the drowned coast. The cliff came down on it: only the deer still go that way.' },
     { kind: 'lore', id: 'wlore1', x: 70, z: 99, text: 'The Old Wood is older than the kingdom. It remembers everything.' },
     { kind: 'bindings', id: 'stag', x: STAG.x, z: STAG.z, mount: 'stag' },
     { kind: 'lever', id: 'heart', look: 'heart', x: WALL_X + 0.85, z: (STAIR.z0 + STAIR.z1) / 2 },
@@ -1712,6 +1717,7 @@ export function buildRealm2(builder: Builder): RealmData {
   const yard = off(home.smithy, HOMES.smithy.face, 0, 1);
   const eastHomes = (x: number, z: number) => Math.hypot(x - yard[0], z - yard[1]) < 3.2 || Math.hypot(x - HOMES.fisher.x, z - HOMES.fisher.z) < 4;
   const regions: RegionDef[] = [
+    { name: 'The Sea Stair', music: 'road', amb: 'road', test: (x, z) => onWoodStair(x, z) },
     { name: 'The Withered Wood', music: 'wilds', amb: 'woods', test: (x, z, y) => z > 32 && insidePoly(HOLD, x, z) && y > 4 },
     { name: 'The Fallen Giant', music: 'wilds', amb: 'woods', test: (x, z) => x > 34 && x < 42 && z > LOG.z0 - 2 && z < LOG.z1 + 2 },
     { name: 'The Drowned Shrine', music: 'hall', amb: 'fields', test: (x, z) => Math.hypot(x - SHRINE.x, z - SHRINE.z) < SHRINE.r + 2 },
@@ -2007,13 +2013,14 @@ export function buildRealm2(builder: Builder): RealmData {
     foeHp: 1.6,
     titleView: { x: POND.x + 4, z: POND.z + 6 },
     debugSpots: [[111.5, 109.5], [70, 92], [98, 64], [103.5, 33.5], [70, 14], [41.5, 15.8], [31, 15], [27, 24], [22, 66]],
-    borders: [{ id: 'thornroad', to: 'castle', arrive: 'thornroad', x: 113.3, z: 125.6, r: 1.4, out: { x: 111.5, z: 109.5, fx: -0.45, fz: -0.9 }, card: ['The Old Wood', 'Blackpine'] }],
+    borders: [{ id: 'thornroad', to: 'castle', arrive: 'thornroad', x: 113.3, z: 125.6, r: 1.4, out: { x: 111.5, z: 109.5, fx: -0.45, fz: -0.9 }, card: ['The Old Wood', 'Blackpine'] }, WOOD_STAIR],
   };
 }
 
 /**
  * The land beyond Whisperwood's edges: the Greywater, a broad river along the east, the Old
- * Wood's heights to the north and west, low wood across the brook.
+ * Wood's heights to the north and west (west of the Withered Wood a cove of the sea under the
+ * cliff), low wood across the brook.
  */
 export function paintForestOutskirts(grid: Grid, W: number, D: number) {
   for (let gz = grid.oz; gz < grid.oz + grid.d; gz++)
@@ -2051,6 +2058,8 @@ export function paintForestOutskirts(grid: Grid, W: number, D: number) {
       else set(Math.round(Math.max(edgeH, 6) + 1 + out * 0.5 + n * 5), n2 > 0.7 ? T.Rock : T.DarkGrass);
     }
   carveStagBed(grid, Math.floor(BED.x - BED.rx - 2), 0);
+  // Past the Withered Wood the heights end at the sea cliff, the Sea Stair cut down it.
+  paintWoodStair(grid);
 }
 
 /** The stag's bed and its cleft carved out of the ground between x0 and x1 (the map's wall, or the heights beyond). */
@@ -2072,6 +2081,11 @@ export function decorateForestOutskirts(b: Builder, grid: Grid, W: number, D: nu
     for (let x = grid.ox; x < grid.ox + grid.w; x += 1.6) {
       if (x > -1 && z > -1 && x < W && z < D) continue;
       const tx = x + r() * 1.2, tz = z + r() * 1.2, k = r();
+      // The Sea Stair's cove and the low shore across it: bare (drawing what a tree there drew, so nothing else shifts).
+      if (woodStairBare(tx, tz)) {
+        if (k < 0.62) r();
+        continue;
+      }
       if (!grid.inside(Math.floor(tx), Math.floor(tz)) || grid.waterAt(tx, tz) !== NONE) continue;
       const h = grid.groundAt(tx, tz);
       if (h < 0) continue;
@@ -2087,4 +2101,5 @@ export function decorateForestOutskirts(b: Builder, grid: Grid, W: number, D: nu
       if (k < 0.5) b.pine(tx, tz, 1 + r() * 0.7);
       else if (k < 0.62) b.oak(tx, tz, 1 + r() * 0.4);
     }
+  dressWoodStair(b, grid);
 }

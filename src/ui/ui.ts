@@ -4,6 +4,7 @@ import type { Action } from '../engine/input';
 
 const HEART = `<svg viewBox="0 0 7 6" shape-rendering="crispEdges"><path class="f" fill="#e43b44" d="M1 0h2v1h1V0h2v1h1v2H6v1H5v1H4v1H3V5H2V4H1V3H0V1h1z"/><path class="s" fill="#ff9aa0" d="M1 1h1v1H1z"/></svg>`;
 const FLASK = `<svg viewBox="0 0 7 10" shape-rendering="crispEdges"><path fill="#15132a" d="M2 0h3v1H5v2h1v1h1v5H6v1H1V9H0V4h1V3h1V1H2z"/><path fill="#8a8aa0" d="M2 1h3v2H2z"/><path class="liq" fill="#5ad1ff" d="M1 5h5v4H1zM2 4h3v1H2z"/><path class="glow" fill="#c8f4ff" d="M2 5h1v2H2z"/></svg>`;
+const AIRB = `<svg viewBox="0 0 7 7" shape-rendering="crispEdges"><path class="o" fill="#bfefff" d="M2 0h3v1h1v1h1v3H6v1H5v1H2V6H1V5H0V2h1V1h1z"/><path class="i" fill="#3a9ec8" d="M2 1h3v1h1v3H5v1H2V5H1V2h1z"/><path class="s" fill="#ffffff" d="M2 2h1v1H2z"/></svg>`;
 const COIN = `<svg viewBox="0 0 7 7" shape-rendering="crispEdges"><path fill="#b86f10" d="M2 0h3v1h1v1h1v3H6v1H5v1H2V6H1V5H0V2h1V1h1z"/><path fill="#feae34" d="M2 1h3v1h1v3H5v1H2V5H1V2h1z"/><path fill="#fff0a0" d="M3 2h1v3H3z"/></svg>`;
 
 function el(tag: string, id?: string, cls?: string, html?: string) {
@@ -32,6 +33,8 @@ export class UI {
   private hearts = el('div', 'hearts');
   private stam = el('div', 'stam', '', '<div id="stamFill"></div>');
   private energyEl = el('div', 'energy', '', '<div id="energyFill"></div>');
+  private airEl = el('div', 'air', 'off');
+  private airKey = '';
   private powerEl = el('div', 'power', 'off', '<span class="pn"></span><div class="pbar"><div class="pfill"></div></div>');
   private comboEl = el('div', 'combo', '', '<span class="cn"></span><span class="cm"></span>');
   private horseEl = el('div', 'horseHp', 'off');
@@ -81,7 +84,7 @@ export class UI {
 
   constructor(root: HTMLElement) {
     this.root = root;
-    this.hudEl.append(this.hearts, this.stam, this.energyEl, this.flasks, this.powerEl, this.horseEl, this.fxEl);
+    this.hudEl.append(this.hearts, this.stam, this.energyEl, this.airEl, this.flasks, this.powerEl, this.horseEl, this.fxEl);
     root.append(this.hurtEl, this.hudEl, this.coinsEl, this.objEl, this.questEl, this.comboEl, this.promptEl, this.toastEl, this.areaEl, this.bubbleEl, this.bossEl, this.bossIntroEl, this.hintEl, this.dialogEl, this.loreEl, this.deadEl, this.fader);
     this.dialogEl.addEventListener('pointerdown', (e) => {
       e.stopPropagation();
@@ -109,6 +112,7 @@ export class UI {
       this.powerEl.classList.remove('off');
       const names: Record<string, [string, string]> = {
         fire: ['Fire Blade', '#ff8a3c'], wind: ['Wind Boots', '#b8f0ff'], magnet: ['Magnet', '#feae34'], bubble: ['Bubble', '#5ad1ff'], giant: ['Giant Slash', '#e0b0ff'],
+        ink: ["Kraken's Ink", '#c27ae8'],
       };
       const [n, c] = names[s.power.kind] ?? [s.power.kind, '#fff'];
       const pn = this.powerEl.querySelector('.pn') as HTMLElement;
@@ -140,6 +144,23 @@ export class UI {
       void this.coinsEl.offsetWidth;
       this.coinsEl.classList.add('bump');
     }
+  }
+
+  /** The diving suit's air, as bubbles (one for each ten seconds): hidden while it's full and the knight is
+   *  above the water; the bubbles pulse when it runs low, and the row flashes when it's gone. */
+  air(s: { left: number; max: number; show: boolean }) {
+    this.airEl.classList.toggle('off', !s.show);
+    if (!s.show) return;
+    const n = Math.ceil(s.max / 10), full = Math.ceil(s.left / 10 - 1e-6);
+    const key = `${n}/${full}`;
+    if (key !== this.airKey) {
+      this.airKey = key;
+      let h = '';
+      for (let i = 0; i < n; i++) h += i < full ? AIRB : AIRB.replace('<svg', '<svg class="gone"');
+      this.airEl.innerHTML = h;
+    }
+    this.airEl.classList.toggle('low', s.left > 0 && s.left < s.max * 0.25);
+    this.airEl.classList.toggle('empty', s.left <= 0);
   }
 
   /** Floating words that rise and fade (tired, x2 coins, power names). */

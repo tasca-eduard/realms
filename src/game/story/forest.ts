@@ -92,6 +92,7 @@ export class ForestStory implements RealmStory {
     if (id === 'stag') g.quest('stag', 1);
   }
   areaSub(g: Game, r: RegionDef) {
+    if (r.name === 'The Sea Stair') return 'The old way down to the drowned coast';
     return r.name === "The Warden's Hold" && !g.victory ? 'Where the thorns grow from' : '';
   }
   talk(g: Game, n: Npc, lines: string[]): string[] | 'handled' {

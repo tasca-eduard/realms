@@ -27,6 +27,8 @@ interface Track {
   ostVol?: number;
   perc?: 'boss' | 'march' | 'light' | 'none';
   percVol?: number;
+  /** Notes repeat back, fading (under the sea). */
+  echo?: boolean;
 }
 
 const MINOR = [0, 2, 3, 5, 7, 8, 10];
@@ -34,6 +36,7 @@ const DORIAN = [0, 2, 3, 5, 7, 9, 10];
 const MAJOR = [0, 2, 4, 5, 7, 9, 11];
 const HARM = [0, 2, 3, 5, 7, 8, 11];
 const PHRYG = [0, 1, 3, 5, 7, 8, 10];
+const LYDIAN = [0, 2, 4, 6, 7, 9, 11];
 
 export const TRACKS: Record<string, Track> = {
   road: {
@@ -87,6 +90,50 @@ export const TRACKS: Record<string, Track> = {
  * prototype's forest track: 88 bpm, D Dorian, a flute over cello and harp, light hand drums.
  */
 export const REALM_TRACKS: Record<string, Record<string, Track>> = {
+  // The Sunken Reef: the prototype's sea track (70 bpm, Lydian, a celesta over a choir, no drums, echo) for
+  // the shallows; slower, lower and sparser as it gets deep.
+  aqua: {
+    road: {
+      bpm: 70, key: 60, scale: LYDIAN, prog: [[0, 'M'], [2, 'M'], [-3, 'm'], [5, 'M']],
+      pad: 'choir_aahs', padVol: 0.12, arp: 'orchestral_harp', arpVol: 0.18, arpStyle: 'broken',
+      lead: 'celesta', leadVol: 0.2, leadOct: 1, density: 0.25, bass: 'cello', bassVol: 0.18, bassStyle: 'whole', echo: true,
+    },
+    wilds: {
+      bpm: 64, key: 57, scale: LYDIAN, prog: [[0, 'M'], [2, 'M'], [0, 'M'], [-5, 'M']],
+      pad: 'choir_aahs', padVol: 0.14, lead: 'celesta', leadVol: 0.16, leadOct: 1, density: 0.18,
+      bass: 'cello', bassVol: 0.18, bassStyle: 'whole', echo: true,
+    },
+    fields: {
+      bpm: 56, key: 50, scale: DORIAN, prog: [[0, 'm'], [-2, 'M'], [0, 'm'], [3, 'M']],
+      pad: 'choir_aahs', padVol: 0.16, lead: 'celesta', leadVol: 0.12, leadOct: 1, density: 0.12,
+      bass: 'cello', bassVol: 0.24, bassStyle: 'whole', echo: true,
+    },
+    keep: {
+      bpm: 62, key: 50, scale: HARM, prog: [[0, 'm'], [1, 'M'], [-4, 'M'], [0, 'm']],
+      pad: 'string_ensemble_1', padVol: 0.12, lead: 'oboe', leadVol: 0.16, leadOct: 1, density: 0.2,
+      bass: 'cello', bassVol: 0.22, bassStyle: 'half', ost: 'pizzicato_strings', ostVol: 0.1, echo: true,
+    },
+    hall: {
+      bpm: 48, key: 48, scale: MINOR, prog: [[0, 'm'], [1, 'M'], [-4, 'M'], [-5, 'M']],
+      pad: 'choir_aahs', padVol: 0.18, lead: 'celesta', leadVol: 0.1, leadOct: 1, density: 0.08,
+      bass: 'cello', bassVol: 0.22, bassStyle: 'whole', echo: true,
+    },
+    village: {
+      bpm: 76, key: 60, scale: LYDIAN, prog: [[0, 'M'], [2, 'M'], [-3, 'm'], [5, 'M']],
+      pad: 'choir_aahs', padVol: 0.1, arp: 'orchestral_harp', arpVol: 0.26, arpStyle: 'waltz',
+      lead: 'celesta', leadVol: 0.22, leadOct: 1, density: 0.4, bass: 'pizzicato_strings', bassVol: 0.24, bassStyle: 'half', echo: true,
+    },
+    boss: {
+      bpm: 128, key: 60, scale: HARM, prog: [[0, 'm'], [-4, 'M'], [-2, 'M'], [-5, 'M']],
+      pad: 'choir_aahs', padVol: 0.16, lead: 'french_horn', leadVol: 0.3, leadOct: 0, density: 0.55,
+      bass: 'cello', bassVol: 0.3, bassStyle: 'eighths', ost: 'orchestral_harp', ostVol: 0.14, perc: 'boss', percVol: 0.45, echo: true,
+    },
+    dawn: {
+      bpm: 72, key: 60, scale: MAJOR, prog: [[0, 'M'], [5, 'M'], [-3, 'm'], [-5, 'M']],
+      pad: 'string_ensemble_1', padVol: 0.14, arp: 'orchestral_harp', arpVol: 0.3, arpStyle: 'up',
+      lead: 'celesta', leadVol: 0.26, leadOct: 1, density: 0.42, bass: 'cello', bassVol: 0.2, bassStyle: 'half', echo: true,
+    },
+  },
   forest: {
     wilds: {
       bpm: 76, key: 62, scale: DORIAN, prog: [[0, 'm'], [5, 'M'], [0, 'm'], [-2, 'M']],
@@ -149,6 +196,7 @@ class Channel {
     this.out = m.ctx.createGain();
     this.out.gain.value = 0;
     this.out.connect(dest);
+    if (track.echo) this.out.connect(m.echoIn);
   }
   get sd() {
     return 60 / this.track.bpm / 4;
@@ -288,8 +336,19 @@ export class Music {
   rate = 1;
   /** The realm being played: its own versions of the moods replace the shared ones. */
   realm = '';
+  /** Where echoing tracks send their notes. */
+  echoIn: GainNode;
 
   constructor(public ctx: AudioContext, private dest: AudioNode, reverb: ConvolverNode) {
+    // An echo for the tracks that want one: a delay feeding back on itself, quieter each time round.
+    this.echoIn = ctx.createGain();
+    this.echoIn.gain.value = 0.32;
+    const delay = ctx.createDelay(1.5), back = ctx.createGain();
+    delay.delayTime.value = 0.43;
+    back.gain.value = 0.38;
+    this.echoIn.connect(delay);
+    delay.connect(back).connect(delay);
+    delay.connect(dest);
     this.rev = ctx.createGain();
     this.rev.gain.value = 0.45;
     this.rev.connect(reverb);

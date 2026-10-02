@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { EFFECTS, FOES, MOBILE, PLAYER, VIEW, WORLD } from '../config';
+import { EFFECTS, FOES, LAND, MOBILE, VIEW, WORLD, type Physics } from '../config';
 import { Pipeline } from '../engine/pipeline';
 import { IsoCamera } from '../engine/camera';
 import { Input, loadKeyLayout } from '../engine/input';
@@ -22,11 +22,13 @@ import { Player, POWERS, type PowerKind } from './player';
 import { Enemy } from './enemies';
 import { Combat, type Arrow, type Pickup, type Wave } from './combat';
 import { Bindings, Breakable, Cage, Chest, CrackedWall, Drawbridge, HallDoor, Lever, LoreStone, Moonfire, Npc, Shard, Sign, ThornGate, ThornHedge, Windmill, type Interactable } from './objects';
+import type { Floodgate } from './palace';
 import { Save } from './save';
 import { FogOfWar } from './fow';
 import { Mount } from './mount';
 import { Trial } from './trial';
 import { ArrowSlit, Chandelier, SnareTrap, ThornBurst, WardenMark } from './hazards';
+import { GiantClam } from './seafoes';
 import { ROUTE, type MapRealm } from '../ui/worldmap';
 import { Critter } from './critters';
 import { QuestBook } from './quests';
@@ -103,6 +105,7 @@ export class Game {
   chandeliers: Chandelier[] = [];
   snareTraps: SnareTrap[] = [];
   thornBursts: ThornBurst[] = [];
+  clams: GiantClam[] = [];
   /** Spots the Thorn Warden has marked for arrows or roots. */
   wardenMarks: WardenMark[] = [];
   private chandelierCd = 0;
@@ -114,15 +117,16 @@ export class Game {
   lever?: Lever;
   bridge?: Drawbridge;
   cage?: Cage;
-  hallDoor?: HallDoor | ThornGate;
+  hallDoor?: HallDoor | ThornGate | Floodgate;
   /** The Warden's thorns across the way to its hold (they wither when the heart is torn out). */
   thornWall?: ThornGate;
   windmill?: Windmill;
-  horse!: Mount;
+  /** The warhorse (none where the realm has no land beasts: under the sea it waits above). */
+  horse: Mount | null = null;
   /** Every mount the knight has in this realm (the warhorse; the Thornstag once freed). */
   mounts: Mount[] = [];
   /** The one that comes when the knight rests at a far moonfire: the last one ridden. */
-  lastMount!: Mount;
+  lastMount: Mount | null = null;
   bindings: Bindings[] = [];
   trial?: Trial;
   combat: Combat;
@@ -260,7 +264,8 @@ export class Game {
     this.audio.realm = this.def.id;
     if (this.audio.music) this.audio.music.realm = this.def.id;
     this.screens.setRealm(this.story.title, this.story.victoryTitle, card);
-    this.screens.setTravel(Object.values(REALMS).filter((r) => r.id !== this.def.id).map((r) => ({ id: r.id, name: r.name })));
+    // (A realm still being built can be travelled to from the menu, to try it; it says so.)
+    this.screens.setTravel(Object.values(REALMS).filter((r) => r.id !== this.def.id).map((r) => ({ id: r.id, name: r.wip ? `${r.name} (being built)` : r.name })));
 
     // ---------- world ----------
     // The grid reaches PAD cells past the realm on every side: that land is real
@@ -283,7 +288,7 @@ export class Game {
     this.structures = builder.structures;
     const outside = (x: number, z: number) => x < 0 || z < 0 || x >= this.realm.w || z >= this.realm.d;
     this.scene.add(buildTerrain(this.grid, WORLD.chunk, worldMaterial()));
-    this.scene.add(buildWater(this.grid));
+    this.scene.add(buildWater(this.grid, !!this.realm.sea));
     this.scene.add(buildGrass(this.grid, (x, z) => this.realm.grassDensity(x, z) * (MOBILE ? 0.5 : 1) * (outside(x, z) ? 0.6 : 1), (x, z) => this.realm.grassScale(x, z)));
     this.scene.add(this.lights.group, this.fx.group);
 
@@ -305,6 +310,11 @@ export class Game {
 
     this.combat = new Combat(this);
     this.player = new Player();
+    // How things move here (under the sea everything floats).
+    this.landPhys = { ...LAND, fallY: this.def.physics?.fallY ?? LAND.fallY };
+    this.seaPhys = { ...LAND, ...this.def.physics };
+    this.player.phys = this.landPhys;
+    // (In the Sunken Reef he dives once he has the salvager's suit: the realm's story says, see apply.)
     this.player.rig.addTo(this.scene);
 
     // Objects.
@@ -380,6 +390,7 @@ export class Game {
     for (const c of this.realm.chandeliers ?? []) this.chandeliers.push(new Chandelier(c.x, c.z, c.floor, this));
     for (const [x, z] of this.realm.snares ?? []) this.snareTraps.push(new SnareTrap(x, z, this));
     for (const t of this.realm.thornBursts ?? []) this.thornBursts.push(new ThornBurst(t.x, t.z, t.w, t.d, t.ph, this));
+    for (const [x, z] of this.realm.clams ?? []) this.clams.push(new GiantClam(x, z, this));
     // The realm's relic trial (the Seven Stones in realm 1).
     if (this.realm.trial) {
       this.trial = new Trial(this.realm.trial, this);
@@ -387,10 +398,12 @@ export class Game {
     }
     for (const c of this.realm.critters) this.critters.push(new Critter(c, this));
     // The warhorse: by the King's Road in realm 1, and wherever the realm keeps it after that.
-    this.horse = new Mount(this.realm.horse.x, this.realm.horse.z, this);
-    this.interactables.push(this.horse);
-    this.mounts.push(this.horse);
-    this.lastMount = this.horse;
+    if (this.realm.horse) {
+      this.horse = new Mount(this.realm.horse.x, this.realm.horse.z, this);
+      this.interactables.push(this.horse);
+      this.mounts.push(this.horse);
+      this.lastMount = this.horse;
+    }
     for (const d of this.realm.npcs) {
       const n = new Npc(d, this);
       this.npcs.push(n);
@@ -418,7 +431,7 @@ export class Game {
       } else this.audio.sleep(false);
     });
     (window as unknown as { __game: Game }).__game = this;
-    (window as unknown as { __reach: (p?: boolean, climb?: number) => unknown }).__reach = (progress = true, climb?: number) => reachability(this, progress, climb);
+    (window as unknown as { __reach: (p?: boolean, climb?: number, serpent?: boolean) => unknown }).__reach = (progress = true, climb?: number, serpent = false) => reachability(this, progress, climb, serpent);
   }
 
   /**
@@ -580,10 +593,17 @@ export class Game {
     const cp = this.moonfires.find((m) => m.id === this.save.data.checkpoint);
     const cpOk = !!cp && (cp.lit || cp.indoor);
     let face = { x: -0.7, z: -0.7 };
-    if (arrival && !(fromMenu && cpOk)) {
+    // (And from the menu never onto the far side of a way only the Thornstag's leap crosses, without the stag.)
+    const stranded = !!arrival?.leap && !this.save.data.mounts.includes('stag');
+    if (arrival && !(fromMenu && (cpOk || stranded))) {
       this.player.place(arrival.out.x, arrival.out.z, this);
       face = { x: arrival.out.fx, z: arrival.out.fz };
-      this.horse.arriveAt(arrival.out.x - arrival.out.fz * 2.2, arrival.out.z + arrival.out.fx * 2.2, this);
+      // (Back over a way only the Thornstag's leap crosses: the stag waits on this side of it, the warhorse beyond.)
+      const leap = arrival.leap;
+      if (leap) {
+        this.mounts.find((m) => m.kind === 'stag')?.arriveAt(leap.stag.x, leap.stag.z, this);
+        this.horse?.arriveAt(leap.horse.x, leap.horse.z, this);
+      } else this.horse?.arriveAt(arrival.out.x - arrival.out.fz * 2.2, arrival.out.z + arrival.out.fx * 2.2, this);
     } else if (cp && cpOk) this.player.place(cp.x + 1.3, cp.z + 1.3, this);
     else this.player.place(this.realm.start.x, this.realm.start.z, this);
     this.player.rig.face(face.x, face.z, 0);
@@ -622,7 +642,7 @@ export class Game {
 
   /** The Thornstag, once freed, comes along to every realm (it waits at its home, or by the horse). */
   private addStag() {
-    if (this.mounts.some((m) => m.kind === 'stag')) return;
+    if (this.mounts.some((m) => m.kind === 'stag') || !this.realm.horse) return;
     const home = this.realm.stagHome ?? { x: this.realm.horse.x + 2.4, z: this.realm.horse.z + 1.2 };
     const s = new Mount(home.x, home.z, this, 'stag');
     this.mounts.push(s);
@@ -655,10 +675,10 @@ export class Game {
     this.player.maxHp = 5 + this.save.shardSets + (d.relics.includes('heartwood') ? 1 : 0);
   }
 
-  /** Wares that change a mount: barding, one more hit for each piece. */
+  /** Wares that change a mount: barding, one more hit for each piece (and the Tide Pearl, one more). */
   private applyKit() {
     for (const m of this.mounts) {
-      m.maxHp = 3 + (this.player.kit.barding ?? 0);
+      m.maxHp = 3 + (this.player.kit.barding ?? 0) + (this.save.data.relics.includes('tidepearl') ? 1 : 0);
       m.hp = Math.min(m.hp, m.maxHp);
     }
   }
@@ -670,6 +690,11 @@ export class Game {
     if (id === 'heartwood') {
       this.player.hp = this.player.maxHp;
       this.ui.pulseHearts();
+    }
+    // The Tide Pearl: whatever carries the knight takes one more hit, and is whole at once.
+    if (id === 'tidepearl') {
+      this.applyKit();
+      for (const m of this.mounts) m.hp = m.maxHp;
     }
   }
 
@@ -755,7 +780,7 @@ export class Game {
 
   /** The pause menu's map: where the knight has been, and what's done in each realm. */
   refreshMap() {
-    const here = this.def.id, built = Object.keys(REALMS);
+    const here = this.def.id, built = Object.values(REALMS).filter((r) => !r.wip || r.id === here).map((r) => r.id as string);
     let furthest = -1;
     const realms: MapRealm[] = ROUTE.map((id, i) => {
       const place = built.includes(id) ? this.save.place(id as RealmId) : null;
@@ -1089,10 +1114,36 @@ export class Game {
 
   /** The brute's maul lands on the knight: a heavy blow that may leave him dazed. */
   bruteHits(e: Enemy) {
-    const res = this.enemyHitsPlayer(e, 1, { kb: 9, guardCost: FOES.brute.guardCost });
-    if (res === 'hit' && this.player.alive && Math.random() < FOES.brute.dazeChance) this.player.afflict('daze', this);
+    const spec = e.type === 'salvager' ? FOES.salvager : FOES.brute;
+    const res = this.enemyHitsPlayer(e, 1, { kb: 9, guardCost: spec.guardCost });
+    if (res === 'hit' && this.player.alive && Math.random() < spec.dazeChance) this.player.afflict('daze', this);
     if (res === 'blocked') this.pop(this.player, 'heavy blow!', '#c0c0cc');
     return res;
+  }
+
+  /** Brassbelly's suit blows off its steam: whoever's close is scalded and thrown back (no shield stops it;
+   *  a roll does). */
+  salvagerVents(e: Enemy) {
+    const R = FOES.salvager.ventR;
+    this.audio.sfx('steam', e.x, e.z);
+    this.shake(0.4);
+    for (let i = 0; i < 44; i++) {
+      const a = Math.random() * Math.PI * 2, d = Math.random() * R;
+      this.fx.emit(P.steam, e.x + Math.cos(a) * d, e.y + 0.2 + Math.random() * 1.4, e.z + Math.sin(a) * d, Math.cos(a) * 3, 1.5 + Math.random() * 2, Math.sin(a) * 3);
+    }
+    const p = this.player;
+    if (Math.hypot(p.x - e.x, p.z - e.z) < R + p.r && Math.abs(p.y - e.y) < 1.6) {
+      const res = p.hurt(1, e.x, e.z, this, { unblockable: true, kb: 10 });
+      this.afterHit(res, e.x, e.z, null);
+      if (res === 'hit') this.pop(p, 'scalded!', '#e8f0f0');
+    }
+  }
+
+  /** The first dive, and the first time out of air: what to do about it. */
+  airTip(kind: 'dive' | 'out') {
+    if (!this.firstTime('air-' + kind)) return;
+    if (kind === 'dive') this.ui.hint('Under the water your air runs down: the bubbles under your bars. Come up for air, or stand in a stream of bubbles from a vent.', 7);
+    else this.ui.hint("Out of air: you're slower and your stamina won't come back until you breathe. Up to the surface, or into a stream of bubbles.", 7);
   }
 
   /** The shaman sings: nearby goblins heal and quicken, idle ones join the fight. */
@@ -1311,7 +1362,7 @@ export class Game {
     for (const mm of this.mounts) mm.hp = mm.maxHp;
     // The mount last ridden finds the knight at a far-off moonfire.
     const h = this.lastMount;
-    if (!p.riding && h.state !== 'flee' && Math.hypot(h.x - m.x, h.z - m.z) > 25 && !m.indoor) {
+    if (h && !p.riding && h.state !== 'flee' && Math.hypot(h.x - m.x, h.z - m.z) > 25 && !m.indoor) {
       h.arriveAt(m.x - 2.2, m.z + 1.5, this);
       h.model.rig.root.visible = true;
       this.after(1.5, () => this.pop(h, `your ${h.called} finds you`, '#feae34'));
@@ -1352,11 +1403,13 @@ export class Game {
     }
     if (d.shop === 'sword' && !this.victory) {
       // A smith never sells past the price list (a level without a price would go for nothing).
-      const prices = [80, 150, 240, 400, 560], top = Math.min(d.upTo ?? 3, prices.length), cost = prices[p.swordLevel] ?? 0;
+      // (Levels 1-3 are sharpened, 4-5 tempered with heartwood, 6-7 given a coral edge by the reef's coral-smith.)
+      const prices = [80, 150, 240, 400, 560, 640, 720], top = Math.min(d.upTo ?? 3, prices.length), cost = prices[p.swordLevel] ?? 0;
       const bonus = (L: number) => L * 25;
       const maxed = p.swordLevel >= top;
+      const verb = p.swordLevel >= 5 ? 'Set a coral edge on' : p.swordLevel >= 3 ? 'Temper' : 'Sharpen';
       options = [
-        { label: maxed ? (top > 3 ? 'The heartwood temper is as fine as it gets' : 'The blade is as sharp as it gets') : `${p.swordLevel >= 3 ? 'Temper' : 'Sharpen'} my sword (level ${p.swordLevel + 1})`, cost: !maxed ? cost : undefined, disabled: maxed || p.coins < cost, act: () => this.buy(cost, () => { p.swordLevel++; this.ui.toast(p.swordLevel > 3 ? 'Sword tempered' : 'Sword sharpened', `+${bonus(p.swordLevel)}% damage`); }) },
+        { label: maxed ? (top > 5 ? 'The coral edge is as fine as it gets' : top > 3 ? 'The heartwood temper is as fine as it gets' : 'The blade is as sharp as it gets') : `${verb} my sword (level ${p.swordLevel + 1})`, cost: !maxed ? cost : undefined, disabled: maxed || p.coins < cost, act: () => this.buy(cost, () => { p.swordLevel++; this.ui.toast(p.swordLevel > 5 ? 'Coral edge set' : p.swordLevel > 3 ? 'Sword tempered' : 'Sword sharpened', `+${bonus(p.swordLevel)}% damage`); }) },
         { label: 'Not now', act: done },
       ];
     }
@@ -1563,6 +1616,16 @@ export class Game {
     this.cam.focus.set(cx, 1.4, cz);
   }
   private viewerModels: { m: Model; x: number; y: number; z: number }[] = [];
+  /** Under the sea: time to the knight's next breath of bubbles. */
+  private helmetT = 0;
+  /** How things move on land and under the surface in this realm. */
+  landPhys: Physics = LAND;
+  seaPhys: Physics = LAND;
+  /** How fast a shot flies from this height (slower under the surface). */
+  shotsAt(y: number) {
+    const sea = this.realm.sea;
+    return sea && y < sea.surface ? this.seaPhys.shots : 1;
+  }
   private viewerAnim = 'idle';
   private viewerT: number | null = null;
 
@@ -1616,12 +1679,13 @@ export class Game {
       this.ui.dead(false);
       const cp = this.moonfires.find((m) => m.id === this.save.data.checkpoint);
       const p = this.player;
-      if (this.horse.ridden) {
-        this.horse.ridden = false;
-        this.horse.state = 'idle';
-        this.horse.home = { x: this.horse.x, z: this.horse.z };
+      const horse = this.horse;
+      if (horse?.ridden) {
+        horse.ridden = false;
+        horse.state = 'idle';
+        horse.home = { x: horse.x, z: horse.z };
       }
-      this.horse.hp = this.horse.maxHp;
+      if (horse) horse.hp = horse.maxHp;
       p.revive();
       if (cp && (cp.lit || cp.indoor)) p.place(cp.x + 1.3, cp.z + 1.3, this);
       else p.place(this.realm.start.x, this.realm.start.z, this);
@@ -1803,7 +1867,7 @@ export class Game {
         for (let dx = -rad; dx <= rad; dx++) {
           if (Math.max(Math.abs(dx), Math.abs(dz)) !== rad) continue;
           const cx = x0 + dx, cz = z0 + dz;
-          if (!grid.inside(cx, cz) || grid.solid[grid.i(cx, cz)] || grid.isDeep(cx, cz) || grid.groundAt(cx + 0.5, cz + 0.5) < PLAYER.fallY + 0.5) continue;
+          if (!grid.inside(cx, cz) || grid.solid[grid.i(cx, cz)] || grid.isDeep(cx, cz) || grid.groundAt(cx + 0.5, cz + 0.5) < this.player.phys.fallY + 0.5) continue;
           const body = { x: cx + 0.5, y: grid.groundAt(cx + 0.5, cz + 0.5), z: cz + 0.5, r: p.r };
           grid.resolve(body, 0.45, false);
           if (Math.hypot(body.x - cx - 0.5, body.z - cz - 0.5) > 0.05) continue;
@@ -1871,6 +1935,7 @@ export class Game {
     for (const s of this.slits) s.update(hdt, this);
     for (const t of this.snareTraps) t.update(hdt, this);
     for (const t of this.thornBursts) t.update(hdt, this);
+    for (const c of this.clams) c.update(hdt, this);
     if (this.wardenMarks.length) {
       for (const m of this.wardenMarks) m.update(hdt, this);
       this.wardenMarks = this.wardenMarks.filter((m) => !m.done);
@@ -1914,6 +1979,29 @@ export class Game {
     }
     this.swooshes = this.swooshes.filter((s) => s.t <= s.dur + 0.1);
 
+    // Under the sea: specks drifting down through the water round the camera, and every second or two a
+    // few bubbles from the knight's helmet.
+    if (this.realm.sea) {
+      if (Math.random() < real * (MOBILE ? 14 : 28)) {
+        const x = this.cam.focus.x + (Math.random() - 0.5) * 34, z = this.cam.focus.z + (Math.random() - 0.5) * 34;
+        const gy = this.grid.groundAt(x, z), top = this.realm.sea.surface - 0.3;
+        if (gy < top) this.fx.emit(P.seaSnow, x, gy + 0.5 + Math.random() * Math.max(0.5, top - gy - 0.5), z, 0, -0.08, 0);
+      }
+      // The currents: specks streaming along them.
+      for (const c of this.realm.sea.currents ?? [])
+        for (let k = 0; k < c.pts.length - 1; k++) {
+          const [ax, az] = c.pts[k], [bx, bz] = c.pts[k + 1], len = Math.hypot(bx - ax, bz - az);
+          if (Math.hypot((ax + bx) / 2 - this.cam.focus.x, (az + bz) / 2 - this.cam.focus.z) > 40 || Math.random() > real * len * 2.2) continue;
+          const dx = (bx - ax) / len, dz = (bz - az) / len, t = Math.random() * 0.85, o = (Math.random() - 0.5) * c.r * 1.6;
+          this.fx.emit(P.stream, ax + (bx - ax) * t - dz * o, c.y + (Math.random() - 0.5) * c.r * 1.2, az + (bz - az) * t + dx * o, dx * c.speed, 0, dz * c.speed);
+        }
+      this.helmetT -= real;
+      if (this.helmetT <= 0 && p.alive && p.under && this.state === 'play') {
+        this.helmetT = 1.2 + Math.random() * 1.6;
+        const n = 2 + Math.floor(Math.random() * 3);
+        for (let k = 0; k < n; k++) this.after(k * 0.12, () => this.fx.emit(P.seaBubble, p.x + 0.08, p.y + 1.55, p.z + 0.05, 0, 1.2, 0));
+      }
+    }
     // Fireflies drift around the knight in the right places.
     if (!this.victory || this.dawn < 0.5)
       for (const z of this.realm.fireflyZones) {
@@ -1969,11 +2057,14 @@ export class Game {
       }
     }
 
-    this.ui.hud(p, p.riding ? { hp: p.riding.hp, max: p.riding.maxHp, name: p.riding.kind === 'stag' ? 'Thornstag' : 'Warhorse' } : null);
+    this.ui.hud(p, p.riding ? { hp: p.riding.hp, max: p.riding.maxHp, name: p.riding.name } : null);
     this.ui.effects(p.effects, p.effectMax);
+    this.ui.air({ left: p.air, max: p.airMax, show: !!this.realm.sea && p.dives && p.alive && (p.under || p.air < p.airMax) });
+    this.pipe.narrow = damp(this.pipe.narrow, p.breathless ? 1 : 0, 2.5, real);
     if (this.pipe.flash > 0) this.pipe.flash = Math.max(0, this.pipe.flash - real * 1.5);
-    this.pipe.desat = damp(this.pipe.desat, this.state === 'dead' ? 0.85 : p.hp <= 1 ? 0.35 : 0, 3, real);
-    this.audio.setMuffle(this.paused ? 700 : this.state === 'dead' ? 500 : p.hp <= 1 ? 2500 : 20000);
+    this.pipe.desat = damp(this.pipe.desat, this.state === 'dead' ? 0.85 : p.hp <= 1 ? 0.35 : p.breathless ? 0.3 : 0, 3, real);
+    const muffle = p.under ? this.def.muffle ?? 20000 : 20000;
+    this.audio.setMuffle(this.paused ? 700 : this.state === 'dead' ? 500 : p.hp <= 1 ? Math.min(2500, muffle) : muffle);
 
     if (this.state === 'play') {
       this.story.tick(this, dt);
@@ -2134,7 +2225,8 @@ export class Game {
       }
       const k = dt > 0 ? 6 : 0;
       this.cam.focus.x = damp(this.cam.focus.x, f.x, k, real);
-      this.cam.focus.y = damp(this.cam.focus.y, f.y, 4, real);
+      // (Swimming on the Tide Serpent the view follows its depth gently: a stroke doesn't jolt it.)
+      this.cam.focus.y = damp(this.cam.focus.y, f.y, p.riding?.kind === 'serpent' ? 1.8 : 4, real);
       this.cam.focus.z = damp(this.cam.focus.z, f.z, k, real);
     }
     this.cam.update(this.pipe, real, this.settings.shake);
@@ -2183,13 +2275,15 @@ export class Game {
     const prof: Record<string, [number, number, number]> = {
       fields: [1, 1, 0.7], road: [0.7, 0.9, 0.6], village: [0.5, 0.7, 0.4], woods: [0.6, 0.5, 1], keep: [0.9, 0.2, 0.2], indoor: [0, 0, 0],
     };
-    const [wind, crickets, owls] = prof[amb];
+    // (Under the surface: no wind or night sounds; bubbles and a low drone, muffled.)
+    const sea = p.under;
+    const [wind, crickets, owls] = sea ? [0, 0, 0] : prof[amb];
     // A war drum beats while its camp stands.
     const dr = this.realm.drums;
     const drums = dr && this.enemies.some((e) => e.alive && e.group === dr.group) ? 1 / (1 + (Math.hypot(p.x - dr.x, p.z - dr.z) / 12) ** 2) : 0;
     const dawnMul = 1 - this.dawn * 0.8;
     a.update(real, {
-      x: p.x, z: p.z, wind, crickets: crickets * dawnMul, owls: owls * dawnMul, birds: this.def.birds * (0.4 + crickets * 0.6) * (1 + this.dawn), water: this.ambCache.water, fire: this.ambCache.fire,
+      x: p.x, z: p.z, wind, crickets: crickets * dawnMul, owls: owls * dawnMul, birds: this.def.birds * (0.4 + crickets * 0.6) * (1 + this.dawn), bubbles: sea ? this.def.bubbles ?? 0 : 0, water: sea ? 0 : this.ambCache.water, fire: this.ambCache.fire,
       drums, indoor: amb === 'indoor',
     });
     // The inn's tune leaks out into the street.
@@ -2223,6 +2317,19 @@ export class Game {
     a.exposure = lerp(n.exposure, d.exposure, k);
     a.mistAmount = lerp(n.mistAmount, d.mistAmount, k);
     a.mistLevel = lerp(n.mistLevel, d.mistLevel, k);
+    a.fogNear = lerp(n.fogNear ?? 70, d.fogNear ?? 70, k);
+    a.fogFar = lerp(n.fogFar ?? 130, d.fogFar ?? 130, k);
+    // Under the sea: the water's colour, the light rippling over the floor, the shafts from the surface.
+    const ns = n.sea, ds = d.sea ?? n.sea, sea = this.realm.sea;
+    a.sea = ns && sea ? 1 : 0;
+    if (ns && ds && sea) {
+      mix(a.seaDeep, ns.deep, ds.deep);
+      mix(a.seaRayColor, ns.rayColor, ds.rayColor);
+      a.seaCaustics = lerp(ns.caustics, ds.caustics, k);
+      a.seaRays = lerp(ns.rays, ds.rays, k);
+      a.seaSurface = sea.surface;
+      a.seaFloor = sea.deep;
+    } else a.seaRays = a.seaCaustics = 0;
     a.cloud = lerp(n.cloud, d.cloud, k);
   }
 

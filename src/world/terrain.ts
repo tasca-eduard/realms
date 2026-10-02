@@ -26,6 +26,9 @@ const TOP: Record<number, [string, number]> = {
   [T.Snow]: ['#c8d0e4', K.Sand],
   [T.Field]: ['#5a4a30', K.Furrow],
   [T.Reeds]: ['#4a5a36', K.Grass],
+  [T.Coral]: ['#a8786c', K.Rock],
+  [T.Silt]: ['#46525a', K.Sand],
+  [T.Seagrass]: ['#6a7356', K.Grass],
 };
 
 const SIDE: Record<number, [string, number]> = {
@@ -211,6 +214,7 @@ void main() {
 const WATER_FRAG = /* glsl */ `
 uniform float uTime;
 uniform vec3 uDeep, uShallow, uMoon, uWade;
+uniform float uClear;
 varying vec3 vW;
 varying float vDepth;
 float wh(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
@@ -229,18 +233,21 @@ void main() {
   float glint = smoothstep(0.62, 0.8, g * r * 1.6);
   // A broad soft moon sheen across the water.
   float sheen = smoothstep(0.55, 0.9, wn(p * 0.25 + uTime * 0.02));
-  col += uMoon * (glint * 1.8 + sheen * 0.08);
+  col += uMoon * (glint * 1.8 * (1.0 - 0.75 * uClear) + sheen * 0.08);
   // Foam-ish lines.
   float line = smoothstep(0.47, 0.5, a) * smoothstep(0.53, 0.5, a);
   col += uShallow * line * 0.5;
   // Shallow water (wadeable) is lighter and clear; deep water is dark.
   float wade = 1.0 - step(0.55, vDepth);
   col = mix(col, uWade * (0.85 + 0.3 * r) + uMoon * glint * 1.2, wade * 0.75);
-  gl_FragColor = vec4(col, mix(0.9, 0.5, wade));
+  // Clear water (the Sunken Reef's sea): a thin, bright skin you see the sea floor through.
+  float alpha = mix(mix(0.9, 0.5, wade), mix(0.3, 0.16, wade) + glint * 0.12, uClear);
+  gl_FragColor = vec4(col, alpha);
 }
 `;
 
-export function buildWater(grid: Grid) {
+/** The water's surfaces; clear (the Sunken Reef's sea), a thin bright skin over a sea floor that shows through. */
+export function buildWater(grid: Grid, clear = false) {
   const pos: number[] = [];
   const depth: number[] = [];
   for (let z = grid.oz; z < grid.oz + grid.d; z++)
@@ -266,8 +273,16 @@ export function buildWater(grid: Grid) {
       uShallow: { value: new THREE.Color(0.03, 0.06, 0.1) },
       uMoon: { value: new THREE.Color(0.55, 0.65, 0.95) },
       uWade: { value: new THREE.Color(0.06, 0.1, 0.13) },
+      uClear: { value: clear ? 1 : 0 },
     },
+    // (Clear water leaves the sea floor in the depth buffer, so the last pass can light it as under water.)
+    depthWrite: !clear,
   });
+  if (clear) {
+    mat.uniforms.uDeep.value.setRGB(0.02, 0.09, 0.11);
+    mat.uniforms.uShallow.value.setRGB(0.06, 0.2, 0.22);
+    mat.uniforms.uWade.value.setRGB(0.09, 0.22, 0.22);
+  }
   const mesh = new THREE.Mesh(geo, mat);
   mesh.renderOrder = 1;
   return mesh;

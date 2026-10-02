@@ -1,10 +1,12 @@
 import * as THREE from 'three';
-import { EFFECTS, PLAYER } from '../config';
+import { AIR, EFFECTS, LAND, PLAYER, type Physics } from '../config';
 import { P } from '../engine/particles';
 import { clamp } from '../engine/util';
-import { makeKnight, type Model } from './models';
+import { makeKnight, setDiveGear, type Model } from './models';
 import type { Game } from './game';
 import type { Mount } from './mount';
+import { TideSerpent } from './serpent';
+import { inkBlow } from './inkarm';
 
 // The knight's moveset, ported from the prototype to isometric:
 //   attack: 3-hit combo (slash, backhand, overhead finisher that breaks shields)
@@ -45,7 +47,7 @@ const CHARGE_MIN = 0.4, CHARGE_FULL = 0.8;
 const SPECIAL_COST = 50;
 
 export type HitResult = 'hit' | 'blocked' | 'parried' | 'dodged' | 'ignored' | 'bubbled';
-export type PowerKind = 'fire' | 'wind' | 'magnet' | 'bubble' | 'giant';
+export type PowerKind = 'fire' | 'wind' | 'magnet' | 'bubble' | 'giant' | 'ink';
 
 export const POWERS: Record<PowerKind, { name: string; desc: string; col: string }> = {
   fire: { name: 'Fire Blade', desc: '+50% damage', col: '#ff8a3c' },
@@ -53,6 +55,8 @@ export const POWERS: Record<PowerKind, { name: string; desc: string; col: string
   magnet: { name: 'Magnet', desc: 'Coins fly to you', col: '#feae34' },
   bubble: { name: 'Bubble', desc: 'Blocks the next 2 hits', col: '#5ad1ff' },
   giant: { name: 'Giant Slash', desc: '+60% reach', col: '#e0b0ff' },
+  // Old Inkarm's (only in its chest: src/game/inkarm.ts).
+  ink: { name: "Kraken's Ink", desc: 'Blows blind foes', col: '#c27ae8' },
 };
 
 interface StrikeOpts {
@@ -95,6 +99,29 @@ export class Player {
   swordLevel = 0;
   /** Wares bought, by level (src/game/wares.ts). */
   kit: Record<string, number> = {};
+  /** How things move where the knight is (under the sea, everything floats). */
+  phys: Physics = LAND;
+  /** Walks into deep water and along the bottom (in the Sunken Reef, in his dive helm). */
+  dives = false;
+  /** Head under the surface. */
+  under = false;
+  /** The diving suit's air, in seconds (see breathe). */
+  air = AIR.max;
+  /** How much air the suit holds (more for each air bladder sewn to its hose). */
+  get airMax() {
+    return AIR.max + AIR.bladder * (this.kit.bladder ?? 0);
+  }
+  /** In a vent's stream of bubbles (an air pocket). */
+  private inPocket = false;
+  /** The dive gear showing ('helm' below the surface, 'bare' above it). */
+  private gear = '';
+  private airNagT = 0;
+  private dived = false;
+  /** Below the surface: a current carrying him (its push, m/s) and the vertical speed a current or a column
+   *  of bubbles holds him at instead of sinking (null: none). */
+  private driftX = 0;
+  private driftZ = 0;
+  private buoy: number | null = null;
   coins = 0;
   /** Relic: blocking costs less. */
   crest = false;
@@ -156,10 +183,10 @@ export class Player {
     const e = this.effects;
     return this.hp < this.maxHp || e.maim > 0 || e.poison > 0 || e.burn > 0 || e.snare > 0;
   }
-  /** Drink effects shared by foot and saddle: two hearts back, maim, poison and burn gone. */
-  private quaff(g: Game) {
+  /** Drink effects shared by foot and saddle: two hearts back (three with the Sunken Reef's glowshrimp in the flasks), maim, poison and burn gone. */
+  quaff(g: Game) {
     this.flasks--;
-    this.hp = Math.min(this.maxHp, this.hp + 2);
+    this.hp = Math.min(this.maxHp, this.hp + 2 + (this.kit.glowshrimp ?? 0));
     const e = this.effects;
     if (e.maim > 0 || e.poison > 0 || e.burn > 0 || e.snare > 0) g.pop(this, 'cured', '#8ef0a0');
     e.maim = e.poison = e.burn = e.snare = 0;
@@ -168,7 +195,7 @@ export class Player {
   }
   private noNeedT = -9;
   /** Pressed the flask with nothing to heal or cure: say so instead of doing nothing. */
-  private noNeed(g: Game) {
+  noNeed(g: Game) {
     if (g.time - this.noNeedT < 1.5) return;
     this.noNeedT = g.time;
     g.pop(this, this.flasks > 0 ? 'not hurt' : 'no flasks left', '#b9b3dc');
@@ -182,7 +209,11 @@ export class Player {
   }
   /** Running speed on foot (silk-wrapped boots add to it). */
   get footSpeed() {
-    return PLAYER.runSpeed * (1 + 0.08 * (this.kit.boots ?? 0));
+    return PLAYER.runSpeed * this.phys.speed * (1 + 0.08 * (this.kit.boots ?? 0));
+  }
+  /** Out of air below the surface: slower, and no stamina comes back (it never costs a heart). */
+  get breathless() {
+    return this.dives && this.under && this.air <= 0;
   }
   get reachMul() {
     return this.powerOn('giant') ? 1.6 : 1;
@@ -215,13 +246,20 @@ export class Player {
 
   update(dt: number, g: Game) {
     const inp = g.input;
+    // Under the surface, everything floats.
+    const sea = g.realm.sea;
+    // (On the Tide Serpent his head is higher: its y is its belly.)
+    this.under = !!sea && this.y + (this.riding instanceof TideSerpent ? 1.7 : 1.2) < sea.surface && g.grid.waterAt(this.x, this.z) > -100;
+    this.phys = this.under ? g.seaPhys : g.landPhys;
+    this.breathe(dt, g);
+    this.seaFlow(g);
     this.t += dt;
     this.blockHitT += dt;
     this.tiredT -= dt;
     this.iframes = Math.max(0, this.iframes - dt);
     this.guardBroken = Math.max(0, this.guardBroken - dt);
     this.staminaWait -= dt;
-    if (this.staminaWait <= 0 && this.state !== 'block' && this.state !== 'roll') this.stamina = Math.min(this.maxStamina, this.stamina + PLAYER.staminaRegen * dt * (this.effects.poison > 0 ? EFFECTS.poisonRegen : 1));
+    if (this.staminaWait <= 0 && this.state !== 'block' && this.state !== 'roll' && !this.breathless) this.stamina = Math.min(this.maxStamina, this.stamina + PLAYER.staminaRegen * dt * (this.effects.poison > 0 ? EFFECTS.poisonRegen : 1));
     this.energy = Math.min(100, this.energy + 3 * (1 + 0.4 * (this.kit.focus ?? 0)) * dt);
     if (this.power) {
       this.power.t -= dt;
@@ -534,10 +572,12 @@ export class Player {
 
     if (this.effects.maim > 0 && (this.state === 'run' || this.state === 'block' || this.state === 'charge')) speed *= EFFECTS.maimSlow;
     if (this.effects.snare > 0) speed = 0;
+    if (this.breathless) speed *= AIR.slow;
 
-    // Wading through shallow water slows the knight (and puts out flames).
+    // Wading through shallow water slows the knight (and puts out flames). (Below the surface he walks the
+    // sea floor: not wading.)
     const wt = g.grid.waterAt(this.x, this.z);
-    const wading = this.onGround && wt > g.grid.groundAt(this.x, this.z) + 0.05;
+    const wading = this.onGround && !this.under && wt > g.grid.groundAt(this.x, this.z) + 0.05;
     if (wading && this.effects.burn > 0) this.extinguish(g, 'steam');
     if (wading) {
       speed *= this.state === 'roll' || this.state === 'dash' ? 0.8 : 0.62;
@@ -557,6 +597,7 @@ export class Player {
 
     const grid = g.grid;
     grid.move(this, this.vx * dt, this.vz * dt, PLAYER.stepUp);
+    if (this.driftX || this.driftZ) grid.move(this, this.driftX * dt, this.driftZ * dt, PLAYER.stepUp);
     // Push out of living enemies (rolls and dashes pass through).
     if (this.state !== 'roll' && this.state !== 'dash' && this.state !== 'airdash')
       for (const e of g.enemies) {
@@ -584,9 +625,11 @@ export class Player {
     const gy = grid.groundAt(this.x, this.z);
     if (this.climb(dt, g)) {
       /* on the vines */
-    } else if (this.y - gy > 0.5 || this.vy > 0 || this.state === 'plunge' && this.plungePhase !== 'land') {
+    } else if (this.y - gy > 0.5 || this.vy > 0 || (this.buoy ?? 0) > 0.2 || this.state === 'plunge' && this.plungePhase !== 'land') {
       this.onGround = false;
-      if (this.state !== 'airdash' || this.t > 0.2) this.vy -= PLAYER.gravity * dt;
+      if (this.buoy !== null) this.vy += (this.buoy - this.vy) * Math.min(1, dt * 6);
+      else if (this.state !== 'airdash' || this.t > 0.2) this.vy -= this.phys.gravity * dt;
+      if (this.state !== 'plunge') this.vy = Math.max(this.vy, -this.phys.maxFall);
       this.y += this.vy * dt;
       if (this.y <= gy) {
         const hard = this.vy < -12 && this.state !== 'plunge';
@@ -605,10 +648,10 @@ export class Player {
       this.onGround = true;
       // Safe footing: never the floor of a gorge or chasm (landing there while the fall fades
       // out mustn't become the place you're put back).
-      if (this.state !== 'roll' && !wading && gy > PLAYER.fallY) this.lastSafe = { x: this.x, z: this.z };
+      if (this.state !== 'roll' && !wading && gy > this.phys.fallY) this.lastSafe = { x: this.x, z: this.z };
     }
     // Fell somewhere deep (the gorge): back to the last safe footing.
-    if (this.y < PLAYER.fallY && this.alive) g.fellOut();
+    if (this.y < this.phys.fallY && this.alive) g.fellOut();
 
     this.pose(dt, g, gy);
   }
@@ -708,7 +751,7 @@ export class Player {
       let best = Infinity;
       this.aim.set(px, pz);
       for (const e of g.enemies) {
-        if (!e.alive || Math.abs(e.y - this.y) > 2) continue;
+        if (!e.alive || e.state === 'hide' || Math.abs(e.y - this.y) > 2) continue;
         const dx = e.x - this.x, dz = e.z - this.z, d = Math.hypot(dx, dz);
         if (d > 4.5 || d < 0.01) continue;
         const score = d - 2.2 * ((dx * px + dz * pz) / d);
@@ -734,19 +777,23 @@ export class Player {
     this.rideT = 0;
     this.x = m.x;
     this.z = m.z;
-    this.y = g.grid.groundAt(m.x, m.z);
+    this.y = m instanceof TideSerpent ? m.y : g.grid.groundAt(m.x, m.z);
     this.fx = m.fx;
     this.fz = m.fz;
     this.r = 0.55;
     this.vx = this.vz = 0;
     this.setState('idle');
-    g.audio.sfx(m.kind === 'stag' ? 'bellow' : 'neigh', m.x, m.z);
+    g.audio.sfx(m.kind === 'serpent' ? 'serpent' : m.kind === 'stag' ? 'bellow' : 'neigh', m.x, m.z);
     g.fx.burst(P.dust, m.x, this.y + 0.1, m.z, 8, 2);
   }
 
   dismount(g: Game, thrown = false) {
     const m = this.riding;
     if (!m) return;
+    // Off the Tide Serpent: onto a ledge or the shore, or (in the diving suit) into the water; with nowhere
+    // to go he stays on.
+    const off = m instanceof TideSerpent ? m.landing(this, g, thrown) : undefined;
+    if (off === null) return;
     this.riding = null;
     this.dismountedAt = g.time;
     this.r = PLAYER.radius;
@@ -754,10 +801,10 @@ export class Player {
     // Step off to the side (or get flung).
     const sx = -this.fz, sz = this.fx;
     const body = { x: this.x, y: this.y, z: this.z, r: this.r };
-    g.grid.move(body, sx * 1.1, sz * 1.1, PLAYER.stepUp);
-    this.x = body.x;
-    this.z = body.z;
-    this.y = g.grid.groundAt(this.x, this.z);
+    if (!off) g.grid.move(body, sx * 1.1, sz * 1.1, PLAYER.stepUp);
+    this.x = off?.x ?? body.x;
+    this.z = off?.z ?? body.z;
+    this.y = off?.y ?? g.grid.groundAt(this.x, this.z);
     if (thrown) {
       this.vx = sx * 6;
       this.vz = sz * 6;
@@ -783,6 +830,8 @@ export class Player {
     const moving = Math.hypot(wx, wz) > 0.1;
     this.updateAim(g, wx, wz, moving);
     this.rideT += dt;
+    // The Tide Serpent swims (src/game/serpent.ts).
+    if (m instanceof TideSerpent) return m.swim(this, dt, g, wx, wz, moving);
 
     const stag = m.kind === 'stag';
     if (controls && this.rideState === 'ride' && stag) {
@@ -807,7 +856,7 @@ export class Player {
           this.stagLeapt = true;
           g.fx.burst(P.leaf, this.x, this.y + 0.3, this.z, 10, 1.2, 2);
         }
-        this.vy = PLAYER.jumpSpeed * (this.onGround ? 1.05 : 0.95);
+        this.vy = this.phys.jumpSpeed * (this.onGround ? 1.05 : 0.95);
         this.onGround = false;
         this.y += 0.02;
         g.audio.sfx('jump');
@@ -849,7 +898,7 @@ export class Player {
           g.audio.sfx('charge');
         }
       } else if (inp.hit('jump') && this.onGround) {
-        this.vy = PLAYER.jumpSpeed * 1.05;
+        this.vy = this.phys.jumpSpeed * 1.05;
         this.onGround = false;
         this.y += 0.02;
         g.audio.sfx('jump');
@@ -986,7 +1035,7 @@ export class Player {
     const gy = g.grid.groundAt(this.x, this.z);
     if (this.y - gy > 0.5 || this.vy > 0) {
       this.onGround = false;
-      this.vy -= PLAYER.gravity * dt;
+      this.vy = Math.max(this.vy - this.phys.gravity * dt, -this.phys.maxFall);
       this.y += this.vy * dt;
       if (this.y <= gy) {
         this.y = gy;
@@ -1000,9 +1049,9 @@ export class Player {
       this.y = gy;
       this.vy = 0;
       this.onGround = true;
-      if (gy > PLAYER.fallY) this.lastSafe = { x: this.x, z: this.z };
+      if (gy > this.phys.fallY) this.lastSafe = { x: this.x, z: this.z };
     }
-    if (this.y < PLAYER.fallY) {
+    if (this.y < this.phys.fallY) {
       this.dismount(g);
       g.fellOut();
       return;
@@ -1082,7 +1131,7 @@ export class Player {
 
   private jump(g: Game) {
     if (this.effects.snare > 0) return this.heldFast(g);
-    this.vy = PLAYER.jumpSpeed;
+    this.vy = this.phys.jumpSpeed;
     this.onGround = false;
     this.y += 0.02;
     g.audio.sfx('jump');
@@ -1213,6 +1262,7 @@ export class Player {
       } else {
         n++;
         g.landed(e, !!o.breaks);
+        if (this.powerOn('ink')) inkBlow(e, g);
         this.energy = Math.min(100, this.energy + 8);
       }
     }
@@ -1241,11 +1291,18 @@ export class Player {
       else h.hold(g, this.fx, this.fz);
     }
     for (const t of g.snareTraps) if (t.armed && inArea(t.x, t.y, t.z, 0.4)) t.spring(g);
+    for (const c of g.clams)
+      if (!o.set.has(c) && inArea(c.x, c.y, c.z, 0.7)) {
+        o.set.add(c);
+        c.strike(g);
+      }
     for (const b of g.bindings)
       if (!b.freed && !o.set.has(b) && inArea(b.x, b.y, b.z, 1.4)) {
         o.set.add(b);
         b.cut(g);
       }
+    // Whatever else the realm's story lets a blow land on (the Sunken Reef's nets holding the Tide Serpent).
+    g.story.struck?.(g, (it, x, y, z, r) => !o.set.has(it) && inArea(x, y, z, r) && !!o.set.add(it));
     const cage = g.cage;
     if (cage && !cage.open && !o.set.has(cage) && inArea(cage.x, cage.y, cage.z, 0.8)) {
       o.set.add(cage);
@@ -1289,11 +1346,13 @@ export class Player {
     }
     if (this.riding) {
       const m = this.riding;
+      // (The Tide Serpent's bubble shell takes the blow whole, and bursts.)
+      if (m instanceof TideSerpent && m.burst(this, g)) return 'bubbled';
       m.hp -= dmg;
       this.iframes = 0.7;
       this.vx += nx * 3;
       this.vz += nz * 3;
-      g.audio.sfx('neigh', this.x, this.z);
+      g.audio.sfx(m.kind === 'serpent' ? 'serpent' : 'neigh', this.x, this.z);
       if (m.hp <= 0) this.dismount(g, true);
       return 'hit';
     }
@@ -1314,6 +1373,86 @@ export class Player {
       this.deathT = 0;
     } else this.setState('hurt');
     return 'hit';
+  }
+
+  // ---------- air (the Sunken Reef) ----------
+
+  /**
+   * The diving suit's air runs down a second a second while his head is under the surface, and fills again
+   * above it or in an air pocket (a vent's stream of bubbles). Run out and he's breathless: never hurt by it,
+   * but slower, with no stamina coming back, until he finds air. The helm goes on in deep water.
+   */
+  private breathe(dt: number, g: Game) {
+    const sea = g.realm.sea;
+    if (!sea || !this.dives) return;
+    const gear = this.under || g.grid.waterAt(this.x, this.z) - g.grid.groundAt(this.x, this.z) > 1 ? 'helm' : 'bare';
+    if (gear !== this.gear) {
+      this.gear = gear;
+      setDiveGear(this.model, true, gear === 'helm');
+    }
+    if (!this.alive || g.flying) return;
+    if (this.under && !this.dived) {
+      this.dived = true;
+      g.airTip('dive');
+    }
+    const was = this.air, low = this.airMax * AIR.low;
+    const pocket = this.under && [...(sea.pockets ?? []), ...(sea.lifts ?? [])].some((k) => Math.hypot(this.x - k.x, this.z - k.z) < k.r);
+    if (!this.under) this.air = Math.min(this.airMax, this.air + AIR.surface * dt);
+    else if (pocket) this.air = Math.min(this.airMax, this.air + AIR.pocket * dt);
+    else this.air = Math.max(0, this.air - dt);
+    if (pocket && !this.inPocket && was < this.airMax - 1) {
+      g.pop(this, 'air!', '#bfefff');
+      g.audio.sfx('gulp', this.x, this.z);
+    }
+    this.inPocket = pocket;
+    // Warnings: running low (then a nag every few seconds; the bubbles on the HUD pulse), and out.
+    this.airNagT -= dt;
+    if (was > 0 && this.air <= 0) {
+      g.pop(this, 'breathless!', '#9ad8ff');
+      g.audio.sfx('breathless', this.x, this.z);
+      g.airTip('out');
+      this.airNagT = 4;
+    } else if (this.under && this.air > 0 && this.air < low && (was >= low || this.airNagT <= 0)) {
+      if (was >= low) g.pop(this, 'air running low', '#9ad8ff');
+      g.audio.sfx('airLow', this.x, this.z);
+      this.airNagT = 6;
+    } else if (this.breathless && this.airNagT <= 0) {
+      g.audio.sfx('breathless', this.x, this.z);
+      this.airNagT = 4;
+    }
+  }
+
+  /**
+   * Below the surface the sea moves him: inside a current (a stream round its line) he's carried along it, held
+   * at its height (his own walking adds to it or works against it); in a column of bubbles he's lifted to its top
+   * and held there till he steps off.
+   */
+  private seaFlow(g: Game) {
+    this.driftX = this.driftZ = 0;
+    this.buoy = null;
+    const sea = g.realm.sea;
+    if (!sea || g.flying || !this.alive || this.riding) return;
+    // (A column of bubbles lifts him even where its top is above the surface, as the ship's does.)
+    for (const l of sea.lifts ?? [])
+      if (Math.hypot(this.x - l.x, this.z - l.z) < l.r && this.y < l.top + 0.3 && this.y < sea.surface + 2) {
+        this.buoy = this.y < l.top ? 3.6 : 0;
+        return;
+      }
+    if (!this.under) return;
+    const mid = this.y + 0.9;
+    for (const c of sea.currents ?? []) {
+      for (let k = 0; k < c.pts.length - 1; k++) {
+        const [ax, az] = c.pts[k], [bx, bz] = c.pts[k + 1], dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz;
+        const t = ((this.x - ax) * dx + (this.z - az) * dz) / l2;
+        if (t < 0 || t >= 1) continue;
+        if (Math.hypot(this.x - (ax + dx * t), this.z - (az + dz * t)) > c.r || Math.abs(mid - c.y) > c.r + 0.6) continue;
+        const l = Math.sqrt(l2);
+        this.driftX = (dx / l) * c.speed;
+        this.driftZ = (dz / l) * c.speed;
+        this.buoy = clamp((c.y - mid) * 3, -2.5, 2.5);
+        return;
+      }
+    }
   }
 
   // ---------- status effects ----------
@@ -1370,7 +1509,8 @@ export class Player {
       return true;
     }
     if (kind === 'burn') {
-      if (e.burn > 0) return false;
+      // (Nothing burns under the sea.)
+      if (e.burn > 0 || g.def.noFire) return false;
       e.burn = this.effectMax.burn = EFFECTS.burnFuse;
       g.pop(this, 'on fire! roll!', '#ff9a50');
       g.audio.sfx('ignite', this.x, this.z);

@@ -23,8 +23,14 @@ for (let z = C1 - 2; z < C3 + 2; z++)
     let col = T[G.t[i]] ?? [90, 90, 90];
     const k = Math.max(0.35, Math.min(1.6, 0.75 + h * 0.07));
     col = col.map((v) => Math.min(255, v * k));
-    if (G.water[i] > -99 && G.water[i] > G.h[i]) col = G.water[i] - G.h[i] > 0.55 ? [30, 60, 110] : [60, 100, 140];
-    if (h < -5) col = [15, 15, 20];
+    // Water by depth (a sea's floor shades darker the deeper it is); decks are wood; a drop out of the world is black.
+    const sea = !!g.realm.sea;
+    if (G.water[i] > -99 && G.water[i] > G.h[i]) {
+      const d = G.water[i] - G.h[i];
+      col = d <= 0.55 ? [60, 100, 140] : sea ? [30, 60, 110].map((v) => v * Math.max(0.35, 1 - (d - 0.55) / 16)) : [30, 60, 110];
+    }
+    if (G.deck?.[i] > -99 && G.deck[i] >= G.h[i]) col = [120, 90, 60];
+    if (sea ? h < -20 : h < -5) col = [15, 15, 20];
     c.fillStyle = `rgb(${col.map(Math.round).join(',')})`;
     c.fillRect(X(x), Z(z), S, S);
   }

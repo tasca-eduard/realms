@@ -4,10 +4,11 @@ import { makeHorse, makeStag, type Model } from './models';
 import type { Game } from './game';
 import type { Interactable } from './objects';
 
-export type MountKind = 'horse' | 'stag';
+export type MountKind = 'horse' | 'stag' | 'serpent';
 
 /**
- * A mount: the warhorse, or the Thornstag once it's freed. Left alone it grazes and wanders near where you left it. Ridden,
+ * A mount: the warhorse, or the Thornstag once it's freed (the Tide Serpent, which swims, is its own: see
+ * src/game/serpent.ts). Left alone it grazes and wanders near where you left it. Ridden,
  * the knight's controls drive it (see Player.updateRiding). It has its own
  * health: hits taken while riding land on the horse first, and if it runs out
  * the knight is thrown and the horse bolts home to recover.
@@ -28,21 +29,21 @@ export class Mount implements Interactable {
   t = 0;
   away = 0;
   private target: { x: number; z: number } | null = null;
-  constructor(x: number, z: number, g: Game, public kind: MountKind = 'horse') {
+  constructor(x: number, z: number, g: Game, public kind: MountKind = 'horse', model?: Model) {
     this.x = x;
     this.z = z;
     this.y = g.grid.groundAt(x, z);
     this.home = { x, z };
-    this.model = kind === 'stag' ? makeStag() : makeHorse();
+    this.model = model ?? (kind === 'stag' ? makeStag() : makeHorse());
     this.model.rig.addTo(g.scene);
     this.model.rig.face(-0.7, 0.7, 0);
   }
 
-  get name() {
+  get name(): string {
     return this.kind === 'stag' ? 'Thornstag' : 'Warhorse';
   }
   /** Lower case, for sentences ("your warhorse", "the Thornstag"). */
-  get called() {
+  get called(): string {
     return this.kind === 'stag' ? 'Thornstag' : 'warhorse';
   }
 
@@ -76,7 +77,13 @@ export class Mount implements Interactable {
   }
 
   update(dt: number, g: Game) {
-    if (this.ridden) return;
+    if (this.ridden && g.player.riding === this) return;
+    // (A knight who died in the saddle isn't riding any more: it waits where he fell.)
+    if (this.ridden) {
+      this.ridden = false;
+      this.home = { x: this.x, z: this.z };
+      this.state = 'idle';
+    }
     this.t += dt;
     let moving = false, speed = 0;
     switch (this.state) {

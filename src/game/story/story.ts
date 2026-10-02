@@ -50,6 +50,8 @@ export interface RealmStory {
   onLever(g: Game): void;
   /** A wall or hedge was broken (its id is kept with the broken walls). */
   onBreak?(g: Game, id: string): void;
+  /** A blow lands: anything of the story's it reaches? (`hit` says whether the blow reaches a point, once a blow.) */
+  struck?(g: Game, hit: (it: object, x: number, y: number, z: number, r: number) => boolean): void;
   /** The captive's cage broke open. */
   onCageOpen(g: Game): void;
   /** The tyrant fell (flags and quests; the game runs the victory screen). */

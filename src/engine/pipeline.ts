@@ -53,6 +53,8 @@ uniform float uNear, uFar, uTime;
 uniform vec3 uFogColor, uFogTop, uMistColor;
 uniform float uFogNear, uFogFar;
 uniform float uMistLevel, uMistDepth, uMistAmount;
+uniform float uSea, uSeaCaustics, uSeaRays, uSeaSurface, uSeaFloor;
+uniform vec3 uSeaDeep, uSeaRayColor;
 uniform float uCloud, uExposure, uBloom, uOutline, uSaturation, uWarmth;
 uniform vec3 uLift, uGain;
 uniform float uFlash; uniform vec3 uFlashColor;
@@ -100,6 +102,18 @@ void main() {
     float cl = fbm3(wp.xz * 0.045 + vec2(uTime * 0.018, uTime * 0.008));
     col *= 1.0 - uCloud * smoothstep(0.42, 0.72, cl);
 
+    if (uSea > 0.0 && wp.y < uSeaSurface) {
+      // Below the sea's surface: light rippling over everything (two drifting layers of ridges), brightest
+      // where it's shallow; deeper down, darker and bluer.
+      vec2 cq = wp.xz * 0.36;
+      float ca = 1.0 - abs(vnoise(cq + vec2(uTime * 0.21, uTime * 0.13)) * 2.0 - 1.0);
+      float cb = 1.0 - abs(vnoise(cq * 1.31 + vec2(-uTime * 0.17, uTime * 0.19) + 5.3) * 2.0 - 1.0);
+      float caus = pow(ca, 7.0) + pow(cb, 7.0);
+      float shallow = clamp((wp.y - uSeaFloor) / max(1.0, uSeaSurface - uSeaFloor), 0.0, 1.0);
+      col *= 1.0 + caus * uSeaCaustics * (0.3 + 0.7 * shallow);
+      col = mix(col, uSeaDeep, 0.12 + (1.0 - shallow) * 0.7);
+    }
+
     // Ground mist pooled in low places, rolling slowly.
     float mh = clamp((uMistLevel - wp.y) / uMistDepth, 0.0, 1.0);
     float mn = fbm3(wp.xz * 0.16 + vec2(uTime * 0.05, -uTime * 0.03));
@@ -109,6 +123,23 @@ void main() {
     // Depth fog toward the top of the screen.
     float f = smoothstep(uFogNear, uFogFar, z);
     col = mix(col, uFogColor, f);
+
+    if (uSeaRays > 0.0 && wp.y < uSeaSurface) {
+      // Shafts of light from the surface: step back along the view ray from what's seen, and for each
+      // point ask whether its light came down through a bright patch of the surface (the light slants,
+      // so points at different heights look up through different places: streaks that stay put).
+      vec4 n0 = uInvViewProj * vec4(vUv * 2.0 - 1.0, -1.0, 1.0);
+      vec3 back = normalize(n0.xyz / n0.w - wp);
+      float acc = 0.0;
+      for (int k = 1; k <= 8; k++) {
+        vec3 q = wp + back * (float(k) * 1.7);
+        if (q.y > uSeaSurface) break;
+        vec2 s = q.xz + vec2(0.42, 0.26) * (uSeaSurface - q.y);
+        float band = vnoise(vec2(s.x * 0.11 + s.y * 0.04, s.y * 0.02) + vec2(uTime * 0.035, -uTime * 0.02));
+        acc += smoothstep(0.64, 0.9, band);
+      }
+      col += uSeaRayColor * (acc / 8.0) * uSeaRays * (1.0 - f * 0.6);
+    }
 
     // Fog of war: unexplored land lies under a soft haze. The edge is a wide
     // gradient that drifts very slowly; the land stays faintly visible, tall
@@ -148,13 +179,14 @@ void main() {
 const UPSCALE_FRAG = /* glsl */ `
 uniform sampler2D tSrc;
 uniform vec2 uSrcSize, uScreenSize, uOffset;
-uniform float uScale, uVignette;
+uniform float uScale, uVignette, uNarrow;
 varying vec2 vUv;
 void main() {
   vec2 p = vUv * uScreenSize / uScale + 1.0 + uOffset;
   vec3 c = texture2D(tSrc, p / uSrcSize).rgb;
   vec2 q = vUv - 0.5; q.x *= uScreenSize.x / uScreenSize.y;
   c *= 1.0 - uVignette * smoothstep(0.35, 1.1, length(q) * 1.25);
+  c *= 1.0 - uNarrow * 0.85 * smoothstep(0.14, 0.64, length(q));
   gl_FragColor = vec4(c, 1.0);
 }
 `;
@@ -185,6 +217,15 @@ export interface Atmosphere {
   mistLevel: number;
   mistDepth: number;
   mistAmount: number;
+  /** Under the sea (0 or 1), the water's deep colour, how bright the rippling light and the shafts are, the
+   *  shafts' colour, and the heights of the surface and the deepest floor. */
+  sea: number;
+  seaDeep: THREE.Color;
+  seaCaustics: number;
+  seaRays: number;
+  seaRayColor: THREE.Color;
+  seaSurface: number;
+  seaFloor: number;
   cloud: number;
   exposure: number;
   bloom: number;
@@ -209,6 +250,8 @@ export class Pipeline {
   flash = 0;
   flashColor = new THREE.Color(1, 1, 1);
   desat = 0;
+  /** The view closing in to a tunnel (out of air). */
+  narrow = 0;
   time = 0;
   fow: { tex: THREE.Texture; x: number; z: number; size: number; amount: number } | null = null;
   atmo: Atmosphere = {
@@ -220,6 +263,13 @@ export class Pipeline {
     mistLevel: 1.2,
     mistDepth: 2.2,
     mistAmount: 0.8,
+    sea: 0,
+    seaDeep: new THREE.Color(0, 0, 0),
+    seaCaustics: 0,
+    seaRays: 0,
+    seaRayColor: new THREE.Color(0, 0, 0),
+    seaSurface: 16,
+    seaFloor: -3,
     cloud: 0.28,
     exposure: 1.45,
     bloom: 0.9,
@@ -262,6 +312,8 @@ export class Pipeline {
         uFogColor: { value: new THREE.Color() }, uFogTop: { value: new THREE.Color() }, uMistColor: { value: new THREE.Color() },
         uFogNear: { value: 0 }, uFogFar: { value: 0 },
         uMistLevel: { value: 0 }, uMistDepth: { value: 1 }, uMistAmount: { value: 0 },
+        uSea: { value: 0 }, uSeaCaustics: { value: 0 }, uSeaRays: { value: 0 }, uSeaSurface: { value: 16 }, uSeaFloor: { value: -3 },
+        uSeaDeep: { value: new THREE.Color() }, uSeaRayColor: { value: new THREE.Color() },
         uCloud: { value: 0 }, uExposure: { value: 1 }, uBloom: { value: 1 }, uOutline: { value: 1 },
         uSaturation: { value: 1 }, uWarmth: { value: 0 },
         uLift: { value: new THREE.Color() }, uGain: { value: new THREE.Color() },
@@ -273,7 +325,7 @@ export class Pipeline {
     this.up = new Pass(
       mk(UPSCALE_FRAG, {
         tSrc: { value: null }, uSrcSize: { value: new THREE.Vector2() }, uScreenSize: { value: new THREE.Vector2() },
-        uOffset: { value: new THREE.Vector2() }, uScale: { value: 3 }, uVignette: { value: 0.5 },
+        uOffset: { value: new THREE.Vector2() }, uScale: { value: 3 }, uVignette: { value: 0.5 }, uNarrow: { value: 0 },
       }),
     );
     this.resize();
@@ -363,6 +415,13 @@ export class Pipeline {
     c.uMistLevel.value = a.mistLevel;
     c.uMistDepth.value = a.mistDepth;
     c.uMistAmount.value = a.mistAmount;
+    c.uSea.value = a.sea;
+    c.uSeaCaustics.value = a.seaCaustics;
+    c.uSeaRays.value = a.seaRays;
+    c.uSeaSurface.value = a.seaSurface;
+    c.uSeaFloor.value = a.seaFloor;
+    c.uSeaDeep.value.copy(a.seaDeep);
+    c.uSeaRayColor.value.copy(a.seaRayColor);
     c.uCloud.value = a.cloud;
     c.uExposure.value = a.exposure;
     c.uBloom.value = a.bloom;
@@ -386,6 +445,7 @@ export class Pipeline {
     u.tSrc.value = this.compRT.texture;
     u.uOffset.value.copy(this.offset);
     u.uVignette.value = a.vignette;
+    u.uNarrow.value = this.narrow;
     this.up.run(r, null);
   }
 }

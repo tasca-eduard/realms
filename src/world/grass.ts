@@ -34,7 +34,7 @@ export function buildGrass(grid: Grid, density: (x: number, z: number) => number
   const geo = tuftGeometry();
   const mat = grassMaterial();
   const rng = mulberry32(77);
-  const green = hexToLinear('#4f7a3c'), dark = hexToLinear('#3d6334'), dry = hexToLinear('#7a7a44');
+  const green = hexToLinear('#4f7a3c'), dark = hexToLinear('#3d6334'), dry = hexToLinear('#7a7a44'), sea = hexToLinear('#2f6a5a');
   const CH = 16;
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3();
   const up = new THREE.Vector3(0, 1, 0);
@@ -46,7 +46,7 @@ export function buildGrass(grid: Grid, density: (x: number, z: number) => number
         for (let x = cx0; x < Math.min(xEnd, cx0 + CH); x++) {
           const i = grid.i(x, z);
           const t = grid.t[i];
-          if (t !== T.Grass && t !== T.DarkGrass && t !== T.Moss) continue;
+          if (t !== T.Grass && t !== T.DarkGrass && t !== T.Moss && t !== T.Seagrass) continue;
           if (grid.noGrass[i] || grid.dir[i] >= 0 || grid.water[i] > -100) continue;
           const n = density(x + 0.5, z + 0.5);
           const count = Math.floor(n) + (rng() < n - Math.floor(n) ? 1 : 0);
@@ -56,7 +56,7 @@ export function buildGrass(grid: Grid, density: (x: number, z: number) => number
             if (sc <= 0.05) continue;
             const d = fbm(px * 0.08, pz * 0.08, 2, 5);
             const drying = Math.max(0, fbm(px * 0.05 + 10, pz * 0.05 - 4, 2, 3) - 0.5) * 1.6;
-            const b = t === T.DarkGrass ? dark : green;
+            const b = t === T.DarkGrass ? dark : t === T.Seagrass ? sea : green;
             const k2 = 0.8 + d * 0.35;
             const col: [number, number, number] = [
               (b[0] + (dry[0] - b[0]) * drying) * k2,

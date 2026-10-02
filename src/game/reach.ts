@@ -1,12 +1,15 @@
-import { PLAYER } from '../config';
 import { Grid } from '../world/grid';
 import type { Game } from './game';
+import { SERPENT_LIP } from './serpent';
 
 // Dev tool: flood the map from the start the way the knight moves (walk, jump up
 // to CLIMB, drop down, jump gaps of up to JUMP_GAP cells, no deep water, no solid
 // colliders) and report what he can't reach and anywhere he could slip out of the world.
+// With `serpent`, on the Tide Serpent as well: it swims the sea, he gets on and off at its edges.
 
 const CLIMB = 1.5;
+/** Below the sea's surface a jump floats higher (1.3 m) and the step-up comes on top. */
+const UNDER_CLIMB = 1.7;
 /** On the Thornstag: its double leap (2.3 m) plus the step-up at the top (0.45 m). */
 export const STAG_CLIMB = 2.75;
 const JUMP_CLEAR = 1.1;
@@ -38,7 +41,7 @@ function blockedCell(grid: Grid, x: number, z: number, top: number, clearance = 
   return false;
 }
 
-export function reachability(g: Game, assumeProgress = true, climb = CLIMB): ReachReport {
+export function reachability(g: Game, assumeProgress = true, climb = CLIMB, serpent = false): ReachReport {
   const grid = g.grid;
   // What a leap clears: the knight's jump about a metre; the stag's second leap (with its 2.75 m
   // climb) about 2.2 m, over a root, a fence, a table.
@@ -68,17 +71,41 @@ export function reachability(g: Game, assumeProgress = true, climb = CLIMB): Rea
     restore.push(() => (c.on = was));
   }
 
+  // A diver (the Sunken Reef's, in the salvager's suit: assumed with the story done) walks into deep water,
+  // and below the surface his jump floats higher.
+  const sea = g.realm.sea;
+  const dives = !!sea && (assumeProgress || g.player.dives);
+  const deep = (x: number, z: number) => !dives && grid.isDeep(x, z);
+  const climbAt = (h: number) => (dives && sea && h < sea.surface - 1.2 ? Math.max(climb, UNDER_CLIMB) : climb);
   const seen = new Uint8Array(grid.w * grid.d);
   const from = new Int32Array(grid.w * grid.d).fill(-1);
   const top = (x: number, z: number) => grid.cellTop(x, z, x + 0.5, z + 0.5);
   const ok = (x: number, z: number) => {
     if (!grid.inside(x, z)) return false;
     const i = grid.i(x, z);
-    if (grid.solid[i] || grid.isDeep(x, z)) return false;
+    if (grid.solid[i] || deep(x, z)) return false;
     const t = top(x, z);
-    if (t < PLAYER.fallY) return false;
+    if (t < g.player.phys.fallY) return false;
     return !blockedCell(grid, x, z, t, clearance);
   };
+  // A diver's rides: a column of bubbles takes him from its foot to the ground round its top; a current from where
+  // it starts (at its height) to where it ends. Each is a link from some cells to others.
+  const links: { from: number[]; to: number[] }[] = [];
+  const cellsNear = (x: number, z: number, r: number, want: (t: number) => boolean) => {
+    const out: number[] = [];
+    for (let cz = Math.floor(z - r); cz <= Math.ceil(z + r); cz++)
+      for (let cx = Math.floor(x - r); cx <= Math.ceil(x + r); cx++)
+        if (grid.inside(cx, cz) && Math.hypot(cx + 0.5 - x, cz + 0.5 - z) <= r && want(top(cx, cz))) out.push(grid.i(cx, cz));
+    return out;
+  };
+  if (dives && sea) {
+    for (const l of sea.lifts ?? []) links.push({ from: cellsNear(l.x, l.z, l.r, (t) => t < l.top), to: cellsNear(l.x, l.z, l.r + 3, (t) => t <= l.top + 0.3 && t > l.top - 3) });
+    for (const c of sea.currents ?? []) {
+      const [a, n] = [c.pts[0], c.pts[1]], e = c.pts[c.pts.length - 1];
+      const sx = a[0] + (n[0] - a[0]) * 0.15, sz = a[1] + (n[1] - a[1]) * 0.15;
+      links.push({ from: cellsNear(sx, sz, c.r, (t) => Math.abs(t + 0.9 - c.y) < c.r + 0.6), to: cellsNear(e[0], e[1], 2.5, (t) => t < c.y + 0.5) });
+    }
+  }
   const sx = Math.floor(g.realm.start.x), sz = Math.floor(g.realm.start.z);
   const q: [number, number][] = [[sx, sz]];
   seen[grid.i(sx, sz)] = 1;
@@ -104,7 +131,7 @@ export function reachability(g: Game, assumeProgress = true, climb = CLIMB): Rea
         // Ramps and stairs: compare the heights where the two cells meet.
         const edgeH = grid.cellTop(nx, nz, x + 0.5 + dx * 0.5, z + 0.5 + dz * 0.5);
         const fromH = grid.cellTop(x, z, x + 0.5 + dx * 0.5, z + 0.5 + dz * 0.5);
-        if (edgeH - Math.max(fromH, h) <= climb) reach(nx, nz);
+        if (edgeH - Math.max(fromH, h) <= climbAt(h)) reach(nx, nz);
       }
       // A running jump carries the knight about three metres on the flat: over a gap of one or
       // two cells (a drop, nothing in the way) to ground no higher than here. Never over deep
@@ -115,7 +142,7 @@ export function reachability(g: Game, assumeProgress = true, climb = CLIMB): Rea
         let over = true;
         for (let k = 1; k <= gap && over; k++) {
           const mx = x + dx * k, mz = z + dz * k;
-          over = !grid.isDeep(mx, mz) && top(mx, mz) < h - 1.2 && !blockedCell(grid, mx, mz, h, clearance);
+          over = !deep(mx, mz) && top(mx, mz) < h - 1.2 && !blockedCell(grid, mx, mz, h, clearance);
         }
         if (!over) break;
         if (!seen[grid.i(tx, tz)] && ok(tx, tz) && top(tx, tz) <= h + 0.3) reach(tx, tz);
@@ -126,9 +153,22 @@ export function reachability(g: Game, assumeProgress = true, climb = CLIMB): Rea
     const [x, z] = q.pop()!;
     step(x, z);
   }
-  // Vines: from the foot of a vined face the knight climbs to the ledge above; flood on from there.
-  for (let pass = 0; pass < 3; pass++) {
+  // Vines: from the foot of a vined face the knight climbs to the ledge above; flood on from there. (And the
+  // diver's rides.)
+  for (let pass = 0; pass < 6; pass++) {
     let more = false;
+    for (const l of links) {
+      if (!l.from.some((i) => seen[i])) continue;
+      const src = l.from.find((i) => seen[i])!;
+      for (const i of l.to) {
+        const x = (i % grid.w) + grid.ox, z = Math.floor(i / grid.w) + grid.oz;
+        if (seen[i] || !ok(x, z)) continue;
+        seen[i] = 1;
+        from[i] = src;
+        q.push([x, z]);
+        more = true;
+      }
+    }
     for (const v of g.realm.vines ?? []) {
       for (let a = -v.w / 2; a <= v.w / 2; a += 0.5) {
         const fx = v.alongX ? v.x + a : v.x + v.nx * 0.5, fz = v.alongX ? v.z + v.nz * 0.5 : v.z + a;
@@ -147,11 +187,61 @@ export function reachability(g: Game, assumeProgress = true, climb = CLIMB): Rea
       step(x, z);
     }
   }
+  // On the Tide Serpent: from wherever the knight gets on it (the sea's edge, from ground no higher than
+  // SERPENT_LIP above the surface; in the diving suit, anywhere in the sea), it swims through all of that sea
+  // inside the map's edges, at any depth and up any reef wall (not past what breaks the surface), and he gets
+  // off onto any such edge it touches, or in the suit anywhere in it. Round and round until nothing new.
+  const swum = new Uint8Array(grid.w * grid.d);
+  if (serpent && sea) {
+    const lip = sea.surface + SERPENT_LIP;
+    const swim = (x: number, z: number) => x >= 0 && z >= 0 && x < g.realm.w && z < g.realm.d && grid.isDeep(x, z) && !blockedCell(grid, x, z, sea.surface - 0.45, 0);
+    const D4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    for (let more = true; more; ) {
+      more = false;
+      const sq: [number, number][] = [];
+      const enter = (x: number, z: number) => {
+        swum[grid.i(x, z)] = 1;
+        sq.push([x, z]);
+      };
+      for (let z = 0; z < g.realm.d; z++)
+        for (let x = 0; x < g.realm.w; x++) {
+          if (!seen[grid.i(x, z)]) continue;
+          if (swim(x, z)) {
+            if (!swum[grid.i(x, z)]) enter(x, z);
+          } else if (top(x, z) <= lip) for (const [dx, dz] of D4) if (swim(x + dx, z + dz) && !swum[grid.i(x + dx, z + dz)]) enter(x + dx, z + dz);
+        }
+      while (sq.length) {
+        const [x, z] = sq.pop()!;
+        if (x - grid.ox < 3 || z - grid.oz < 3 || grid.ox + grid.w - x <= 3 || grid.oz + grid.d - z <= 3) escapes.push([x, z]);
+        for (const [dx, dz] of D4) if (swim(x + dx, z + dz) && !swum[grid.i(x + dx, z + dz)]) enter(x + dx, z + dz);
+      }
+      const off = (x: number, z: number, by: number) => {
+        seen[grid.i(x, z)] = 1;
+        from[grid.i(x, z)] = by;
+        q.push([x, z]);
+        more = true;
+      };
+      for (let z = 0; z < g.realm.d; z++)
+        for (let x = 0; x < g.realm.w; x++) {
+          const i = grid.i(x, z);
+          if (!swum[i]) continue;
+          if (dives && !seen[i] && ok(x, z)) off(x, z, i);
+          for (const [dx, dz] of D4) {
+            const nx = x + dx, nz = z + dz;
+            if (grid.inside(nx, nz) && !seen[grid.i(nx, nz)] && !swim(nx, nz) && ok(nx, nz) && top(nx, nz) <= lip) off(nx, nz, i);
+          }
+        }
+      while (q.length) {
+        const [x, z] = q.pop()!;
+        step(x, z);
+      }
+    }
+  }
   const reachAt = (x: number, z: number, r: number) => {
     for (let dz = -Math.ceil(r); dz <= Math.ceil(r); dz++)
       for (let dx = -Math.ceil(r); dx <= Math.ceil(r); dx++) {
         const cx = Math.floor(x) + dx, cz = Math.floor(z) + dz;
-        if (!grid.inside(cx, cz) || !seen[grid.i(cx, cz)]) continue;
+        if (!grid.inside(cx, cz) || !(seen[grid.i(cx, cz)] || swum[grid.i(cx, cz)])) continue;
         if (Math.hypot(cx + 0.5 - x, cz + 0.5 - z) <= r + 0.7) return true;
       }
     return false;
@@ -164,7 +254,8 @@ export function reachability(g: Game, assumeProgress = true, climb = CLIMB): Rea
   for (const e of g.enemies) if (!e.flying) check(`enemy:${e.type}`, e.home.x, e.home.z, 2);
   for (const b of g.breakables) check(`breakable:${b.what}`, b.x, b.z, 1.4);
   if (g.cage) check('cage', g.cage.x, g.cage.z, 1.8);
-  for (const b of g.realm.borders ?? []) check(`border:${b.id}`, b.x, b.z, b.r);
+  // (A way only the Thornstag's leap crosses is looked for on the stag.)
+  for (const b of g.realm.borders ?? []) if (!b.leap || climb >= STAG_CLIMB) check(`border:${b.id}`, b.x, b.z, b.r);
   for (const s of g.shards) check(`shard:${s.id}`, s.x, s.z, 0.9);
   // Back again: which reachable cells can return to the start? Flood backward, taking each move the
   // other way (a cell joins when it can move, jump or climb vines to one already in).
@@ -174,13 +265,13 @@ export function reachability(g: Game, assumeProgress = true, climb = CLIMB): Rea
   const canStep = (ax: number, az: number, dx: number, dz: number) => {
     const edgeH = grid.cellTop(ax + dx, az + dz, ax + 0.5 + dx * 0.5, az + 0.5 + dz * 0.5);
     const fromH = grid.cellTop(ax, az, ax + 0.5 + dx * 0.5, az + 0.5 + dz * 0.5);
-    return edgeH - Math.max(fromH, top(ax, az)) <= climb;
+    return edgeH - Math.max(fromH, top(ax, az)) <= climbAt(top(ax, az));
   };
   const canJump = (ax: number, az: number, dx: number, dz: number, gap: number) => {
     const h = top(ax, az);
     for (let k = 1; k <= gap; k++) {
       const mx = ax + dx * k, mz = az + dz * k;
-      if (!grid.inside(mx, mz) || grid.isDeep(mx, mz) || top(mx, mz) >= h - 1.2 || blockedCell(grid, mx, mz, h, clearance)) return false;
+      if (!grid.inside(mx, mz) || deep(mx, mz) || top(mx, mz) >= h - 1.2 || blockedCell(grid, mx, mz, h, clearance)) return false;
     }
     return top(ax + dx * (gap + 1), az + dz * (gap + 1)) <= h + 0.3;
   };
@@ -211,6 +302,10 @@ export function reachability(g: Game, assumeProgress = true, climb = CLIMB): Rea
       }
     }
     for (const f of vineFoot.get(grid.i(bx, bz)) ?? []) join((f % grid.w) + grid.ox, Math.floor(f / grid.w) + grid.oz);
+    // A ride whose end is on the way back takes its start back too.
+    if (!bq.length)
+      for (const l of links)
+        if (l.to.some((i) => back[i])) for (const f of l.from) join((f % grid.w) + grid.ox, Math.floor(f / grid.w) + grid.oz);
   }
   const traps: [number, number][] = [];
   let trapCount = 0;

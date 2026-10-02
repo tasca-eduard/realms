@@ -10,6 +10,8 @@ export interface AmbState {
   owls: number;
   /** Birdsong (Whisperwood's nights have it). */
   birds: number;
+  /** Under the sea: bubbles rising and the low drone of deep water. */
+  bubbles: number;
   water: number;
   fire: number;
   drums: number;
@@ -43,10 +45,12 @@ export class Audio {
   private drumStep = 0;
   private nextFrog = 5;
   private nextBird = 3;
+  private nextBlub = 1;
+  private drone: { gain: GainNode } | null = null;
   /** The realm being played (its own music). */
   realm = '';
   private muffle!: BiquadFilterNode;
-  amb: AmbState = { x: 0, z: 0, wind: 0.5, crickets: 0.5, owls: 0.5, birds: 0, water: 0, fire: 0, drums: 0, indoor: false };
+  amb: AmbState = { x: 0, z: 0, wind: 0.5, crickets: 0.5, owls: 0.5, birds: 0, bubbles: 0, water: 0, fire: 0, drums: 0, indoor: false };
 
   constructor() {
     try {
@@ -301,6 +305,14 @@ export class Audio {
       case 'rustle':
         this.noiseHit(o(0.25, 0.05), t, 0.2, 'highpass', 2500, 1800, 0.7, 0.3, 0.02);
         break;
+      // A gull's cry over the Sunken Reef's shore: a falling "kee-ow", once or a few times.
+      case 'gull':
+        for (let i = 0, n = 1 + Math.floor(R() * 3); i < n; i++) {
+          const f = 1500 + R() * 300;
+          this.tone(o(0.16, 0.4), t + i * 0.3, 'triangle', f, f * 0.62, 0.24, 0.09, 0.02);
+          this.tone(o(0.08, 0.4), t + i * 0.3, 'square', f * 2, f * 1.2, 0.18, 0.02, 0.02);
+        }
+        break;
       case 'thorns':
         this.noiseHit(o(0.7, 0.2), t, 0.18, 'bandpass', 1800, 700, 1.4, 0.8, 0.005);
         for (let i = 0; i < 4; i++) this.noiseHit(o(0.3, 0.1), t + i * 0.03, 0.06, 'highpass', 3000 + R() * 1500, 2000, 2, 0.4);
@@ -315,6 +327,41 @@ export class Audio {
         this.tone(d, t + 0.05, 'sine', 300, 220, 0.6, 0.15, 0.05);
         break;
       }
+      // The Tide Serpent: its call, a stroke, a bubble shot, the whirlpool, its shell going up and bursting, a
+      // splash, the crew's net lines cut.
+      case 'serpent': {
+        const d = o(0.5, 0.6);
+        this.tone(d, t, 'sine', 240, 520, 0.35, 0.18, 0.04);
+        this.tone(d, t + 0.25, 'triangle', 520, 180, 0.6, 0.14, 0.05);
+        this.noiseHit(d, t, 0.5, 'bandpass', 900, 400, 2, 0.15, 0.1);
+        break;
+      }
+      case 'stroke':
+        this.noiseHit(o(0.35, 0.2), t, 0.3, 'lowpass', 900, 300, 0.8, 0.4, 0.04, true);
+        this.tone(o(0.2, 0.3), t + 0.05, 'sine', 300, 620, 0.12, 0.12);
+        break;
+      case 'bubbleShot':
+        this.tone(o(0.4, 0.3), t, 'sine', 180, 760, 0.12, 0.25);
+        this.noiseHit(o(0.25, 0.1), t, 0.08, 'bandpass', 1400, 2200, 2, 0.3, 0.005);
+        break;
+      case 'whirl':
+        this.noiseHit(o(0.6, 0.5), t, 1.2, 'bandpass', 400, 1400, 1.5, 0.5, 0.3);
+        this.tone(o(0.3, 0.4), t, 'sine', 90, 140, 1.0, 0.2, 0.2);
+        break;
+      case 'shell':
+        for (let i = 0; i < 4; i++) this.tone(o(0.25, 0.4), t + i * 0.05, 'sine', 500 + i * 180, 900 + i * 200, 0.1, 0.1);
+        break;
+      case 'pop':
+        this.noiseHit(o(0.4, 0.3), t, 0.08, 'highpass', 2500, 1500, 1, 0.5, 0.002);
+        this.tone(o(0.35, 0.3), t, 'sine', 900, 200, 0.15, 0.2);
+        break;
+      case 'splash':
+        this.noiseHit(o(0.6, 0.3), t, 0.55, 'lowpass', 2400, 500, 0.7, 0.6, 0.01);
+        break;
+      case 'snap':
+        this.noiseHit(o(0.4, 0.1), t, 0.06, 'highpass', 3000, 2000, 1, 0.6, 0.002);
+        this.tone(o(0.3, 0.2), t, 'sawtooth', 220, 110, 0.18, 0.12);
+        break;
       case 'bola':
         this.noiseHit(o(0.18, 0.05), t, 0.12, 'bandpass', 700 + R() * 300, 900, 3, 0.3, 0.02);
         break;
@@ -356,6 +403,47 @@ export class Audio {
       }
       case 'blink':
         this.tone(o(0.3, 0.5), t, 'sine', 1400, 300, 0.25, 0.12);
+        break;
+      // The diving suit: a gulp of air, the low-air warning, out of air.
+      case 'gulp':
+        this.tone(o(0.35, 0.3), t, 'sine', 260, 640, 0.1, 0.22);
+        this.tone(o(0.3, 0.3), t + 0.08, 'sine', 380, 900, 0.12, 0.18);
+        break;
+      case 'airLow':
+        this.tone(o(0.3, 0.4), t, 'triangle', 700, 660, 0.14, 0.16);
+        this.tone(o(0.3, 0.4), t + 0.17, 'triangle', 540, 500, 0.2, 0.16);
+        break;
+      case 'breathless':
+        this.tone(o(0.4, 0.3), t, 'sine', 220, 90, 0.45, 0.3);
+        this.noiseHit(o(0.2, 0.2), t, 0.3, 'lowpass', 600, 200, 1, 0.3, 0.05, true);
+        break;
+      // Brassbelly's suit: the valves hissing, the steam blowing off.
+      case 'hiss':
+        this.noiseHit(o(0.3, 0.2), t, 0.9, 'highpass', 5000, 3800, 0.8, 0.35, 0.3);
+        break;
+      case 'steam':
+        this.noiseHit(o(0.7, 0.3), t, 0.7, 'bandpass', 3200, 1400, 0.6, 0.8, 0.01);
+        this.tone(o(0.3, 0.2), t, 'sine', 140, 60, 0.3, 0.25);
+        break;
+      // The Sunken Reef's foes: a claw or a shell snapping shut, a clam's creak before it does, a jelly's
+      // pulse, a pufferfish swelling, a harpoon's line running.
+      case 'snap':
+        this.noiseHit(o(0.6, 0.2), t, 0.07, 'bandpass', 2200, 1200, 2, 0.7, 0.002);
+        this.tone(o(0.4, 0.2), t, 'square', 320, 120, 0.08, 0.2);
+        break;
+      case 'creak':
+        for (let i = 0; i < 4; i++) this.tone(o(0.22, 0.3), t + i * 0.09, 'sawtooth', 150 + i * 12, 130 + i * 10, 0.08, 0.06, 0.01);
+        break;
+      case 'squelch':
+        this.tone(o(0.35, 0.3), t, 'sine', 420, 160, 0.18, 0.22);
+        this.noiseHit(o(0.25, 0.2), t, 0.15, 'lowpass', 900, 300, 1, 0.3, 0.02);
+        break;
+      case 'puff':
+        this.tone(o(0.35, 0.3), t, 'triangle', 180, 520, 0.5, 0.16, 0.05);
+        this.noiseHit(o(0.2, 0.2), t, 0.5, 'bandpass', 600, 1400, 1.2, 0.25, 0.1);
+        break;
+      case 'reel':
+        for (let i = 0; i < 5; i++) this.noiseHit(o(0.2, 0.1), t + i * 0.06, 0.04, 'bandpass', 1400 + R() * 400, 900, 4, 0.35, 0.003);
         break;
       case 'glint':
         this.tone(o(0.3, 0.3), t, 'sine', 2400, 3200, 0.12, 0.1);
@@ -504,6 +592,16 @@ export class Audio {
           if (i % 3 === 0) this.bell(o(0.15, 0.3), t + i * 0.085, 1400 + R() * 600, 0.15, 0.1);
         }
         break;
+      // The Sunken Reef's: the drowned kingdom's great bell tolling under the water; the Tidelord's tide surging.
+      case 'toll':
+        this.tone(o(0.9, 0.6), t, 'sine', 98, 96, 4.5, 0.55, 0.004);
+        [1, 2.4, 3, 4.2, 5.4].forEach((m, i) => this.bell(o(0.5, 0.8), t + 0.01, 98 * m, 3.6 - i * 0.5, 0.2 - i * 0.025));
+        this.noiseHit(o(0.4, 0.4), t, 0.25, 'bandpass', 900, 400, 3, 0.4);
+        break;
+      case 'surge':
+        this.noiseHit(o(0.6, 0.5), t, 2.2, 'lowpass', 300, 900, 0.8, 0.55, 0.6, true);
+        this.tone(o(0.3, 0.4), t, 'sine', 55, 80, 2, 0.3, 0.5);
+        break;
       case 'bridgeSlam':
         this.tone(o(1, 0.6), t, 'sine', 60, 25, 1.2, 1);
         this.noiseHit(o(0.9, 0.5), t, 0.9, 'lowpass', 700, 50, 0.7, 1, 0.003, true);
@@ -621,6 +719,39 @@ export class Audio {
         at += 0.07 + Math.random() * 0.06;
       }
     }
+    if (s.bubbles > 0.05) {
+      // Under the sea: a low drone of deep water (two near notes beating slowly), and bubbles: a few
+      // quick rising blips somewhere about.
+      if (!this.drone) {
+        const gain = this.ctx!.createGain();
+        gain.gain.value = 0;
+        gain.connect(this.ambBus);
+        for (const f of [55, 55.6, 82.4]) {
+          const o = this.ctx!.createOscillator();
+          o.type = 'sine';
+          o.frequency.value = f;
+          o.connect(gain);
+          o.start();
+        }
+        this.drone = { gain };
+      }
+      if (t > this.nextBlub) {
+        this.nextBlub = t + 0.5 + Math.random() * (2.4 / s.bubbles);
+        const g = this.ctx!.createGain();
+        g.gain.value = 0.05 * s.bubbles;
+        const p = this.ctx!.createStereoPanner();
+        p.pan.value = Math.random() * 1.6 - 0.8;
+        g.connect(p).connect(this.ambBus);
+        const n = 1 + Math.floor(Math.random() * 4), f = 260 + Math.random() * 260;
+        let at = t;
+        for (let k = 0; k < n; k++) {
+          const a = f * (0.85 + Math.random() * 0.4);
+          this.tone(g, at, 'sine', a, a * (2 + Math.random()), 0.06, 0.9, 0.004);
+          at += 0.05 + Math.random() * 0.12;
+        }
+      }
+    }
+    if (this.drone) this.drone.gain.gain.setTargetAtTime(s.indoor ? 0.004 : 0.022 * s.bubbles, t, 0.6);
     if (s.water > 0.3 && !s.indoor && t > this.nextFrog) {
       this.nextFrog = t + 2 + Math.random() * 6;
       const g = this.ctx!.createGain();

@@ -162,6 +162,9 @@ export const P = {
   dust: { color: [0.2, 0.19, 0.2], color2: [0.12, 0.12, 0.14], size: 3, size2: 5, life: 0.6, drag: 4, gravity: -0.4, alpha: 0.5 },
   smoke: { color: [0.09, 0.09, 0.12], color2: [0.05, 0.05, 0.07], size: 3, size2: 8, life: 5, gravity: -0.35, drag: 0.4, wobble: 0.35, alpha: 0.35, fadeIn: 0.2 },
   puff: { color: [0.35, 0.34, 0.4], color2: [0.15, 0.15, 0.2], size: 4, size2: 7, life: 0.7, drag: 5, gravity: -0.8, alpha: 0.6 },
+  /** Jets of steam from Brassbelly's valves while they hiss. */
+  hiss: { color: [0.85, 0.9, 0.95], color2: [0.5, 0.55, 0.6], size: 2, size2: 4.5, life: 0.45, drag: 3, gravity: -1.2, alpha: 0.4 },
+  steam: { color: [0.85, 0.9, 0.95], color2: [0.45, 0.5, 0.55], size: 5, size2: 11, life: 0.9, drag: 4, gravity: -1.6, alpha: 0.5 },
   blood: { color: [0.25, 0.4, 0.08], size: 1, life: 0.6, gravity: 12, drag: 1.5 },
   splinter: { color: [0.35, 0.24, 0.14], size: 1, life: 0.9, gravity: 14, drag: 1.2 },
   leaf: { color: [0.2, 0.26, 0.08], color2: [0.16, 0.14, 0.05], size: 1, life: 6, gravity: 0.5, drag: 1.5, wobble: 0.8 },
@@ -175,6 +178,12 @@ export const P = {
   bubble: { color: [0.5, 1.6, 0.3], color2: [0.2, 0.7, 0.1], size: 1, size2: 2, life: 0.9, gravity: -1, wobble: 0.3 },
   heal2: { color: [0.4, 2.8, 0.6], color2: [0.2, 1.2, 0.3], size: 1, life: 1, gravity: -1.8, wobble: 0.3 },
   haste: { color: [3.2, 0.8, 0.4], color2: [1, 0.2, 0.1], size: 1, life: 0.5, gravity: -1.5 },
+  /** Under the sea: bubbles rising (from vents, from the knight's helmet), wobbling as they go. */
+  /** Specks carried along a current (they show where it flows). */
+  stream: { color: [0.55, 0.85, 0.95], color2: [0.35, 0.6, 0.75], size: 1, size2: 1.4, life: 1.8, drag: 0, gravity: 0, wobble: 0.1, alpha: 0.6, fadeIn: 0.25 },
+  seaBubble: { color: [0.9, 1.5, 1.6], color2: [0.5, 0.9, 1.1], size: 1, size2: 2, life: 2.6, gravity: -1.6, drag: 0.6, wobble: 0.35, alpha: 0.75, fadeIn: 0.1 },
+  /** Under the sea: specks drifting slowly down through the water ("marine snow"), catching the light. */
+  seaSnow: { color: [0.55, 0.75, 0.8], size: 1, life: 7, gravity: 0.06, drag: 1.2, wobble: 0.25, alpha: 0.45, fadeIn: 0.4 },
 } satisfies Record<string, PSpec>;
 
 export interface Emitter {

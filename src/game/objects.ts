@@ -817,3 +817,52 @@ export class Npc implements Interactable {
     rig.place(g.cam, this.x, this.y, this.z, this.y - (this.def.perch ?? 0), this.visible);
   }
 }
+
+// ---------- the diving suit (the Sunken Reef) ----------
+
+/** The salvager's diving suit, dropped where he fell: a brass helm on a heap of patched canvas and a pair of
+ *  lead boots, glinting. Walk onto it to take it. */
+export class DiveSuit {
+  y: number;
+  taken = false;
+  group: THREE.Group;
+  light: LightSource;
+  t = 0;
+  constructor(public x: number, public z: number, g: Game, private onTake: () => void) {
+    this.y = g.grid.groundAt(x, z);
+    this.group = meshOf((m) => {
+      m.blob(0, 0.08, 0, 0.5, 0.16, 0.38, '#8a7c5c', 71, { kind: K.Cloth, flatBottom: true });
+      m.box(0.12, 0.12, 0.18, 0.18, 0.08, 0.16, '#5a6a72', { kind: K.Cloth });
+      for (const s of [-1, 1]) m.box(0.42, 0, s * 0.14, 0.26, 0.14, 0.13, '#4a4a52', { kind: K.Metal });
+      // The helm, tipped on its side.
+      m.push().translate(-0.18, 0.3, -0.02).rotateZ(0.5);
+      m.blob(0, 0.08, 0, 0.27, 0.26, 0.27, '#b8862e', 73, { kind: K.Metal, detail: 1, jitter: 0.03 });
+      m.cyl(0, -0.2, 0, 0.29, 0.26, 0.1, 10, '#8a5e1e', { kind: K.Metal });
+      m.push().translate(0, 0.07, 0.24).rotateX(Math.PI / 2);
+      m.cyl(0, 0, 0, 0.12, 0.12, 0.05, 10, '#e0b050', { kind: K.Metal });
+      m.cyl(0, 0.012, 0, 0.095, 0.095, 0.045, 10, '#16323a');
+      m.pop();
+      m.pop();
+    });
+    this.group.position.set(x, this.y, z);
+    g.scene.add(this.group);
+    this.light = g.lights.add(x, this.y + 0.9, z, 0xffc070, 4, 4, 0.1);
+    g.fx.burst(P.spark, x, this.y + 0.5, z, 14, 3, 2);
+  }
+  update(dt: number, g: Game) {
+    if (this.taken) return;
+    this.t += dt;
+    if (Math.random() < dt * 4) g.fx.emit(P.coinGlint, this.x + (Math.random() - 0.5) * 0.8, this.y + 0.2 + Math.random() * 0.5, this.z + (Math.random() - 0.5) * 0.8, 0, 0.5, 0);
+    const p = g.player;
+    if (p.alive && !g.flying && Math.hypot(p.x - this.x, p.z - this.z) < 1.1 && Math.abs(p.y - this.y) < 1.4) {
+      this.remove(g);
+      this.onTake();
+    }
+  }
+  remove(g: Game) {
+    this.taken = true;
+    g.scene.remove(this.group);
+    this.light.on = false;
+    this.light.level = 0;
+  }
+}

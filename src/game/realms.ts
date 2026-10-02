@@ -4,10 +4,13 @@ import type { Grid } from '../world/grid';
 import type { RealmData, RealmId } from '../world/realm';
 import { buildRealm1 } from '../world/realm1';
 import { buildRealm2, decorateForestOutskirts, paintForestOutskirts } from '../world/realm2';
+import { buildRealm3, decorateSeaOutskirts, paintSeaOutskirts } from '../world/realm3';
+import type { Physics } from '../config';
 import { decorateOutskirts, paintOutskirts } from '../world/outskirts';
 import { QUESTS, type QuestDef } from './quests';
 import { CastleStory } from './story/castle';
 import { ForestStory } from './story/forest';
+import { AquaStory } from './story/aqua';
 import type { RealmStory } from './story/story';
 
 type RGB = [number, number, number];
@@ -29,6 +32,12 @@ export interface Light {
   /** Height the ground mist thins out at (it lies thickest below): about 1.2 m above the realm's floor. */
   mistLevel: number;
   cloud: number;
+  /** Under the sea: the water's colour where it's deep, how bright the light rippling over the floor is, and the
+   *  shafts coming down from the surface (strength and colour). */
+  sea?: { deep: RGB; caustics: number; rays: number; rayColor: RGB };
+  /** The haze with distance from the camera, from and to (the sea is murkier than the night air). */
+  fogNear?: number;
+  fogFar?: number;
 }
 
 export interface RealmDef {
@@ -48,6 +57,15 @@ export interface RealmDef {
   dawn: Light;
   /** How much birdsong its nights hold (0 to 1); more at dawn. */
   birds: number;
+  /** Bubbles and the low drone of deep water in its ambience (0 to 1), and how muffled its sounds are (Hz). */
+  bubbles?: number;
+  muffle?: number;
+  /** How things move there (anything left out is as on land). */
+  physics?: Partial<Physics>;
+  /** Nothing burns there (under the sea): no burning, no Fire Blade. */
+  noFire?: boolean;
+  /** Still being built: kept out of the pause menu's travel and the world map (reach it with ?realm=<id>). */
+  wip?: boolean;
 }
 
 /** The Moonlit Keep's moonlight, and its sunrise. */
@@ -73,6 +91,21 @@ const FOREST_DAWN: Light = {
   moon: [0.95, 0.85, 0.55], moonI: 2.8, hemi: [0.45, 0.56, 0.42], ground: [0.26, 0.28, 0.16], hemiI: 1.55,
   fog: [0.25, 0.3, 0.18], fogTop: [0.15, 0.2, 0.16], mist: [0.42, 0.46, 0.3], lift: [0.02, 0.02, 0.01],
   warmth: 0.4, exposure: 1.25, mistAmount: 0.5, mistLevel: 3.2, cloud: 0.15,
+};
+
+/** The Sunken Reef: a clear moonlit night on a drowned coast, sea mist lying on the water; below the surface
+ *  the sea floor is lit blue-green, light rippling over it and shafts coming down. Its dawn is sunlit turquoise. */
+const SEA_NIGHT: Light = {
+  moon: [0.55, 0.72, 1.0], moonI: 2.0, hemi: [0.2, 0.3, 0.46], ground: [0.06, 0.08, 0.1], hemiI: 1.05,
+  fog: [0.01, 0.022, 0.04], fogTop: [0.005, 0.01, 0.022], mist: [0.07, 0.11, 0.15], lift: [0.01, 0.016, 0.035],
+  warmth: 0, exposure: 1.45, mistAmount: 0.55, mistLevel: 0.9, cloud: 0.22,
+  sea: { deep: [0.0, 0.03, 0.06], caustics: 1.0, rays: 0.35, rayColor: [0.2, 0.46, 0.52] },
+};
+const SEA_DAWN: Light = {
+  moon: [1.0, 0.86, 0.66], moonI: 2.9, hemi: [0.5, 0.58, 0.64], ground: [0.3, 0.26, 0.2], hemiI: 1.6,
+  fog: [0.14, 0.27, 0.31], fogTop: [0.12, 0.22, 0.32], mist: [0.36, 0.54, 0.56], lift: [0.02, 0.018, 0.012],
+  warmth: 0.4, exposure: 1.25, mistAmount: 0.22, mistLevel: 0.9, cloud: 0.12,
+  sea: { deep: [0.02, 0.15, 0.2], caustics: 1.6, rays: 0.8, rayColor: [0.95, 0.9, 0.62] },
 };
 
 export const REALMS: Record<RealmId, RealmDef> = {
@@ -103,6 +136,26 @@ export const REALMS: Record<RealmId, RealmDef> = {
     night: FOREST_NIGHT,
     dawn: FOREST_DAWN,
     birds: 1,
+  },
+  aqua: {
+    id: 'aqua',
+    name: 'The Sunken Reef',
+    w: 140,
+    d: 110,
+    build: buildRealm3,
+    paintOutskirts: paintSeaOutskirts,
+    decorateOutskirts: decorateSeaOutskirts,
+    story: () => new AquaStory(),
+    quests: QUESTS.aqua,
+    night: SEA_NIGHT,
+    dawn: SEA_DAWN,
+    birds: 0,
+    bubbles: 1,
+    muffle: 1600,
+    // Under the surface everything floats (the prototype's: gravity x0.53, jump x0.77, falling x0.4, the knight x0.85).
+    physics: { gravity: 13.8, jumpSpeed: 6, maxFall: 5.5, speed: 0.85, shots: 0.7, fallY: -20 },
+    noFire: true,
+    wip: true,
   },
 };
 

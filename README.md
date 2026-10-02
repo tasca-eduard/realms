@@ -2,8 +2,9 @@
 
 An isometric remake of Eight Realms. Realm 1: a knight crosses a moonlit countryside, frees a
 captive, lowers the keep's drawbridge and dethrones the Goblin King. Realm 2, Whisperwood (the
-prototype's second realm), is reached on foot along the thorn road; see BOARD.md. It runs in the browser, on desktop and
-on phones.
+prototype's second realm), is reached on foot along the thorn road; see BOARD.md. Realm 3, the Sunken
+Reef, a drowned coast, lies at the foot of the Sea Stair below Whisperwood's sea cliff. It runs in the
+browser, on desktop and on phones.
 
 ## Run it
 
@@ -55,6 +56,26 @@ at a far-off moonfire.
 
 **Vines** hang down some cliff faces in Whisperwood: hold jump against them to climb.
 
+**Diving** (the Sunken Reef): in his armour the knight would sink like a stone, so deep water stops
+him at its edge until he wins Brassbelly's diving suit; in it he walks into the deep and down onto
+the sea floor. Below the surface everything floats: jumps go higher and last longer, he sinks
+slowly, walks 15% slower, and shots fly slower; nothing burns. His air (the row of bubbles under
+the bars, about a minute and a half) runs down below the surface and fills again above it and in
+the streams of bubbles rising from vents on the floor. Out of air he is **breathless**: slower, no
+stamina back, the view closing in, but it never costs a heart. **Currents** carry a diver along
+their way (ride them, not against them: one runs each way over the trench), and **columns of
+bubbles** lift him to their top and give him air on the way.
+
+**The Tide Serpent** (the Sunken Reef: cut it free of the crew's nets south of the sandbar; it stays
+in the reef's waters): it swims wherever the water is deep, quicker than the knight runs. At the
+surface he rides dry and jump leaps out of the water; in the diving suit the leap plunges under,
+each tap of jump is a stroke up (it costs stamina), and it sinks between strokes; a ring on the
+floor below shows how high it swims. Attack spits a bubble shot, guard wraps you in a bubble shell
+(the next hit bursts it, not you), special stirs up a whirlpool that drags foes in and knocks arrows
+away. Get off onto ground up to a metre out of the water (in the suit, anywhere). Without the suit
+it won't go under, and thrown off, the sea washes you ashore (a heart); out of air on its back, it
+carries you up. The warhorse and the Thornstag can't come down the Sea Stair.
+
 **Explore mode** (the pause menu's switch): to look round a realm freely. The knight flies over
 everything, through walls and trees, and nothing can hurt him or notice him; the mist lifts.
 Hold guard to go faster, click a spot to jump there, turn the mouse wheel to zoom out. Nothing
@@ -97,6 +118,15 @@ remembered on this device). Effects hold still while you read, talk or watch a c
 | **Thorn Spitter** | Whisperwood: the grove, the canopy, the ravine | Rooted: rears back and lobs a hard seed where you're heading (a heart), and snaps if you come close |
 | **Snarer** | Whisperwood | Whirls a bola and throws it: it does no damage but leaves you **snared**. A raised shield stops it |
 | **Thornback** | Whisperwood: the grove, the east woods | A boar grown over with thorns: charges like the armored boar, and striking it before it's stunned **pricks** you (a shove, stamina). Parry it or let it charge into a tree first |
+| **Goblin diver** | The Sunken Reef: the shallows, the gardens, the kelp, the kingdom | A goblin in a tin bucket, a copper kettle or a fishbowl, walking the sea floor with a boathook: it fights as a goblin does. A red-topped cork float bobs on the surface over it and gives it away from above |
+| **Harpooner** | The Sunken Reef: the strand, the sandbar, the wreck | A line on the ground follows you while it aims, then holds still just before the throw: step off it, or raise your shield. Struck, you lose a heart and are **reeled in**: roll or swing to cut free |
+| **Jelly** | The Sunken Reef: the kelp, the kingdom, the trench | Squeezes, flashing, then lunges along a line. Felled, it splits into two little ones whose stings **poison** |
+| **Crab** | The Sunken Reef: the gardens, the kingdom, the wreck | Blows from the front glance off its claw, and it turns slowly: get round it, or flip it onto its back with a heavy blow. Its pinch may **maim** |
+| **Eel** | The Sunken Reef: the kelp, the kingdom | Waits in its den, where nothing reaches it; lunges along a line it shows, bites, and stays out a moment: strike it then |
+| **Pufferfish** | The Sunken Reef: the gardens, the kelp | A ring fills round it as it swells, then its spikes burst out. Strike it early in the swell, or while it's winded after |
+| Giant clam | The Sunken Reef's sea floor | Not a foe: a ring fills, then it snaps shut on whoever stands in it (a heart; roll out). Struck while open, it gives up its pearl, once |
+| **Brassbelly the Salvager** | The Sunken Reef: the lighthouse isle | A goblin a head taller than a brute, in a patched brass diving suit, swinging an anchor: slow blows he won't be stopped in (a hit may **daze**). Strike him three times quickly, or crowd him, and his valves hiss and a ring shows on the ground: his suit blows off steam all round. Roll out; a shield won't stop it |
+| **Old Inkarm** | The Sunken Reef: the Ink Grotto | A giant octopus that never leaves its den. Its arms slam along lines that fill first; a ring filling under you means a grab (press attack to tear free); it inks the water dark. Its body takes blows only while its arms are down. Its chest holds Kraken's Ink (a power-up: your blows blind foes) |
 
 Foes that lose you walk back to their posts and heal. Golden foes (rare) drop ten times
 the coins; elites are bigger, tougher and drop a power-up.
@@ -177,6 +207,72 @@ Every number here (health, speed, wind-ups, chances, durations) is in `src/confi
 - **Its own music**: Whisperwood plays its own versions of the moods (a flute over harp and cello in
   D Dorian, soft hand drums), and its nights have birdsong.
 
+## The Sunken Reef (realm 3)
+
+The sea swallowed a kingdom, and its lord still waits below: a drowned coast at night, half land and
+half clear sea that the camera looks down into, the sea floor lit blue-green below the surface.
+
+- **The Sea Stair**: past the Withered Wood, Whisperwood's heights end at a sea cliff, and a stair is
+  cut down it (a path to its head from the Warden's path round the Great Tree's roots, a sign there).
+  A rockfall broke its head: a jump and an air dash don't reach the blocks, nor does the warhorse;
+  only the Thornstag's second leap gets over. Down the stair, the knight comes out at the **Foot of
+  the Sea Stair** on the reef's strand (a moonfire); going back up, the stag waits on the landing.
+- **The Strand**: dunes, marram and driftwood along the north-west shore; the crew's camp (sailcloth
+  tents, nets drying, a longboat drawn up); a blowhole on a point of rock that spouts with the swell
+  and throws whoever stands in it; Jetsam the castaway's cave in the north cliffs, half flooded, the
+  crew's cache at its back where only a diver reaches.
+- **The Lighthouse Isle**, out along the **Sandbar** (wading-deep all the way): the goblins' salvage
+  yard, where Brassbelly and three of his crew fight. Felled, he drops his diving suit: walk onto it
+  and it's yours. Old Wick's lighthouse stands on its rock, its lamp put out by the crew: find his oil
+  (by the sunken ship's breach) and his lens (on the sea floor), climb the stair round the tower and
+  light it; the fishing boats come home, and his storm lantern is yours (a light that shows the deep).
+- **The Netted Serpent**, in the pool south of the sandbar: two goblins, a shield goblin and an archer
+  keep it. A blow at each of the three stakes cuts a line of the nets; the third frees it.
+- **The Coral Village**, on a coral shelf where the shore bulges out ("the tide took our harbour; we
+  built on the coral instead"): houses on stilts, a jetty out over the deep, lamps of glass floats.
+  Gannet the Harbourmaster knows how the crew go down; Dulse sells Moon Flasks at the Harbour Arms,
+  an inn on stilts you walk into; Shale the Coral-smith files a coral edge onto the sword (levels 6
+  and 7, +25% each); Maren the Pearl-diver's son Kip has been taken; Old Tally the Tide-reader gives a
+  hint each time you ask; Old Hake sews air bladders to the suit's hose (+30 s of air each) and
+  Flotsam the Beachcomber sells a lodestone (loose coins come to you from further off). The coral
+  shrine on the green mends whatever carries you. The village goes about its night: the fish market,
+  the boatyard, fishers on the jetty, children at ball and tag, Nipper and his crab on a string.
+- **Under the sea**, going out and down: the **Coral Gardens** off the jetty, the **Kelp Forest**, the
+  **Drowned Kingdom** on its terrace 4.5 m down (the plaza and its great bell, the sunken temple of the
+  Lady of the Tides, the market square, the Kings' Way of coral-grown kings, the royal library, the
+  treasury behind a cracked wall, the queen's gardens, the old harbour wall), the **Sunken Ship** on its
+  rock (the bow deck above the water, the hold, the captain's cabin) and the **Trench**, 12 m deep, with
+  the abyss in its floor (a fall in costs a heart). Old Inkarm lairs in the Ink Grotto, where the
+  trench begins west of the kingdom.
+- **Gull Rock**, the crew's diving rock on the trench's lip (their tarred floats lead out to it from
+  the lighthouse isle): Kip in a cage, guarded. **The Whalebone Isle**, off the coral gardens (the
+  village's glass floats lead there): an old whale's bones ring a giant clam, and holding the ring
+  against three waves of the crew wins the Tide Pearl (whatever carries you takes one more hit) and a
+  purse of lesser pearls.
+- **Moon Shards**: three under the sea, where the coral grows thickest, in the kelp's dark heart and
+  at the bottom of the trench (another heart). Off the paths: the Glowing Grotto in the trench's wall,
+  which only a diver finds; a column of bubbles up onto a drowned tower's top; six giant clams with a
+  pearl each; 33 chests and 13 lore stones in all.
+- **Errands**: a message in a bottle on the beach (a map to an X of stones on the north dunes: strike
+  it to dig); Brill's glowing bait (five shrimp from the gardens: from then on each Moon Flask heals
+  one more heart); Pike's current race through glowing rings over the abyss; Cockle, a diver lost out
+  of air in a shrinking bubble, to be led to air (his wife Merrow pays); and once the suit is won, the
+  crew raid the village one night.
+- **The Drowned Palace**, across the trench: the currents carry a diver to the Palace Landing (a
+  moonfire) and the Tidelord's crew before his floodgate, shut fast until the great bell in the drowned
+  plaza is struck. In the throne hall (vents in three corners breathe air) the **Tidelord** wakes and
+  the gate drops shut. Every attack shows first: his charge's lane follows you on the floor, then
+  fixes before he runs it (into a wall, he's dazed); drowning orbs drift after you (a blow cuts one
+  down); he leaps onto a spot that fills under you and sends a wave over the floor (jump it); close in,
+  his trident's sweep fills on the floor; he calls in his crew. Enraged, the tide turns: a current
+  sweeps the floor toward the walls, turning every few seconds, its new way shown first. One attack at
+  a time; a lost fight lifts the gate again.
+- **Its own music**: the prototype's sea track (70 bpm, C Lydian, a celesta over a choir and harp, an
+  echo), slower and lower as it gets deeper; below the surface every sound is muffled, with bubbles
+  and a low drone. Its edges: sea cliffs to the north and west, the open sea to the south and east,
+  its floor falling away into the deep. At the east edge the Dune Strait, the way on to the Scorched
+  Dunes that only the serpent could swim, is shut for now.
+
 The **pause menu** has a map of the eight realms (the prototype's): the realms you have been to
 show their land, whether their tyrant has fallen, Moon Shards and chests found, and a click on
 one travels there; the next realm is a rumour, the rest unknown. Below it, the **journal**
@@ -213,7 +309,9 @@ src/
   world/     map grid and collision, terrain and water meshes, grass, props,
              realm.ts (what every realm's map provides, shared layout helpers),
              realm1.ts (the Moonlit Keep: its map, people, foes and objects),
-             realm2.ts (Whisperwood), outskirts.ts (realm 1's land beyond the map edges)
+             realm2.ts (Whisperwood), realm3.ts (the Sunken Reef; its parts in sea.ts,
+             reef.ts, reeflife.ts, kingdom.ts, lighthouse.ts, seacaves.ts, seastair.ts...),
+             outskirts.ts (realm 1's land beyond the map edges)
   game/      game.ts (states, camera, events, boss, saving), realms.ts (the realms: map,
              outskirts, story, quests, light), story/ (each realm's story moments: levers,
              cages, cleared groups, special talks, the tyrant), player.ts (the knight's
@@ -238,7 +336,7 @@ Add these to the URL while the dev server runs:
 
 - `?play` skips the title and story. Add `&at=78,64` to start at a map position,
   `&god` for no damage, `&dawn` for the ending light, `&lines=200` to zoom in,
-  `&realm=forest` to play Whisperwood (`castle` is realm 1).
+  `&realm=forest` to play Whisperwood, `&realm=aqua` the Sunken Reef (`castle` is realm 1).
 - `?play&viewer&anim=attack0&t=0.2` shows every character model in one pose.
 - `?debug` enables keys: G god mode, T teleport to the mouse, 1 to 7 jump to key places,
   N and B cross to the next or previous realm (whether or not it is finished).
@@ -256,7 +354,10 @@ talks by keyboard, a (faked) gamepad, each new foe in a live encounter (these de
 chance: a run can miss an effect), effects pausing in dialogs, no stun-locks, foes walking
 home, fire on horseback, the trial's waves, a light-leak soak, the merged character
 meshes, the boss fight, the phone flow, an old (version-1) save loading with nothing lost,
-and crossing to Whisperwood and back. `npm test -- talk pad` runs only the named
+and crossing to Whisperwood and back; in the Sunken Reef, diving and air, the suit's mini-boss, its
+foes and clams, the serpent's swimming, the currents and bubble columns, its people and secrets, its
+economy, the palace and the Tidelord (a fair-fight check and a bot), and the Sea Stair both ways.
+`npm test -- talk pad` runs only the named
 checks. Screenshots land in `shots/` (not kept).
 
 Two longer checks are left out of `npm test`: `tests/monkey.js` (two minutes of random

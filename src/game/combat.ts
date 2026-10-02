@@ -148,6 +148,7 @@ export interface PowerOrb {
 
 const ORB_COL: Record<PowerKind, [number, number, number]> = {
   fire: [3.4, 1.4, 0.4], wind: [1.6, 2.8, 3.2], magnet: [3.2, 2.4, 0.6], bubble: [0.8, 2.2, 3.6], giant: [2.6, 1.6, 3.4],
+  ink: [2.2, 0.7, 3.2],
 };
 
 export class Combat {
@@ -176,7 +177,7 @@ export class Combat {
   shootFrom(sx: number, sy: number, sz: number, tx: number, ty: number, tz: number) {
     const dx = tx - sx, dy = ty - sy, dz = tz - sz;
     const d = Math.hypot(dx, dz) || 1;
-    const speed = 14;
+    const speed = 14 * this.g.shotsAt(sy);
     const t = d / speed;
     const mesh = new THREE.Mesh(arrowGeometry(), this.mat);
     mesh.castShadow = true;
@@ -189,7 +190,7 @@ export class Combat {
     const sx = from.x + from.fx * 0.4, sy = from.y + 0.9, sz = from.z + from.fz * 0.4;
     const dx = tx - sx, dy = ty - sy, dz = tz - sz;
     const d = Math.hypot(dx, dz) || 1;
-    const speed = 12.5;
+    const speed = 12.5 * this.g.shotsAt(sy);
     const t = d / speed;
     const mesh = new THREE.Mesh(arrowGeometry(), this.mat);
     mesh.castShadow = true;
@@ -240,7 +241,8 @@ export class Combat {
 
   /** A floating power-up orb. Random kind unless given. */
   powerOrb(x: number, y: number, z: number, kind?: PowerKind) {
-    const kinds: PowerKind[] = ['fire', 'wind', 'magnet', 'bubble', 'giant'];
+    // (No Fire Blade where nothing burns.)
+    const kinds: PowerKind[] = this.g.def.noFire ? ['wind', 'magnet', 'bubble', 'giant'] : ['fire', 'wind', 'magnet', 'bubble', 'giant'];
     const k = kind ?? kinds[Math.floor(Math.random() * kinds.length)];
     const c = ORB_COL[k];
     const mesh = new THREE.Mesh(new THREE.IcosahedronGeometry(0.2, 0), new THREE.MeshBasicMaterial({ color: new THREE.Color(c[0], c[1], c[2]) }));
@@ -254,7 +256,7 @@ export class Combat {
     const sx = from.x + from.fx * 0.5, sy = from.y + 1.0, sz = from.z + from.fz * 0.5;
     const dx = tx - sx, dy = ty - sy, dz = tz - sz;
     const d = Math.hypot(dx, dz) || 1;
-    const speed = 17;
+    const speed = 17 * this.g.shotsAt(sy);
     const t = d / speed;
     const mesh = new THREE.Mesh(dartGeometry(), this.mat);
     this.g.scene.add(mesh);
@@ -266,7 +268,7 @@ export class Combat {
   spitSeed(from: Enemy, tx: number, ty: number, tz: number) {
     const sx = from.x + from.fx * 0.35, sy = from.y + 1.1, sz = from.z + from.fz * 0.35;
     const dx = tx - sx, dz = tz - sz, d = Math.hypot(dx, dz) || 1;
-    const speed = 9, t = d / speed, G = 14;
+    const shots = this.g.shotsAt(sy), speed = 9 * shots, t = d / speed, G = 14 * shots * shots;
     const mesh = new THREE.Mesh(seedGeometry(), this.mat);
     mesh.castShadow = true;
     this.g.scene.add(mesh);
@@ -278,7 +280,7 @@ export class Combat {
   throwBola(from: Enemy, tx: number, ty: number, tz: number) {
     const sx = from.x + from.fx * 0.4, sy = from.y + 1.1, sz = from.z + from.fz * 0.4;
     const dx = tx - sx, dz = tz - sz, d = Math.hypot(dx, dz) || 1;
-    const speed = 11, t = d / speed;
+    const speed = 11 * this.g.shotsAt(sy), t = d / speed;
     const mesh = new THREE.Mesh(bolaGeometry(), this.mat);
     this.g.scene.add(mesh);
     this.arrows.push({ mesh, x: sx, y: sy, z: sz, vx: (dx / d) * speed, vy: (ty - sy) / t + 0.5 * 6 * t, vz: (dz / d) * speed, t: 0, stuck: 0, dead: false, from, kind: 'bola' });
@@ -286,8 +288,8 @@ export class Combat {
   }
 
   /** A pulsing ring on the ground where something is about to land. */
-  markTarget(x: number, z: number) {
-    const ring = new THREE.Mesh(new THREE.RingGeometry(1.05, 1.3, 32), this.ringMat.clone());
+  markTarget(x: number, z: number, r = 1.3) {
+    const ring = new THREE.Mesh(new THREE.RingGeometry(r - 0.25, r, r > 2 ? 48 : 32), this.ringMat.clone());
     ring.rotation.x = -Math.PI / 2;
     ring.position.set(x, this.g.grid.groundAt(x, z) + 0.06, z);
     ring.renderOrder = 5;
@@ -590,7 +592,7 @@ export class Combat {
       const dx = p.x - k.x, dz = p.z - k.z, dy = p.y + 0.5 - k.y;
       const d = Math.hypot(dx, dz);
       const wanted = k.kind === 'coin' || p.hp < p.maxHp;
-      const magnet = wanted && k.t > 0.55 && p.alive && (k.home || d < (k.kind === 'coin' ? (p.powerOn('magnet') ? 10 : 3.2) : 2));
+      const magnet = wanted && k.t > 0.55 && p.alive && (k.home || d < (k.kind === 'coin' ? (p.powerOn('magnet') ? 10 : 3.2 * (1 + 0.5 * (p.kit.lodestone ?? 0))) : 2));
       if (magnet) {
         const s = 12 * Math.min(1, (k.t - 0.55) * 2);
         k.x += (dx / (d || 1)) * s * dt;

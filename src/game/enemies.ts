@@ -2,12 +2,17 @@ import * as THREE from 'three';
 import { FOES } from '../config';
 import { P } from '../engine/particles';
 import { clamp } from '../engine/util';
-import { makeArcher, makeBat, makeBoar, makeBomber, makeBrute, makeDarter, makeGoblin, makeKing, makeShaman, makeSnarer, makeSpitter, makeThornback, makeWarden, type Model } from './models';
+import { makeArcher, makeBat, makeBoar, makeBomber, makeBrute, makeDarter, makeGoblin, makeKing, makeSalvager, makeShaman, makeSnarer, makeSpitter, makeThornback, makeWarden, type Model } from './models';
 import type { Game } from './game';
+import { tidelordUpdate } from './tidelord';
+import { makeTidelord } from './tidelordModel';
 import type { EnemyType } from '../world/realm';
+import { SeaFoe } from './seafoes';
+import { Inkarm } from './inkarm';
 
 type St = 'idle' | 'alert' | 'chase' | 'windup' | 'strike' | 'recover' | 'hurt' | 'stun' | 'dead' | 'aim' | 'retreat' | 'swoop' | 'paw' | 'charge' | 'return'
-  | 'slam' | 'summon' | 'sleep' | 'wake' | 'jump' | 'flee' | 'chant' | 'blink' | 'windupM' | 'vault' | 'lurk';
+  | 'slam' | 'summon' | 'sleep' | 'wake' | 'jump' | 'flee' | 'chant' | 'blink' | 'windupM' | 'vault' | 'lurk' | 'vent'
+  | 'hide' | 'swell' | 'puffed' | 'reel';
 
 interface Spec {
   hp: number;
@@ -66,6 +71,9 @@ export class Enemy {
   /** Shaman's war-chant: faster feet, quicker blows. */
   hasteT = 0;
   blinkCd = 0;
+  /** Brassbelly: time to his next vent, and how long the knight has hung about close. */
+  private ventCd = 3;
+  private closeT = 0;
   private armorPopT = -9;
   /** Where a firepot is headed (set when the thrower takes aim). */
   potTarget = new THREE.Vector2();
@@ -74,6 +82,14 @@ export class Enemy {
   spawnId?: number;
   /** Waits hidden in a bush (state 'lurk') until the knight passes close. */
   ambush = false;
+  /** The Sunken Reef's own (divers, harpooners, the sea's creatures): their state and ways (seafoes.ts). */
+  sea?: SeaFoe;
+  /** Walks into deep water and along the bottom (divers, the Tidelord and his crew below the surface); can't leave
+   *  deep water (the sea's creatures). */
+  dives = false;
+  aquatic = false;
+  /** Old Inkarm, the Ink Grotto's octopus: its ways (inkarm.ts). */
+  ink?: Inkarm;
 
   constructor(public type: EnemyType, x: number, z: number, g: Game, public group?: string, public guard = false, elite = false, plain = false, ambush = false) {
     this.spec = SPECS[type];
@@ -81,11 +97,14 @@ export class Enemy {
     this.z = z;
     this.y = g.grid.groundAt(x, z);
     this.r = this.spec.r;
-    const base = this.spec.hp * (type === 'king' || type === 'warden' ? 1 : g.realm.foeHp ?? 1);
+    const base = this.spec.hp * (type === 'king' || type === 'warden' || type === 'tidelord' ? 1 : g.realm.foeHp ?? 1);
     this.hp = this.maxHp = base;
     this.home = { x, z };
     this.shieldUp = type === 'shield';
     this.flying = type === 'bat';
+    this.dives = type === 'tidelord' || (!!g.realm.sea && g.grid.isDeep(Math.floor(x), Math.floor(z)));
+    this.sea = SeaFoe.of(type, this);
+    this.ink = Inkarm.of(type, this);
     this.model =
       type === 'goblin' ? makeGoblin(false)
       : type === 'shield' ? makeGoblin(true)
@@ -100,6 +119,10 @@ export class Enemy {
       : type === 'snarer' ? makeSnarer()
       : type === 'thornback' ? makeThornback()
       : type === 'warden' ? makeWarden()
+      : type === 'salvager' ? makeSalvager()
+      : this.sea ? this.sea.model
+      : type === 'tidelord' ? makeTidelord()
+      : this.ink ? this.ink.model
       : makeKing();
     this.fx = -0.7;
     this.fz = -0.7;
@@ -135,27 +158,32 @@ export class Enemy {
   get alive() {
     return this.state !== 'dead' && this.state !== 'lurk';
   }
-  /** A realm's tyrant (the Goblin King, the Thorn Warden). */
+  /** A realm's tyrant (the Goblin King, the Thorn Warden, the Tidelord). */
   get isBoss() {
-    return this.type === 'king' || this.type === 'warden';
+    return this.type === 'king' || this.type === 'warden' || this.type === 'tidelord';
+  }
+  /** The heavy hitters (a brute's maul, the salvager's anchor): slow, unflinching blows that may daze. */
+  get heavy() {
+    return this.type === 'brute' || this.type === 'salvager';
   }
   /** Rough standing height, for attacks from above. */
   get height() {
-    const base = this.type === 'king' ? 2.6 : this.type === 'warden' ? 1.8 : this.type === 'boar' || this.type === 'thornback' ? 1.1 : this.type === 'bat' ? 0.5 : this.type === 'archer' ? 1.7 : this.type === 'brute' ? 1.8 : this.type === 'spitter' ? 1.4 : 1.3;
+    if (this.sea) return this.sea.height * this.model.rig.scale;
+    const base = this.type === 'king' || this.type === 'tidelord' ? 2.6 : this.type === 'warden' ? 1.8 : this.type === 'boar' || this.type === 'thornback' ? 1.1 : this.type === 'bat' ? 0.5 : this.type === 'archer' ? 1.7 : this.heavy ? 1.8 : this.type === 'spitter' ? 1.4 : 1.3;
     return base * this.model.rig.scale;
   }
   get solid() {
     return this.alive && !this.flying;
   }
 
-  private set(s: St) {
+  set(s: St) {
     this.state = s;
     this.t = 0;
     this.struck = false;
   }
 
   /** Is the knight close enough to this foe's home to be worth chasing? */
-  private inPatch(g: Game, leash: number) {
+  inPatch(g: Game, leash: number) {
     return Math.hypot(g.player.x - this.home.x, g.player.z - this.home.z) < leash - 4;
   }
 
@@ -163,7 +191,7 @@ export class Enemy {
     return Math.hypot(g.player.x - this.x, g.player.z - this.z);
   }
 
-  private faceTo(x: number, z: number) {
+  faceTo(x: number, z: number) {
     const dx = x - this.x, dz = z - this.z, l = Math.hypot(dx, dz);
     if (l > 0.01) {
       this.fx = dx / l;
@@ -171,7 +199,7 @@ export class Enemy {
     }
   }
 
-  private sees(g: Game, range: number) {
+  sees(g: Game, range: number) {
     const p = g.player;
     if (!p.alive || g.flying) return false;
     const d = this.distTo(g);
@@ -185,7 +213,7 @@ export class Enemy {
     return this.hasteT > 0 ? 1.35 : 1;
   }
 
-  private walk(g: Game, dx: number, dz: number, speed: number, dt: number) {
+  walk(g: Game, dx: number, dz: number, speed: number, dt: number) {
     if (this.elite) speed *= 1.15;
     speed *= this.tempo;
     const l = Math.hypot(dx, dz);
@@ -247,7 +275,7 @@ export class Enemy {
     }
 
     // Knockback (a rooted spitter doesn't budge).
-    if (this.type === 'spitter') this.vx = this.vz = 0;
+    if (this.type === 'spitter' || this.type === 'eel') this.vx = this.vz = 0;
     if (Math.abs(this.vx) + Math.abs(this.vz) > 0.05) {
       if (this.flying) {
         this.x += this.vx * dt;
@@ -260,11 +288,14 @@ export class Enemy {
 
     if (this.type === 'king') this.bossUpdate(dt, g, d);
     else if (this.type === 'warden') this.wardenUpdate(dt, g, d);
+    else if (this.type === 'tidelord') tidelordUpdate(this, dt, g, d);
     else if (this.type === 'bat') this.batUpdate(dt, g, d);
     else if (this.type === 'shaman') this.shamanUpdate(dt, g, d);
     else if (this.type === 'archer' || this.type === 'bomber' || this.type === 'darter' || this.type === 'snarer') this.archerUpdate(dt, g, d);
     else if (this.type === 'boar' || this.type === 'thornback') this.boarUpdate(dt, g, d);
     else if (this.type === 'spitter') this.spitterUpdate(dt, g, d);
+    else if (this.sea && this.type !== 'diver') this.sea.update(dt, g, d);
+    else if (this.ink) this.ink.update(dt, g, d);
     else this.meleeUpdate(dt, g, d);
 
     // Keep off each other.
@@ -305,6 +336,7 @@ export class Enemy {
       rig.silMat.opacity = 0.6 + tel * 0.3;
     }
     if (this.state !== 'dead' && this.state !== 'stun' && this.state !== 'charge') rig.face(this.fx, this.fz, dt, this.isBoss ? 6 : 10);
+    this.sea?.pose(g, dt);
     this.model.animate(dt, this.x, this.z, this.state, this.t, g.time);
     const tel = this.telegraph > 0 ? 0.3 + 0.3 * Math.sin(g.time * 40) : 0;
     const dying = this.state === 'dead' ? Math.max(0, 1 - this.deathT * 4) : 0;
@@ -328,6 +360,10 @@ export class Enemy {
     const p = g.player;
     const spec = this.spec;
     this.telegraph = 0;
+    if (this.type === 'salvager') {
+      this.ventCd -= dt;
+      this.closeT = d < FOES.salvager.ventR && this.state !== 'idle' ? this.closeT + dt : 0;
+    }
     switch (this.state) {
       case 'idle':
         if (this.sees(g, spec.aggro)) {
@@ -356,6 +392,7 @@ export class Enemy {
           break;
         }
         this.faceTo(p.x, p.z);
+        if (this.ventDue(g, d)) break;
         if (d < spec.reach + 0.1 && this.cooldown <= 0) {
           this.set('windup');
           break;
@@ -369,16 +406,16 @@ export class Enemy {
       case 'windup': {
         const wind = spec.windup / this.tempo;
         // The brute stops turning just before the blow: step aside and it misses.
-        if (this.type !== 'brute' || this.t < wind - 0.35) this.faceTo(p.x, p.z);
-        this.telegraph = this.t > wind - (this.type === 'brute' ? 0.4 : 0.25) ? 1 : 0;
+        if (!this.heavy || this.t < wind - 0.35) this.faceTo(p.x, p.z);
+        this.telegraph = this.t > wind - (this.heavy ? 0.4 : 0.25) ? 1 : 0;
         if (this.t >= wind) {
           this.set('strike');
-          g.audio.sfx(this.type === 'brute' ? 'swingHeavy' : 'enemySwing', this.x, this.z);
+          g.audio.sfx(this.heavy ? 'swingHeavy' : 'enemySwing', this.x, this.z);
         }
         break;
       }
       case 'strike': {
-        const brute = this.type === 'brute';
+        const brute = this.heavy;
         if (this.t < 0.14) this.walk(g, this.fx, this.fz, brute ? 3 : 5, dt);
         if (!this.struck && this.t > (brute ? 0.1 : 0.05)) {
           this.struck = true;
@@ -395,15 +432,50 @@ export class Enemy {
         break;
       }
       case 'recover':
-        if (this.t > (this.type === 'brute' ? 0.9 : 0.55)) this.set('chase');
+        if (this.ventDue(g, d)) break;
+        if (this.t > (this.heavy ? 0.9 : 0.55)) this.set('chase');
         break;
       case 'hurt':
+        if (this.ventDue(g, d)) break;
         if (this.t > 0.32) this.set('chase');
         break;
       case 'stun':
-        if (this.t > (this.type === 'brute' ? 1.9 : 1.3)) this.set('chase');
+        if (this.t > (this.heavy ? 1.9 : 1.3)) this.set('chase');
         break;
+      case 'vent': {
+        // Brassbelly's valves hiss (the ring round him on the ground), then his suit blows off its steam (he
+        // flashes just before, as every blow does).
+        this.telegraph = this.t > FOES.salvager.ventWind - 0.4 && !this.struck ? 1 : 0;
+        if (Math.random() < dt * 14) {
+          const s = Math.random() < 0.5 ? -1 : 1, sx = -this.fz * s, sz = this.fx * s;
+          g.fx.emit(P.hiss, this.x + sx * 0.45, this.y + 1.55, this.z + sz * 0.45, sx * 2.2, 1.2, sz * 2.2);
+        }
+        if (!this.struck && this.t >= FOES.salvager.ventWind) {
+          this.struck = true;
+          if (this.potRing) g.combat.clearMark(this.potRing);
+          this.potRing = null;
+          g.salvagerVents(this);
+        }
+        if (this.t > FOES.salvager.ventWind + 0.6) this.set('recover');
+        break;
+      }
     }
+  }
+
+  /** Brassbelly vents when he's struck three times in quick succession, or when the knight hangs about close
+   *  (his ring warns first). */
+  private ventDue(g: Game, d: number) {
+    const V = FOES.salvager;
+    if (this.type !== 'salvager' || this.ventCd > 0 || d > V.ventR + 1.5) return false;
+    const struck = this.hitTimes.filter((t) => g.time - t < 3).length >= 3;
+    if (!struck && this.closeT < V.ventClose) return false;
+    this.hitTimes = [];
+    this.closeT = 0;
+    this.ventCd = V.ventEvery;
+    this.set('vent');
+    this.potRing = g.combat.markTarget(this.x, this.z, V.ventR);
+    g.audio.sfx('hiss', this.x, this.z);
+    return true;
   }
 
   private archerUpdate(dt: number, g: Game, d: number) {
@@ -1097,6 +1169,10 @@ export class Enemy {
   /** The knight's sword connects. */
   takeHit(dmg: number, dx: number, dz: number, kb: number, finisher: boolean, g: Game): 'hit' | 'blocked' {
     if (!this.alive || this.state === 'sleep') return 'blocked';
+    // (A crab's claw, an eel in its den, a swollen pufferfish's spikes: see seafoes.ts.)
+    const sea = this.sea?.hit(dmg, dx, dz, kb, finisher, g);
+    if (sea) return sea;
+    if (this.ink) return this.ink.hit(dmg, dx, dz, finisher, g);
     // Shield goblins block from the front until a finisher breaks the shield.
     if (this.shieldUp && this.state !== 'stun' && this.state !== 'strike') {
       const front = -(dx * this.fx + dz * this.fz);
@@ -1124,6 +1200,7 @@ export class Enemy {
     if (this.isBoss && this.state !== 'stun') mult = 0.8;
     this.hp -= dmg * mult;
     this.flashT = 0.1;
+    if (this.type === 'salvager') this.hitTimes.push(g.time);
     const heavy = this.isBoss || this.type === 'boar' || this.type === 'thornback' || this.type === 'spitter';
     this.vx = dx * kb * (heavy ? 0.2 : 1);
     this.vz = dz * kb * (heavy ? 0.2 : 1);
@@ -1148,12 +1225,12 @@ export class Enemy {
       }
       return 'hit';
     }
-    if (this.potRing) {
+    if (this.potRing && this.state !== 'vent') {
       g.combat.clearMark(this.potRing);
       this.potRing = null;
     }
-    // Interrupts unless mid-charge, and brutes shrug off blows while they wind up.
-    const armored = this.type === 'brute' && (this.state === 'windup' || this.state === 'strike');
+    // Interrupts unless mid-charge; brutes shrug off blows while they wind up, Brassbelly while he vents.
+    const armored = (this.heavy && (this.state === 'windup' || this.state === 'strike')) || this.state === 'vent';
     if (armored && g.time - this.armorPopT > 2) {
       this.armorPopT = g.time;
       g.pop(this, 'unflinching', '#c0c0cc');
@@ -1178,6 +1255,8 @@ export class Enemy {
     if (this.potRing) g.combat.clearMark(this.potRing);
     this.potRing = null;
     this.hasteT = 0;
+    this.sea?.cancel(g);
+    this.ink?.cancel(g);
   }
 
   /** Caught in the ravine's thorns. */
@@ -1218,6 +1297,8 @@ export class Enemy {
     this.state = 'dead';
     this.t = 0;
     this.deathT = 0;
+    this.sea?.died(g);
+    this.ink?.died(g);
     g.onEnemyDeath(this);
   }
 

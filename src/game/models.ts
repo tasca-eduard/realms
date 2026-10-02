@@ -130,10 +130,15 @@ export function makeKnight(silhouette = true): Model {
     g.box(0, 0, 0, 0.32, 0.35, 0.34, KN.light);
     g.box(0, 0.13, 0.171, 0.24, 0.05, 0.01, '#0a0a14');
     g.box(0, 0.0, 0.172, 0.05, 0.28, 0.02, KN.mid);
-    g.box(0, 0.35, -0.05, 0.07, 0.11, 0.3, KN.red);
-    g.box(0, 0.24, -0.25, 0.07, 0.2, 0.1, KN.red);
     gl.box(0, 0.13, 0.178, 0.12, 0.02, 0.005, [0.6, 0.8, 1.6]);
   });
+  // The plume on a joint of its own (it comes off under the dive helm).
+  r.joint('plume', 'head', 0, 0, 0);
+  r.part('plume', (g) => {
+    g.box(0, 0.35, -0.05, 0.07, 0.11, 0.3, KN.red);
+    g.box(0, 0.24, -0.25, 0.07, 0.2, 0.1, KN.red);
+  });
+  knightDiveGear(r);
   const arm = (g: Geo) => {
     g.box(0, -0.5, 0, 0.13, 0.5, 0.14, KN.mid);
     g.box(0, -0.62, 0, 0.15, 0.15, 0.16, KN.dark);
@@ -405,9 +410,9 @@ function knightPose(r: Rig, a: Anim) {
 // ---------- goblins ----------
 
 /** The goblins' colours (switched per realm, see setFoePalette). */
-const GOB = { skin: '#5a9e3a', skinDark: '#3b6b2a', skinLight: '#8ccf5a', cloth: '#733e39', clothDark: '#4a2622', leather: '#6a4a2a', eye: [1.5, 1.1, 0.2] as [number, number, number] };
+export const GOB = { skin: '#5a9e3a', skinDark: '#3b6b2a', skinLight: '#8ccf5a', cloth: '#733e39', clothDark: '#4a2622', leather: '#6a4a2a', eye: [1.5, 1.1, 0.2] as [number, number, number] };
 
-function goblinBody(r: Rig, opts: { king?: boolean } = {}) {
+export function goblinBody(r: Rig, opts: { king?: boolean; head?: boolean } = {}) {
   r.joint('hips', 'root', 0, 0.55, 0);
   r.joint('legR', 'hips', -0.1, 0, 0);
   r.joint('legL', 'hips', 0.1, 0, 0);
@@ -432,7 +437,7 @@ function goblinBody(r: Rig, opts: { king?: boolean } = {}) {
     g.box(0, 0.04, 0, opts.king ? 0.44 : 0.4, 0.3, 0.28, opts.king ? '#5a2a3a' : GOB.leather);
     g.box(0, 0.02, 0.1, 0.18, 0.24, 0.1, GOB.skin);
   });
-  r.part('head', (g, gl) => {
+  if (opts.head !== false) r.part('head', (g, gl) => {
     g.box(0, 0, 0, 0.42, 0.34, 0.38, GOB.skin);
     g.box(0, 0.08, 0.2, 0.1, 0.12, 0.1, GOB.skinDark);
     g.box(0, 0.01, 0.19, 0.22, 0.04, 0.02, '#1a1010');
@@ -664,7 +669,7 @@ function shamanPose(r: Rig, a: Anim) {
   }
 }
 
-function goblinPose(r: Rig, a: Anim, shield: boolean) {
+export function goblinPose(r: Rig, a: Anim, shield: boolean) {
   const armL = r.j('armL');
   r.j('armR').rotation.x = -0.4;
   r.j('handR').rotation.x = -0.9;
@@ -1045,14 +1050,18 @@ const CASTLE_ARCH = { ...ARCH };
 const FOREST_GOB = { skin: '#7ab04a', skinDark: '#4a7a2a', skinLight: '#a8d870', cloth: '#4a5a2a', clothDark: '#2e3a1a', leather: '#5a3a26', eye: [2.4, 2.6, 0.5] as [number, number, number] };
 const FOREST_ARCH = { bone: '#c8c8a0', boneD: '#8a9068', hood: '#2f5a2e', hoodD: '#1f3d20', eye: [2.6, 2.8, 0.6] as [number, number, number] };
 
+/** The Sunken Reef's crew: the prototype's teal goblins in blue cloth, archers in blue. */
+const AQUA_GOB = { skin: '#4aa89a', skinDark: '#2f7a70', skinLight: '#7ad0c2', cloth: '#2a4a7a', clothDark: '#1a2f52', leather: '#4a4a3a', eye: [2.6, 2.2, 0.6] as [number, number, number] };
+const AQUA_ARCH = { bone: '#cfd8d0', boneD: '#93a49c', hood: '#2a5a8a', hoodD: '#1a3a60', eye: [0.6, 2.4, 2.8] as [number, number, number] };
+
 /** Which realm's shapes the shared foes take: the Old Wood's goblins, archers and rooks look its own. */
 let FOE_LOOK = 'castle';
 
 /** Colour (and shape) the foes built from now on for a realm (called before any are made). */
 export function setFoePalette(realm: string) {
   FOE_LOOK = realm;
-  Object.assign(GOB, realm === 'forest' ? FOREST_GOB : CASTLE_GOB);
-  Object.assign(ARCH, realm === 'forest' ? FOREST_ARCH : CASTLE_ARCH);
+  Object.assign(GOB, realm === 'forest' ? FOREST_GOB : realm === 'aqua' ? AQUA_GOB : CASTLE_GOB);
+  Object.assign(ARCH, realm === 'forest' ? FOREST_ARCH : realm === 'aqua' ? AQUA_ARCH : CASTLE_ARCH);
 }
 
 // ---------- the Old Wood's own foes ----------
@@ -1900,6 +1909,11 @@ export function makeVillager(lookName: string): Model {
     } else if (L.hat === 'helmet') {
       g.box(0, 0.18, 0, 0.3, 0.14, 0.3, L.hatCol!);
       g.box(0, 0.3, 0, 0.14, 0.06, 0.14, L.hatCol!);
+    } else if (L.hat === 'souwester') {
+      // An oilskin sou'wester: a low crown, a brim all round, longest at the back over the neck.
+      g.box(0, 0.2, -0.02, 0.3, 0.15, 0.31, L.hatCol!);
+      g.box(0, 0.19, -0.04, 0.42, 0.03, 0.44, L.hatCol!);
+      g.box(0, 0.04, -0.23, 0.38, 0.16, 0.04, L.hatCol!);
     }
   });
   const arm = (g: Geo) => {
@@ -1978,4 +1992,106 @@ function villagerPose(r: Rig, a: Anim) {
     r.j('torso').rotation.x = 0.4;
     r.j('head').rotation.x = 0.3;
   }
+}
+
+// ---------- the Sunken Reef's divers ----------
+
+/** Brass, canvas and lead: the salvagers' diving gear (patched together from wrecks). */
+const DIVE = { brass: '#b8862e', brassD: '#8a5e1e', brassL: '#e0b050', canvas: '#8a7c5c', canvasD: '#6a5c40', patch: '#5a6a72', lead: '#4a4a52', glass: '#16323a', rope: '#a08a5a' };
+
+/** A round brass diving helm built round a head of `w` (the knight's 0.32, a goblin's 0.42): a dome with
+ *  a round glass port at the front and two at the sides, rivets, a breast collar, a valve on top. */
+function diveHelm(g: Geo, gl: Geo, w: number, y: number) {
+  const k = w / 0.32;
+  g.blob(0, y + 0.17 * k, 0, 0.25 * k, 0.24 * k, 0.25 * k, DIVE.brass, 61, { kind: K.Metal, detail: 1, jitter: 0.03 });
+  g.cyl(0, y - 0.1 * k, 0, 0.27 * k, 0.24 * k, 0.1 * k, 10, DIVE.brassD, { kind: K.Metal });
+  g.cyl(0, y + 0.36 * k, 0, 0.05 * k, 0.04 * k, 0.07 * k, 6, DIVE.brassL, { kind: K.Metal });
+  // The front port: a brass ring round dark glass with a glint in it.
+  g.push().translate(0, y + 0.15 * k, 0.215 * k).rotateX(Math.PI / 2);
+  g.cyl(0, 0, 0, 0.12 * k, 0.12 * k, 0.05 * k, 10, DIVE.brassL, { kind: K.Metal });
+  g.cyl(0, 0.012 * k, 0, 0.095 * k, 0.095 * k, 0.045 * k, 10, DIVE.glass);
+  g.pop();
+  gl.box(-0.03 * k, y + 0.19 * k, 0.262 * k, 0.04 * k, 0.03 * k, 0.005, [0.5, 0.9, 1.0]);
+  for (const s of [-1, 1]) {
+    g.push().translate(s * 0.215 * k, y + 0.15 * k, 0).rotateZ((-s * Math.PI) / 2);
+    g.cyl(0, 0, 0, 0.07 * k, 0.07 * k, 0.04 * k, 8, DIVE.brassL, { kind: K.Metal });
+    g.cyl(0, 0.008 * k, 0, 0.05 * k, 0.05 * k, 0.04 * k, 8, DIVE.glass);
+    g.pop();
+  }
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    g.box(Math.cos(a) * 0.255 * k, y - 0.06 * k, Math.sin(a) * 0.255 * k, 0.03 * k, 0.03 * k, 0.03 * k, DIVE.brassL, { kind: K.Metal });
+  }
+}
+
+/** The knight's dive gear (the salvager's suit, cut down to fit): a brass helm over his own (shown below
+ *  the surface, see setDiveGear) and a cask of air on his back with a hose up to the helm. */
+function knightDiveGear(r: Rig) {
+  r.joint('dome', 'head', 0, 0, 0);
+  r.part('dome', (g, gl) => diveHelm(g, gl, 0.4, 0));
+  r.joint('cask', 'torso', 0, 0.05, -0.2);
+  r.part('cask', (g) => {
+    g.push().rotateX(Math.PI / 2);
+    g.cyl(0, -0.12, 0, 0.13, 0.13, 0.24, 8, '#7a5a38', { kind: K.Wood });
+    for (const y of [-0.1, 0.08]) g.cyl(0, y, 0, 0.14, 0.14, 0.03, 8, DIVE.lead, { kind: K.Metal });
+    g.pop();
+    g.beam([0.08, 0.1, 0.02], [0.12, 0.48, 0.12], 0.025, DIVE.rope);
+  });
+  r.hide('dome');
+  r.hide('cask');
+}
+
+/** Show or hide the knight's dive gear: the cask whenever he has the suit, the helm below the surface. */
+export function setDiveGear(m: Model, cask: boolean, helm: boolean) {
+  const r = m.rig;
+  r.j('cask').scale.setScalar(cask ? 1 : 1e-4);
+  r.j('dome').scale.setScalar(helm ? 1 : 1e-4);
+  r.j('plume').scale.setScalar(helm ? 1e-4 : 1);
+}
+
+/** Brassbelly the salvager (the Sunken Reef's mini-boss): a goblin a head taller than a brute, in a patched
+ *  canvas suit with lead boots and a brass helm, swinging a ship's anchor. */
+export function makeSalvager(): Model {
+  const r = new Rig({ shadow: 1.1 });
+  goblinBody(r, { head: false });
+  r.part('head', (g, gl) => {
+    diveHelm(g, gl, 0.44, -0.04);
+    // His eyes glint through the port.
+    for (const s of [-1, 1]) gl.box(s * 0.05, 0.17, 0.38, 0.045, 0.035, 0.01, GOB.eye);
+  });
+  r.part('torso', (g) => {
+    g.box(0, -0.02, 0, 0.5, 0.46, 0.34, DIVE.canvas, { kind: K.Cloth });
+    g.box(0.1, 0.06, 0.172, 0.14, 0.12, 0.01, DIVE.patch);
+    g.box(-0.13, -0.12, 0.172, 0.1, 0.1, 0.01, DIVE.canvasD);
+    g.box(0, -0.04, 0, 0.54, 0.07, 0.38, DIVE.lead, { kind: K.Metal });
+    // An air bladder on his back, roped on.
+    g.blob(0, 0.12, -0.24, 0.2, 0.22, 0.12, '#6a5a44', 63, { kind: K.Cloth });
+    g.box(0, 0.12, -0.2, 0.52, 0.04, 0.05, DIVE.rope);
+  });
+  r.part('hips', (g) => g.box(0, -0.24, 0, 0.42, 0.3, 0.3, DIVE.canvasD, { kind: K.Cloth }));
+  for (const leg of ['legR', 'legL'])
+    r.part(leg, (g) => {
+      g.box(0, -0.5, 0, 0.15, 0.5, 0.16, DIVE.canvas, { kind: K.Cloth });
+      g.box(0, -0.58, 0.04, 0.2, 0.14, 0.28, DIVE.lead, { kind: K.Metal });
+    });
+  for (const arm of ['armR', 'armL'])
+    r.part(arm, (g) => {
+      g.box(0, -0.44, 0, 0.14, 0.44, 0.15, DIVE.canvas, { kind: K.Cloth });
+      g.box(0, -0.48, 0, 0.16, 0.08, 0.16, DIVE.brassD, { kind: K.Metal });
+    });
+  // The anchor: a shank as long as he is, a ring at the top, stock and flukes at the bottom.
+  r.part('handR', (g) => {
+    g.box(0, -0.65, 0, 0.08, 1.15, 0.08, '#4a4a54', { kind: K.Metal });
+    g.cyl(0, 0.0, 0, 0.09, 0.09, 0.03, 8, '#5a5a66', { kind: K.Metal });
+    g.box(0, -0.2, 0, 0.06, 0.06, 0.44, '#5a4030', { kind: K.Wood });
+    g.push().translate(0, -1.2, 0);
+    for (const s of [-1, 1]) {
+      g.beam([0, 0, 0], [0, 0.22, s * 0.36], 0.045, '#4a4a54', { kind: K.Metal });
+      g.box(0, 0.2, s * 0.37, 0.12, 0.14, 0.06, '#5a5a66', { kind: K.Metal });
+    }
+    g.pop();
+  });
+  const m = new Model(r, brutePose, 0.95);
+  r.scale = 1.5;
+  return m;
 }

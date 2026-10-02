@@ -13,9 +13,10 @@ import * as D from './details';
 // ---------------------------------------------------------------------------
 
 /** Realm ids follow the prototype's eight realms, in order. */
-export type RealmId = 'castle' | 'forest';
+export type RealmId = 'castle' | 'forest' | 'aqua';
 
-export type EnemyType = 'goblin' | 'shield' | 'archer' | 'bat' | 'boar' | 'brute' | 'bomber' | 'darter' | 'shaman' | 'king' | 'spitter' | 'snarer' | 'thornback' | 'warden';
+export type EnemyType = 'goblin' | 'shield' | 'archer' | 'bat' | 'boar' | 'brute' | 'bomber' | 'darter' | 'shaman' | 'king' | 'spitter' | 'snarer' | 'thornback' | 'warden' | 'salvager' | 'tidelord'
+  | 'diver' | 'harpooner' | 'jelly' | 'crab' | 'eel' | 'puffer' | 'inkarm';
 
 export interface EnemySpawn {
   type: EnemyType;
@@ -81,6 +82,9 @@ export type ObjDef =
   | { kind: 'cracked'; id: string; x: number; z: number; alongX: boolean }
   /** Thorn knots binding a great beast: strike them all and it's free (and yours to ride). */
   | { kind: 'bindings'; id: string; x: number; z: number; mount: 'stag' }
+  /** The crew's nets holding a great sea beast (the Tide Serpent) in a pool at (x, z): cut the lines at their
+   *  stakes and it's free (src/game/serpent.ts). */
+  | { kind: 'nets'; id: string; x: number; z: number; stakes: Pt[] }
   /** The Old Wood's thorns across a way: only a charging warhorse breaks through (or, by: 'stag', only the Thornstag's thorn burst). */
   | { kind: 'thorns'; id: string; x: number; z: number; alongX: boolean; w: number; by?: 'stag' };
 
@@ -113,6 +117,9 @@ export interface BorderDef {
   out: { x: number; z: number; fx: number; fz: number };
   /** The travel card: "from → to". */
   card: [string, string];
+  /** A way only the Thornstag's leap crosses (the Sea Stair's rockfall): coming back through it the stag
+   *  waits where it carried him to, the warhorse where the way begins (it couldn't follow). */
+  leap?: { stag: { x: number; z: number }; horse: { x: number; z: number } };
 }
 
 export interface RegionDef {
@@ -129,7 +136,19 @@ export interface RealmData {
   /** Size of the playable map in cells (the grid reaches further, into the outskirts). */
   w: number;
   d: number;
-  horse: { x: number; z: number };
+  /** Where the warhorse waits (null: no land beasts here; under the sea they stay above it). */
+  horse: { x: number; z: number } | null;
+  /** A sea: its surface (the light comes down from it), how deep the floor goes, and air pockets below it
+   *  (vents' streams of bubbles, where a diver's air fills again). */
+  sea?: {
+    surface: number;
+    deep: number;
+    pockets?: { x: number; z: number; r: number }[];
+    /** Currents: streams r round a line at height y that carry a diver along it at `speed`, floating. */
+    currents?: { pts: Pt[]; y: number; r: number; speed: number }[];
+    /** Columns of bubbles that lift a diver from the floor up to `top` (and give him air on the way). */
+    lifts?: { x: number; z: number; r: number; top: number }[];
+  };
   /** The realm's relic trial. */
   trial?: TrialDef;
   grid: Grid;
@@ -157,6 +176,8 @@ export interface RealmData {
   snares?: Pt[];
   /** Strips of ground where thorns burst up in turn: centre, width (x), depth (z), phase. */
   thornBursts?: { x: number; z: number; w: number; d: number; ph: number }[];
+  /** Giant clams on the sea floor: they snap shut on whoever stands in them; struck open, a pearl. */
+  clams?: Pt[];
   /** Chandeliers over the boss's hall. */
   chandeliers?: { x: number; z: number; floor: number }[];
   /** How much tougher the realm's foes are than their kind (health; not the tyrant, tuned alone):

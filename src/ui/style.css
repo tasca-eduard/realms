@@ -197,6 +197,15 @@ body.touch #hint { white-space: normal; text-align: center; width: max-content; 
 #energy::after { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: #0a0914; }
 #energyFill { height: 100%; width: 100%; background: #2f7fa0; }
 #energy.ready #energyFill { background: linear-gradient(#8ae8ff, #3ab8e0); }
+/* The diving suit's air: a bubble for every ten seconds (the Sunken Reef). */
+#air { display: flex; gap: 2px; }
+#air.off { display: none; }
+#air svg { width: 14px; height: 14px; display: block; filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.6)); }
+#air .gone { opacity: 0.25; }
+#air .gone .i, #air .gone .s { display: none; }
+#air.low svg:not(.gone) { animation: hlow 0.5s ease-in-out infinite alternate; }
+#air.empty svg { animation: hlow 0.3s steps(2) infinite; }
+#air.empty .o { fill: #e0685a; }
 #power { display: flex; align-items: center; gap: 6px; font-family: var(--px); font-size: 10px; margin-top: 1px; text-shadow: 0 1px 0 #000; }
 #power.off { display: none; }
 #power .pbar { width: 70px; height: 4px; background: #1a1730; }

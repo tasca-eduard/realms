@@ -105,7 +105,101 @@ const FOREST: QuestDef[] = [
   },
 ];
 
-export const QUESTS: Record<RealmId, QuestDef[]> = { castle: CASTLE, forest: FOREST };
+// (Being built: the main quest grows with the realm.)
+const AQUA: QuestDef[] = [
+  {
+    id: 'main',
+    title: 'The Sunken Reef',
+    main: true,
+    steps: [
+      'The sea swallowed a kingdom, and its lord still waits below. In armour you would sink like a stone, but the goblins out on the lighthouse isle dive the wrecks somehow: a sandbar runs out to it.',
+      "The salvager's diving suit is yours: patched and leaky, good for a minute and a half under the water. Go down into the deep.",
+      // The Tidelord's palace (group 35).
+      "Across the trench from the drowned kingdom stands the Tidelord's palace, its floodgate shut fast. The kingdom's great bell still hangs in its plaza: they say its toll once opened the palace's gates. Ring it.",
+      "Far off, the floodgate has risen. Ride the current over the trench, past the Tidelord's crew, into his throne hall.",
+      'The sea is free, and daylight finds the floor again.',
+    ],
+    short: ['Find a way down into the sea', 'Go down into the deep', 'Ring the sunken bell', 'Face the Tidelord', 'The sea is free'],
+  },
+  {
+    id: 'serpent',
+    title: 'The Netted Serpent',
+    steps: [
+      "The goblins have netted a great sea serpent in the pool south of the sandbar, and its keepers stand guard. Cut the nets' lines where they're staked on the sand.",
+      'The Tide Serpent is free and will carry you across the sea; in the diving suit it swims down through it too. It spits bubbles, stirs up whirlpools and wraps you in a bubble shell.',
+    ],
+  },
+  // The reef's own (group 34): the pearl-diver's son, the Whalebone Isle's trial, the shards.
+  {
+    id: 'kip',
+    title: "The Pearl-Diver's Son",
+    steps: [
+      "Maren's son Kip was taken by the crew toward the deep trenches. The crew's floats run out from the lighthouse isle, past the wreck. Find him.",
+      'Kip is out of the cage and swimming for home. Maren will want to know.',
+      'Kip is home, and already talking about diving again.',
+    ],
+  },
+  {
+    id: 'pearl',
+    title: 'The Whalebone Isle',
+    steps: ["Off the coral gardens an old whale's bones ring a giant clam, and the clam gives the Tide Pearl to whoever holds the ring. The village's floats lead out to it.", 'The Tide Pearl is yours: whatever carries you takes one more hit.'],
+  },
+  {
+    id: 'shards',
+    title: 'Moon Shards',
+    steps: ["Three more shards of the moon are hidden under the sea: where the coral grows thickest, in the kelp's dark heart, at the bottom of the trench.", 'The sea has given up its three shards: one more heart.'],
+  },
+  // The reef's errands (src/game/story/errands.ts).
+  {
+    id: 'bottlemap',
+    title: 'A Message in a Bottle',
+    steps: ["A map from a bottle on the beach: an X of stones out on the north dunes, past the crew's camp. Strike the sand where the stones cross to dig.", 'You dug up the chest the map led to.'],
+  },
+  {
+    id: 'glowbait',
+    title: 'Glowing Bait',
+    steps: [
+      'Brill, fishing off the jetty, wants five glowing shrimp from the coral gardens. They shine among the coral like lamps.',
+      'Five glowing shrimp. Take them to Brill on the jetty.',
+      'Brill paid you, and put the shrimp in your Moon Flasks: each heals one more heart.',
+    ],
+  },
+  {
+    id: 'currentrace',
+    title: 'The Current Race',
+    steps: [
+      "Pike the diver lad bets you can't beat his time: through the glowing rings off Gull Rock, from the trench's lip west of the rock, along the current over the abyss, up the column of bubbles, back to the rock. Sixteen breaths.",
+      "You beat Pike's time, and took his winnings.",
+    ],
+  },
+  {
+    id: 'lostdiver',
+    title: 'The Lost Diver',
+    steps: [
+      "Merrow's husband Cockle dived for their sunk boat off the lighthouse isle's far side and never came up. Find him, and lead him to air: a column of bubbles, a vent, or the shallows.",
+      'Cockle is breathing again and off home. Tell Merrow.',
+      'Cockle is home, and swears he will never dive again. Until tomorrow.',
+    ],
+  },
+  {
+    id: 'nightraid',
+    title: 'The Night Raid',
+    steps: ["The crew have waded ashore at the coral village to pay it back for the salvager's suit. Drive them off.", 'The crew are driven off, and the village paid you all it could spare.'],
+  },
+  // The lighthouse's (src/game/story/lighthouse.ts).
+  {
+    id: 'lamp',
+    title: 'The Dark Lamp',
+    steps: [
+      "Old Wick kept the lighthouse lamp until the crew put it out, so that the fishers' boats would break on the rocks for salvage. It wants oil, from the sunken ship's hold, and its lens, thrown into the sea east of the lighthouse rock.",
+      'You have the oil and the lens. Climb the stair round the lighthouse to its gallery, and light the lamp.',
+      "The lamp burns again, and the fishers' boats are coming home. Old Wick is waiting at the foot of his lighthouse.",
+      "The lighthouse burns, the boats are home, and Wick gave you his storm lantern: it lights the deep round you.",
+    ],
+  },
+];
+
+export const QUESTS: Record<RealmId, QuestDef[]> = { castle: CASTLE, forest: FOREST, aqua: AQUA };
 
 /** One realm's quests. */
 export class QuestBook {

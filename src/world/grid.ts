@@ -20,6 +20,10 @@ export const T = {
   Snow: 15,
   Field: 16,
   Reeds: 17,
+  // The Sunken Reef's own: coral rubble, dark silt in the deep, seagrass meadows.
+  Coral: 18,
+  Silt: 19,
+  Seagrass: 20,
 } as const;
 export type TileType = (typeof T)[keyof typeof T];
 
@@ -46,6 +50,10 @@ export interface Body {
   y: number;
   z: number;
   r: number;
+  /** Walks into deep water and along the bottom (a diver: the knight in his dive helm, goblin divers). */
+  dives?: boolean;
+  /** Lives in the water and never leaves it (the sea's creatures). */
+  aquatic?: boolean;
 }
 
 export interface Collider {
@@ -177,7 +185,8 @@ export class Grid {
     if (top > b.y + stepUp) return true;
     if (noDrop && top < b.y - 0.6) return true;
     const w = this.water[i];
-    if (w !== NONE && this.deck[i] === NONE && w - top > DEEP) return true;
+    const deep = w !== NONE && this.deck[i] === NONE && w - top > DEEP;
+    if (deep ? !b.dives && !b.aquatic : b.aquatic) return true;
     return false;
   }
 
