@@ -1,6 +1,6 @@
 // The Sunken Reef's sound (run with &realm=aqua&god; the browser is muted, so this reads what the game hands the
 // audio and the audio graph): every place has a track of the realm's own and a sea ambience; the surf is louder by
-// the water than up at the Sea Stair, with the strand's gusty wind and no owls; planks creak on the jetty and the
+// the water than up on the dunes, with the strand's gusty wind and no owls; planks creak on the jetty and the
 // wreck; the Harbour Arms has its own tune (a shanty) and voices, muffled outside; the castaway's cave drips and
 // echoes; the drowned temple echoes, drips and sings; the lit lighthouse hums (not the dark one); Brassbelly's fight
 // has its own music and the isle's comes back once he's felled; out on the serpent the sea laps and no crickets
@@ -40,7 +40,7 @@ const probe = async (name, x, z, ms = 2500) => {
   out.badRegions = g.realm.regions.filter((r) => !own.includes(r.music) || !kinds.includes(r.amb)).map((r) => `${r.name}: ${r.music}/${r.amb}`);
   g.save.data.flags.costume = true;
   p.dives = true;
-  const stair = await probe('stairfoot', 12, 12);
+  const stair = await probe('dunes', 24, 16);
   const beach = await probe('beach', 30, 44);
   const jetty = await probe('jetty', 50, 66.4, 4500);
   const wreck = await probe('wreck', 121 + Math.cos(0.55) * 4.2, 50 + Math.sin(0.55) * 4.2);

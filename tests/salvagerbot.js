@@ -1,8 +1,9 @@
 // Brassbelly's fight is fair (run with &realm=aqua&lvl=N): a player-like bot (real keys, aimed clicks) that
 // rolls out of his steam ring a quarter second after it shows, keeps back while a blow winds up (rolling
 // away, along the isle rather than into the sea round it), and otherwise closes in and swings at the nearest
-// of the salvager and his crew (jumping back up onto his yard when thrown off it), beats them with the sword a
-// knight brings from Whisperwood (level 4 or 5) in 25 to 90 s, losing no more than 5 hearts.
+// of the salvager and his crew (jumping back up onto his yard when thrown off it, going round by the foot of
+// the steps up to the rock rather than into their side), beats them with the sword a knight brings from
+// Whisperwood (level 4 or 5) in 25 to 90 s, losing no more than 5 hearts.
 const g = window.__game, p = g.player, out = {};
 const lvl = +(new URLSearchParams(location.search).get('lvl') ?? 5);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -48,6 +49,38 @@ const away = (e) => {
     if (sc > best && [1, 2, 3].every((r) => dry(p.x + ux * r, p.z + uz * r))) [best, bx, bz] = [sc, ux, uz];
   }
   return [bx, bz];
+};
+// Can he go straight from one spot to another, the width of him, climbing no more than `up` at a time (a step
+// walked, or the yard's edge jumped) and keeping out of deep water? The side of the steps up from the yard to the
+// rock is a wall.
+const straight = (x0, z0, x1, z1, up) => {
+  const l = Math.hypot(x1 - x0, z1 - z0) || 1, n = Math.ceil(l / 0.25), ox = -(z1 - z0) / l, oz = (x1 - x0) / l;
+  return [-0.3, 0, 0.3].every((o) => {
+    let h = g.grid.groundAt(x0 + ox * o, z0 + oz * o);
+    for (let k = 1; k <= n; k++) {
+      const x = x0 + ((x1 - x0) * k) / n + ox * o, z = z0 + ((z1 - z0) * k) / n + oz * o, y = g.grid.groundAt(x, z);
+      if (y - h > up || g.grid.waterAt(x, z) > y + 0.6) return false;
+      h = y;
+    }
+    return true;
+  });
+};
+// The way to a foe as a person would go: straight at it (jumping only up to one higher than him), else round
+// what's between (the steps' foot, not their side): of the eight ways the keys take him, the one to a nearby spot
+// he can walk to and go straight on from that makes the way shortest.
+const wayTo = (e) => {
+  const up = e.y - p.y > 0.45 ? 1 : 0.4;
+  if (straight(p.x, p.z, e.x, e.z, up)) return null;
+  const R = g.cam.groundRight, U = g.cam.groundUp;
+  let best = 1e9, way = null;
+  for (const [a, b] of [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]]) {
+    const l = Math.hypot(a, b), ux = (R.x * a + U.x * b) / l, uz = (R.z * a + U.z * b) / l;
+    for (const r of [1, 2, 3, 4.5]) {
+      const x = p.x + ux * r, z = p.z + uz * r, len = r + Math.hypot(e.x - x, e.z - z);
+      if (len < best && straight(p.x, p.z, x, z, 0.4) && straight(x, z, e.x, e.z, up)) [best, way] = [len, [ux, uz]];
+    }
+  }
+  return way;
 };
 const rollAway = (e, t) => {
   if (t - rolledAt < 0.9 || p.stamina < 30) return false;
@@ -106,8 +139,10 @@ const swing = (s) => {
     if (!busy) {
       const target = foes.sort((u, v) => Math.hypot(u.x - p.x, u.z - p.z) - Math.hypot(v.x - p.x, v.z - p.z))[0];
       if (target) {
-        const d = Math.hypot(target.x - p.x, target.z - p.z), s = aimAt(target);
-        if (d > 1.7) [vx, vz] = [target.x - p.x, target.z - p.z];
+        const d = Math.hypot(target.x - p.x, target.z - p.z), s = aimAt(target), way = wayTo(target);
+        // (Below the steps' side with them up on the steps, or on the yard beyond: round by the steps' foot.)
+        if (way) [vx, vz] = way;
+        else if (d > 1.7) [vx, vz] = [target.x - p.x, target.z - p.z];
         else swing(s);
         // (Thrown off the yard onto the beach below it: back up with a jump, as a person would.)
         if (target.y - p.y > 0.45 && d < 3.5 && p.onGround && p.state === 'run' && t - jumpedAt > 0.9) {
