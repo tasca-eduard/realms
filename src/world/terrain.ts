@@ -282,6 +282,8 @@ export function buildWater(grid: Grid, clear = false) {
     mat.uniforms.uDeep.value.setRGB(0.02, 0.09, 0.11);
     mat.uniforms.uShallow.value.setRGB(0.06, 0.2, 0.22);
     mat.uniforms.uWade.value.setRGB(0.09, 0.22, 0.22);
+    // (Its moon's glints sea-glass, as its night is.)
+    mat.uniforms.uMoon.value.setRGB(0.6, 0.88, 0.95);
   }
   const mesh = new THREE.Mesh(geo, mat);
   mesh.renderOrder = 1;

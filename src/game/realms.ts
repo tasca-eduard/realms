@@ -64,7 +64,7 @@ export interface RealmDef {
   physics?: Partial<Physics>;
   /** Nothing burns there (under the sea): no burning, no Fire Blade. */
   noFire?: boolean;
-  /** Still being built: kept out of the pause menu's travel and the world map (reach it with ?realm=<id>). */
+  /** Still being built: left off the world map, and marked "(being built)" in the pause menu's travel (or reach it with ?realm=<id>). */
   wip?: boolean;
 }
 
@@ -96,16 +96,16 @@ const FOREST_DAWN: Light = {
 /** The Sunken Reef: a clear moonlit night on a drowned coast, sea mist lying on the water; below the surface
  *  the sea floor is lit blue-green, light rippling over it and shafts coming down. Its dawn is sunlit turquoise. */
 const SEA_NIGHT: Light = {
-  moon: [0.55, 0.72, 1.0], moonI: 2.0, hemi: [0.2, 0.3, 0.46], ground: [0.06, 0.08, 0.1], hemiI: 1.05,
-  fog: [0.01, 0.022, 0.04], fogTop: [0.005, 0.01, 0.022], mist: [0.07, 0.11, 0.15], lift: [0.01, 0.016, 0.035],
+  moon: [0.55, 0.76, 0.98], moonI: 2.0, hemi: [0.09, 0.27, 0.35], ground: [0.045, 0.072, 0.09], hemiI: 1.05,
+  fog: [0.004, 0.026, 0.038], fogTop: [0.002, 0.013, 0.022], mist: [0.05, 0.135, 0.155], lift: [0.005, 0.023, 0.033],
   warmth: 0, exposure: 1.45, mistAmount: 0.55, mistLevel: 0.9, cloud: 0.22,
-  sea: { deep: [0.0, 0.03, 0.06], caustics: 1.0, rays: 0.35, rayColor: [0.2, 0.46, 0.52] },
+  sea: { deep: [0.0, 0.045, 0.062], caustics: 1.0, rays: 0.35, rayColor: [0.2, 0.52, 0.54] },
 };
 const SEA_DAWN: Light = {
-  moon: [1.0, 0.86, 0.66], moonI: 2.9, hemi: [0.5, 0.58, 0.64], ground: [0.3, 0.26, 0.2], hemiI: 1.6,
-  fog: [0.14, 0.27, 0.31], fogTop: [0.12, 0.22, 0.32], mist: [0.36, 0.54, 0.56], lift: [0.02, 0.018, 0.012],
-  warmth: 0.4, exposure: 1.25, mistAmount: 0.22, mistLevel: 0.9, cloud: 0.12,
-  sea: { deep: [0.02, 0.15, 0.2], caustics: 1.6, rays: 0.8, rayColor: [0.95, 0.9, 0.62] },
+  moon: [1.0, 0.86, 0.66], moonI: 2.9, hemi: [0.46, 0.6, 0.64], ground: [0.3, 0.26, 0.2], hemiI: 1.6,
+  fog: [0.1, 0.24, 0.28], fogTop: [0.1, 0.2, 0.3], mist: [0.34, 0.54, 0.56], lift: [0.02, 0.018, 0.012],
+  warmth: 0.4, exposure: 1.25, mistAmount: 0.14, mistLevel: 0.9, cloud: 0.12,
+  sea: { deep: [0.02, 0.16, 0.2], caustics: 1.4, rays: 0.6, rayColor: [0.95, 0.9, 0.62] },
 };
 
 export const REALMS: Record<RealmId, RealmDef> = {
