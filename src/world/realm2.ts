@@ -124,10 +124,10 @@ const FIRE = { x: 58.6, z: 78.8 };
 // The home trees: where round the lake (never evenly: most behind it, to the north and the sides,
 // few in front of it), how big, which way their doors face (toward the camera side).
 const HOMES = {
-  inn: { x: 47, z: 94, s: 1.2, face: 0.84, treehouse: true }, // on the bay's south shore by the kilns lane (off the line from the camera to the Ring of Oaks)
+  inn: { x: 58.2, z: 96, s: 1.05, face: 1.05, treehouse: true }, // where the road comes in, across the kilns lane (on the bay's south shore its crown hid the west shore, Ash's family's door and the lane west)
   lodge: { x: 31, z: 58, s: 0.9, face: 0.8, treehouse: false }, // the forester's, apart by the Whisper (on the north shore it hid the Gatherers' Clearing)
   smithy: { x: 77.8, z: 75.2, s: 1, face: 0.4, treehouse: false }, // by the road east
-  ash: { x: 33.5, z: 87.5, s: 0.95, face: 0.73, treehouse: true },
+  ash: { x: 33.5, z: 87.5, s: 0.85, face: 0.73, treehouse: true }, // a size smaller: a bigger crown reached over the Ring of Oaks' near side
   weaver: { x: 40, z: 60, s: 0.85, face: 0.9, treehouse: false },
   elder: { x: 79, z: 58, s: 1.18, face: 1.1, treehouse: true },
   fisher: { x: 79.5, z: 83.5, s: 0.82, face: 0.3, treehouse: false }, // east, off the line from the camera to the green
@@ -159,7 +159,7 @@ const GRAVE = { x: 12, z: 40.5 };
 const DELL = { x: 11, z: 89.6 };
 // The Charcoal Kilns south of the village, and the lane to them.
 const KILNS = { x: 45, z: 104 };
-const LANE_KILNS: Pt[] = [byLake(1.65, 2.4), [56, 96], [53, 100.5], [50.5, 102]];
+const LANE_KILNS: Pt[] = [byLake(1.65, 2.4), [54.8, 96.2], [53, 100.5], [50.5, 102]];
 // The Bat Roost: a cleft in the East Woods' northern cliff.
 const ROOST = { x0: 108, x1: 112, z0: 1, z1: 6 };
 const RING = { x: 22, z: 66, r: 6 };
@@ -1149,7 +1149,7 @@ export function buildRealm2(builder: Builder): RealmData {
     b.collide({ kind: 'b', x0: x - 0.65, z0: z - 0.4, x1: x + 0.65, z1: z + 0.4, y0: y - 1, y1: y + 0.8 });
   };
   table(...off(home.inn, HOMES.inn.face, 2.2, 2.4));
-  table(...off(home.inn, HOMES.inn.face, -2.4, 2));
+  table(...off(home.inn, HOMES.inn.face, 4.2, 1)); // (on the lane's side: the Old Grove's first oak stands on the other)
   {
     const [fx, fz] = off(home.smithy, HOMES.smithy.face, 2.3, 0.6), y = grid.groundAt(fx, fz), g = b.g(fx, fz);
     g.blob(fx, y + 0.35, fz, 0.7, 0.55, 0.7, PAL.stoneDark, 151, { kind: K.Rock, jitter: 0.2, flatBottom: true });
@@ -1207,7 +1207,7 @@ export function buildRealm2(builder: Builder): RealmData {
   }
   // Where the folk go about their day (see the NPCs): washing at the bay's shore, the old man's
   // seat by the fire, the children's round of the green, the gardener's beds, the carrier's way
-  // along the south shore between the smithy and the inn, the watch at the east bridge.
+  // along the south shore between the smithy and the inn (where the road comes in), the watch at the east bridge.
   const shoreSpot = (a: number): [number, number, number] => {
     const [x, z] = byLake(a, 0.35);
     return [x, z, Math.atan2(POND.z - z, POND.x - x)];
@@ -1217,7 +1217,7 @@ export function buildRealm2(builder: Builder): RealmData {
   const kids: [number, number][] = [0.4, 2.0, 3.4, 4.9].map((a) => [FIRE.x + Math.cos(a) * 3.3, FIRE.z + Math.sin(a) * 3.3]);
   const garden: [number, number][] = [off(home.ash, HOMES.ash.face, 2.6, 1.9), off(home.ash, HOMES.ash.face, 3.6, 3.2), off(home.ash, HOMES.ash.face, 1.2, 3.4)];
   const carry: [number, number][] = [
-    off(home.smithy, HOMES.smithy.face, -1.2, 1.4), ...[0.35, 0.7, 1.05, 1.4, 1.75].map((a) => byLake(a, 2.4)), off(home.inn, HOMES.inn.face, 1.4, 1.6),
+    off(home.smithy, HOMES.smithy.face, -1.2, 1.4), ...[0.35, 0.7, 1.05, 1.4].map((a) => byLake(a, 2.4)), [61.4, 95.2], off(home.inn, HOMES.inn.face, 1.4, 1.6), // (round the inn's trunk, east of it)
   ];
   carry.push(...carry.slice(1, -1).reverse());
   const watchSpot: Pt = [BRIDGE_END_E + 1.4, BRIDGE_Z + 1.4];
@@ -1756,7 +1756,7 @@ export function buildRealm2(builder: Builder): RealmData {
     { name: "The Gatherers' Clearing", music: 'fields', amb: 'fields', test: (x, z) => Math.hypot(x - CLEARING.x, z - CLEARING.z) < 7 },
     { name: 'The Blackwater', music: 'fields', amb: 'fields', test: (x, z) => sdPoly(BLACKWATER, x, z) < 7 },
     { name: 'The East Woods', music: 'wilds', amb: 'woods', test: (x, z) => x >= 100 && z < 56 },
-    { name: 'Hollowbough', music: 'village', amb: 'village', test: (x, z) => lakeSd(x, z) < 11 || eastHomes(x, z) },
+    { name: 'Hollowbough', music: 'village', amb: 'village', test: (x, z) => lakeSd(x, z) < 11 || eastHomes(x, z) || Math.hypot(x - HOMES.inn.x, z - HOMES.inn.z) < 7 }, // (the inn's yard, where the Old Grove begins)
     { name: 'The High Canopy', music: 'wilds', amb: 'woods', test: (x, z) => x > 88 && z > 56 && z < 96 },
     { name: "The Stag's Thicket", music: 'road', amb: 'woods', test: (x, z) => Math.hypot(x - STAG.x, z - STAG.z) < 6 },
     { name: 'The Ring of Oaks', music: 'road', amb: 'fields', test: (x, z) => Math.hypot(x - RING.x, z - RING.z) < RING.r + 3 },
