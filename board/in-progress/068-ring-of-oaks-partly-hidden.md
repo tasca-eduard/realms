@@ -3,13 +3,13 @@ id: 068
 title: The Ring of Oaks partly hidden by Ash's home tree
 realm: 2
 area: world
-status: backlog
+status: in-progress
 priority: low
 created: 2026-10-02
 done:
-owner:
+owner: an agent (realm-builder, its own copy)
 depends: []
-links: [../done/036-reef-review-and-balance.md, ../done/021-fixes-from-the-comparison.md, ../backlog/069-ash-home-tree-covers-nettles-glade.md]
+links: [../done/036-reef-review-and-balance.md, ../done/021-fixes-from-the-comparison.md, ../in-progress/069-ash-home-tree-covers-nettles-glade.md]
 ---
 
 # 068 The Ring of Oaks partly hidden by Ash's home tree

@@ -64,4 +64,4 @@ Brassbelly lifted to y 9.39.
 **Checked:** salvagerbot alone 5 times: won in 37-42 s, 1-6 hearts, 5 steam rings each; the suite's last eight
 (pearl to salvagerbot) twice: all reported, salvagerbot won in 40 and 32 s, 1 and 2 hearts; tsc clean. Left as
 known: about 1 run in 8 the bot loses 6 hearts, one over the check's 5 (3 of 25 alone runs since the balance):
-[079](../backlog/079-brassbelly-sometimes-six-hearts.md).
+[079](../in-progress/079-brassbelly-sometimes-six-hearts.md).

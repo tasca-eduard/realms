@@ -3,11 +3,11 @@ id: 069
 title: The Ash family's home tree covers Old Nettle's glade
 realm: 2
 area: world
-status: backlog
+status: in-progress
 priority: low
 created: 2026-10-02
 done:
-owner:
+owner: an agent (realm-builder, its own copy)
 depends: []
 links: [../done/036-reef-review-and-balance.md, ../done/021-fixes-from-the-comparison.md]
 ---
@@ -28,7 +28,7 @@ Crowns fade when the knight walks under them; moving the tree or the glade reshu
 
 Move the tree, move the glade, or leave it (the crown fades when the knight walks under it). Check first: group 36
 moved Old Nettle's herb spot into view, which may settle it. The same tree is behind
-[068](../backlog/068-ring-of-oaks-partly-hidden.md).
+[068](../in-progress/068-ring-of-oaks-partly-hidden.md).
 
 ## Checks
 

@@ -33,26 +33,29 @@ _Written by `node tools/board.mjs index` on 2026-10-02; the folders are always t
 
 **In progress**
 
-- (none)
+- [067 Ash's door under the inn tree's crown](board/in-progress/067-ash-door-under-inn-tree-crown.md): an agent (realm-builder, its own copy)
+- [068 The Ring of Oaks partly hidden by Ash's home tree](board/in-progress/068-ring-of-oaks-partly-hidden.md): an agent (realm-builder, its own copy)
+- [069 The Ash family's home tree covers Old Nettle's glade](board/in-progress/069-ash-home-tree-covers-nettles-glade.md): an agent (realm-builder, its own copy)
+- [078 The costumedrop check never reloads the page](board/in-progress/078-costumedrop-never-reloads.md): an agent (balancer, its own copy)
+- [079 Brassbelly sometimes costs the bot six hearts](board/in-progress/079-brassbelly-sometimes-six-hearts.md): an agent (balancer, its own copy)
 
 **Todo (next)**
 
-- (none)
+- [081 Realms 1 and 2 made as beautiful and interesting as realm 3](board/todo/081-realms-1-2-as-beautiful-as-realm-3.md)
 
 **Blocked**
 
-- [066 Read and agree the realm 4 plan](board/blocked/066-read-the-realm-4-plan.md): on the user (to read the draft and agree it or change it)
+- [066 Read and agree the realm 4 plan](board/blocked/066-read-the-realm-4-plan.md): on the user (to read the draft and agree it or change it; realms 1 and 2 come first: 081)
 
 **Next in the backlog**
 
-- [078 The costumedrop check never reloads the page](board/backlog/078-costumedrop-never-reloads.md) (medium)
 - [037 Groundwork (realm 4)](board/backlog/037-dunes-groundwork.md) (first group of plan realm-4-draft, waiting)
 
 **Done lately**
 
+- [080 Save where the Tide Serpent waits](board/done/080-serpent-waiting-place-saved.md) (2026-10-02)
 - [077 Why salvagerbot stalls in full runs](board/done/077-salvagerbot-stalls-in-full-runs.md) (2026-10-02)
 - [075 Docs round: docs for people and agents, the board as folders](board/done/075-docs-round.md) (2026-10-02)
-- [065 Commit the merged work](board/done/065-commit-the-merged-work.md) (2026-10-02)
 
 <!-- /board:now -->
 

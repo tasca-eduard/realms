@@ -3,11 +3,11 @@ id: 079
 title: Brassbelly sometimes costs the bot six hearts
 realm: aqua
 area: balance
-status: backlog
+status: in-progress
 priority: low
 created: 2026-10-02
 done:
-owner:
+owner: an agent (balancer, its own copy)
 depends: []
 links: [../done/077-salvagerbot-stalls-in-full-runs.md]
 ---

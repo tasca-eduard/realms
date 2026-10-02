@@ -7,7 +7,7 @@ status: blocked
 created: 2026-10-02
 done:
 owner: the user
-blocked_on: the user (to read the draft and agree it or change it)
+blocked_on: the user (to read the draft and agree it or change it; realms 1 and 2 come first: 081)
 depends: []
 links: [../plans/realm-4-draft.md]
 ---

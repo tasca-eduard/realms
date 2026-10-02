@@ -3,11 +3,11 @@ id: 078
 title: The costumedrop check never reloads the page
 realm: aqua
 area: tests
-status: backlog
+status: in-progress
 priority: medium
 created: 2026-10-02
 done:
-owner:
+owner: an agent (balancer, its own copy)
 depends: []
 links: [../../docs/testing/checks.md]
 ---

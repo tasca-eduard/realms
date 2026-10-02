@@ -87,10 +87,11 @@ turns its lists into objects, foes and people; `story.apply(g)` restores the sto
 
 ## The user's rules (always)
 
-- **Commits only when the user asks, never a push, nothing destructive.** The user (2026-10-02): "you can commit
-  organized, grouped, etc. DONT DO DESTRUCTIVE ACTIONS." So the lead commits when asked, one commit per area (stage
-  hunks when a file mixes areas), on a branch off master; never `reset`, `checkout --`/`restore` of files, `clean`,
-  `stash drop`, `rebase`, `branch -D`, `push --force` or a push at all. Agents in copies never run a git command
+- **Commits and pushes, grouped, nothing destructive.** The user (2026-10-02): "you can commit organized, grouped,
+  etc. DONT DO DESTRUCTIVE ACTIONS", then "you can also push", and "We should stay on master and push the commits"
+  (no branches, no pull requests). So the lead commits on master, one commit per area (stage hunks when a file
+  mixes areas), and pushes master (a plain push, never `--force`); never
+  `reset`, `checkout --`/`restore` of files, `clean`, `stash drop`, `rebase`, `branch -D` or a forced push. Agents in copies never run a git command
   that changes anything. Reading (`status`, `diff`, `log`, `ls-files`) is always fine.
 - **The board.** Every task and every problem found goes on the board (`board/README.md` says how): new work and
   found problems into the backlog, the current work in progress, finished work to done with the date and what was

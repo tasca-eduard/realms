@@ -3,11 +3,11 @@ id: 067
 title: Ash's door under the inn tree's crown
 realm: 2
 area: world
-status: backlog
+status: in-progress
 priority: low
 created: 2026-10-02
 done:
-owner:
+owner: an agent (realm-builder, its own copy)
 depends: []
 links: [../done/036-reef-review-and-balance.md, ../done/021-fixes-from-the-comparison.md]
 ---
