@@ -918,7 +918,7 @@ export function buildRealm1(builder: Builder): RealmData {
     { kind: 'moonfire', id: 'rest', name: "Knight's Rest", x: 70, z: 20 },
     { kind: 'moonfire', id: 'gate', name: 'Gate of the Keep', x: 41.5, z: 28.5 },
     { kind: 'lore', id: 'lore1', x: 45.5, z: 79.5, text: 'The keep was built by the first knights, when the moon was young.' },
-    { kind: 'lore', id: 'lore2', x: 24.2, z: 51.4, text: 'Every king before this one kept the gates open to travelers.' },
+    { kind: 'lore', id: 'lore2', x: 24.2, z: 51.4, text: 'Every king before this one kept the gates open to travellers.' },
     { kind: 'lore', id: 'lore3', x: 103, z: 95.5, text: 'Eight realms, eight crowns, one moon over all of them. So it was sung, before the shadow.' },
     { kind: 'chest', id: 'c_crypt', x: 34, z: 74.2, rot: 0, coins: 60 },
     { kind: 'chest', id: 'c_camp', x: 104.5, z: 33.5, rot: -1.2, coins: 80 },

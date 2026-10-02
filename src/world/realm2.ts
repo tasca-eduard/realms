@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { K } from '../engine/materials';
 import { P } from '../engine/particles';
 import { mulberry32, fbm, rand, type Rng } from '../engine/util';
-import { GLOW, PAL, type Builder } from './builder';
+import { Builder, GLOW, PAL } from './builder';
 import { Grid, NONE, S, T } from './grid';
 import { Painter, distLine, insidePoly, sdPoly, type Pt } from './paint';
 import type { CritterDef } from '../game/critters';
@@ -186,6 +186,10 @@ const NICHE = { x0: 37, x1: 39, z0: 6, z1: 10 };
 // Where the goblins keep Wren caged, in the gatherers' clearing.
 const CAGE = { x: 43.4, z: 41.6 };
 const GLADE = { x: 22, z: 86 };
+// Old Nettle's corner of her glade, its south-west side: out from under the crown of Ash's family's
+// tree (from her old spot by the lane's end it hid her from the camera); the wood is kept out of the
+// camera's view of it (see the Old Wood's trees).
+const HERBS = { x: 20, z: 88 };
 const CLEARING = { x: 46, z: 43 };
 // The old owl's snag, by the foot of the ramp up to Hollowbough, and how high it sits.
 const OWL: Pt = [62.4, 93.6];
@@ -743,7 +747,7 @@ export function buildRealm2(builder: Builder): RealmData {
     if (Math.hypot(x + 0.5 - RING.x, z + 0.5 - RING.z) < RING.r + 1) grid.t[i] = T.Moss;
   }, RING.x - 8, RING.z - 8, RING.x + 8, RING.z + 8);
   // Clearings: the gatherers' by the Blackwater, the herbwife's glade.
-  for (const [cx, cz, rr] of [[CLEARING.x, CLEARING.z, 4.5], [GLADE.x, GLADE.z, 4]] as [number, number, number][])
+  for (const [cx, cz, rr] of [[CLEARING.x, CLEARING.z, 4.5], [HERBS.x, HERBS.z, 4]] as [number, number, number][])
     p.each((x, z, i) => {
       if (grid.h[i] === FLOOR && grid.water[i] === NONE && Math.hypot(x + 0.5 - cx, z + 0.5 - cz) < rr) grid.t[i] = (x + z) % 4 === 0 ? T.Dirt : T.Grass;
     }, cx - rr - 1, cz - rr - 1, cx + rr + 1, cz + rr + 1);
@@ -870,6 +874,21 @@ export function buildRealm2(builder: Builder): RealmData {
   // The Old Wood's trees, each zone its own kinds and density (a fixed hash, not the dice, picks
   // the spots, so nothing else shifts). Phones get a third fewer.
   const thin = MOBILE ? 0.7 : 1;
+  // The camera's view of Old Nettle's corner (a strip from it toward the camera, south-east, as wide as
+  // her corner and long enough that no crown stands up into it): the trees that would stand there are
+  // still grown, on a builder whose work is thrown away, so the dice everything after them draws
+  // (Hollowbough's trees and props) stay as they were.
+  const unseen = new Builder(grid, b.lights, b.fx, b.rng);
+  unseen.heightFn = (x, z) => grid.groundAt(x, z);
+  const herbView = (x: number, z: number) => {
+    const along = (x - HERBS.x + z - HERBS.z) / Math.SQRT2, across = (x - HERBS.x - (z - HERBS.z)) / Math.SQRT2;
+    return Math.hypot(x - HERBS.x, z - HERBS.z) < 5.5 || (along > 0 && along < 13.5 && Math.abs(across) < 5.5);
+  };
+  // The same for the Mushroom Dell's floor (a big oak on the strip hid its south side).
+  const dellView = (x: number, z: number) => {
+    const along = (x - DELL.x + z - DELL.z) / Math.SQRT2, across = (x - DELL.x - (z - DELL.z)) / Math.SQRT2;
+    return along > 0 && along < 12 && Math.abs(across) < 4.5;
+  };
   for (let z0 = 3; z0 < 117; z0 += 1.6)
     for (let x0 = 3; x0 < 118; x0 += 1.6) {
       const x = x0 + hash(x0, z0) * 1.4, z = z0 + hash(z0 + 7, x0) * 1.4, zid = zoneAt(x, z), zs = ZONES[zid];
@@ -879,12 +898,12 @@ export function buildRealm2(builder: Builder): RealmData {
       if (!zs.trees.length || hash(x * 1.3, z * 0.7) > dens * 1.9 * thin) continue;
       if (keepOut(x, z) || kit.nearRoad(x, z, 2.6) || insidePoly(MOSSFEN, x, z)) continue;
       if (grid.groundAt(x, z) < FLOOR - 0.05 || grid.waterAt(x, z) !== NONE || !flat(x, z, 0.4)) continue;
-      const kind = pick(zs.trees, hash(x * 2.1, z * 1.7)), s = zs.size * (0.85 + hash(z * 3.1, x) * 0.5);
-      if (kind === 'pine') b.pine(x, z, s);
-      else if (kind === 'oak') b.oak(x, z, s);
-      else if (kind === 'birch') D.birch(b, x, z, s);
-      else if (kind === 'dead') b.deadTree(x, z, s * 0.9);
-      else b.bush(x, z, s * 0.9, '#3b6b2a');
+      const kind = pick(zs.trees, hash(x * 2.1, z * 1.7)), s = zs.size * (0.85 + hash(z * 3.1, x) * 0.5), tb = herbView(x, z) || dellView(x, z) ? unseen : b;
+      if (kind === 'pine') tb.pine(x, z, s);
+      else if (kind === 'oak') tb.oak(x, z, s);
+      else if (kind === 'birch') D.birch(tb, x, z, s);
+      else if (kind === 'dead') tb.deadTree(x, z, s * 0.9);
+      else tb.bush(x, z, s * 0.9, '#3b6b2a');
     }
   // Pines on the northern and western heights.
   // (Not in the Withered Wood: its crags and the Great Tree's roots stand that high too.)
@@ -1434,7 +1453,8 @@ export function buildRealm2(builder: Builder): RealmData {
   {
     const { x, z } = DELL;
     let k = 0;
-    for (const [mx, mz, s] of [[7.6, 86.4, 1.3], [8.2, 93.2, 1.1], [14.6, 86.8, 1.2], [7.4, 90, 0.9], [13.8, 93.4, 1.4], [11, 84.8, 1]] as [number, number, number][])
+    // (The biggest stands at its south-west side: in front, toward the camera, it hid the dell's floor.)
+    for (const [mx, mz, s] of [[7.6, 86.4, 1.3], [8.2, 93.2, 1.1], [14.6, 86.8, 1.2], [7.4, 90, 0.9], [8.9, 95.3, 1.4], [11, 84.8, 1]] as [number, number, number][])
       if (Math.abs(grid.groundAt(mx, mz) - FLOOR) < 0.1) giantMushroom(b, mx, mz, s, k++ % 2 === 0);
     // A fairy ring of little glowing ones, round the dell's treasure.
     for (let a = 0; a < Math.PI * 2; a += Math.PI / 6) b.mushrooms(x + Math.cos(a) * 1.9, z + Math.sin(a) * 1.9, 2);
@@ -1636,9 +1656,9 @@ export function buildRealm2(builder: Builder): RealmData {
   }
   b.moonflowers(RING.x, RING.z, 10, 2);
   // ---------- the herbwife's glade, the gatherers' clearing ----------
-  D.workbench(b, GLADE.x + 2, GLADE.z - 1.2, 0.4);
-  for (let k = 0; k < 4; k++) b.bush(GLADE.x - 2.5 + k * 0.9, GLADE.z + 2.2, 0.35, '#5a7a3a');
-  D.wildflowers(b, GLADE.x - 1, GLADE.z + 1, 10, 1.5, 'purple');
+  D.workbench(b, HERBS.x + 2, HERBS.z - 1.2, 0.4);
+  for (let k = 0; k < 4; k++) b.bush(HERBS.x - 2.5 + k * 0.9, HERBS.z + 2.2, 0.35, '#5a7a3a');
+  D.wildflowers(b, HERBS.x - 1, HERBS.z + 1, 10, 1.5, 'purple');
   for (const [x, z] of [[CLEARING.x + 2, CLEARING.z - 1.5], [CLEARING.x - 2.5, CLEARING.z + 1]] as Pt[]) b.bush(x, z, 0.5, '#6a3a3a');
   b.campfire(CLEARING.x, CLEARING.z + 1.2, false);
   // ---------- the Mossfen ----------
@@ -1685,7 +1705,7 @@ export function buildRealm2(builder: Builder): RealmData {
     { kind: 'chest', id: 'wc_fen', x: 9.6, z: 105.6, rot: 1.2, coins: 55, power: 'bubble' },
     { kind: 'chest', id: 'wc_rim', x: 119.6, z: 20.5, rot: -Math.PI / 2, coins: 45 }, // in the reeds by the Greywater
     { kind: 'chest', id: 'wc_chasm', x: 101.8, z: 45, rot: -1.4, coins: 40 },
-    { kind: 'chest', id: 'wc_glade', x: GLADE.x - 2.4, z: GLADE.z - 2.2, rot: 0.3, coins: 35 },
+    { kind: 'chest', id: 'wc_glade', x: HERBS.x - 2.4, z: HERBS.z - 2.2, rot: 0.3, coins: 35 },
     { kind: 'chest', id: 'wc_hoard', x: CLEARING.x + 3.6, z: CLEARING.z + 0.2, rot: -1.2, coins: 50, power: 'fire' },
     { kind: 'chest', id: 'wc_stand', x: STAND.x0 + 0.9, z: STAND.z0 + 0.6, rot: 0, coins: 45, power: 'magnet' },
     { kind: 'chest', id: 'wc_falls', x: 86, z: 54.6, rot: -0.6, coins: 45 },
@@ -1740,7 +1760,7 @@ export function buildRealm2(builder: Builder): RealmData {
     { name: 'The High Canopy', music: 'wilds', amb: 'woods', test: (x, z) => x > 88 && z > 56 && z < 96 },
     { name: "The Stag's Thicket", music: 'road', amb: 'woods', test: (x, z) => Math.hypot(x - STAG.x, z - STAG.z) < 6 },
     { name: 'The Ring of Oaks', music: 'road', amb: 'fields', test: (x, z) => Math.hypot(x - RING.x, z - RING.z) < RING.r + 3 },
-    { name: "The Herbwife's Glade", music: 'road', amb: 'fields', test: (x, z) => Math.hypot(x - GLADE.x, z - GLADE.z) < 6 },
+    { name: "The Herbwife's Glade", music: 'road', amb: 'fields', test: (x, z) => Math.hypot(x - HERBS.x, z - HERBS.z) < 6 },
     { name: 'The Mossfen', music: 'fields', amb: 'fields', test: (x, z) => insidePoly(MOSSFEN, x, z) },
     { name: "The Stag's Bed", music: 'fields', amb: 'woods', test: (x, z) => x < BED.mouth && inStagBed(x, z) > 0 },
     { name: 'The Deep Wood', music: 'wilds', amb: 'woods', test: (x, z) => insidePoly(DEEP_WEST, x, z) },
@@ -1781,7 +1801,9 @@ export function buildRealm2(builder: Builder): RealmData {
         'We live up in the trees now. The ground is not safe.',
         'That edge is keen. I can temper it with heartwood, and it will bite through thorn.',
       ] },
-      { id: 'ash', look: 'woodboy', name: 'Ash', x: home.ash.door.x, z: home.ash.door.z, face: 1, lines: [
+      // (Ash waits at the front of his family's garden: at their door the inn tree's crown hid him from
+      // the camera.)
+      { id: 'ash', look: 'woodboy', name: 'Ash', x: off(home.ash, HOMES.ash.face, 3.2, 5)[0], z: off(home.ash, HOMES.ash.face, 3.2, 5)[1], face: 1, lines: [
         'Have you seen my sister? She went gathering past the river.',
         'Past the Whisper, by the black water. She never came back.',
       ], after: ['Wren is home! She says you broke the lock with one blow.', 'I said it took three. She says one.'] },
@@ -1829,13 +1851,13 @@ export function buildRealm2(builder: Builder): RealmData {
         'Wrap your boots in it and the brambles let you by. Quicker on your feet. For a little coin.',
         'The Reeve on the island will tell you what needs doing. He always does.',
       ], wares: ['boots'] },
-      { id: 'wrenhome', look: 'woodgirl', name: 'Wren', x: off(home.ash, HOMES.ash.face, 1, 0.4)[0], z: off(home.ash, HOMES.ash.face, 1, 0.4)[1], face: 1, hidden: true, lines: ['Thank you, sir knight. The berries were worth it. Almost.'] },
+      { id: 'wrenhome', look: 'woodgirl', name: 'Wren', x: off(home.ash, HOMES.ash.face, 4.4, 5.5)[0], z: off(home.ash, HOMES.ash.face, 4.4, 5.5)[1], face: 1, hidden: true, lines: ['Thank you, sir knight. The berries were worth it. Almost.'] },
       { id: 'wren', look: 'woodgirl', name: 'Wren', x: CAGE.x, z: CAGE.z, face: 1, caged: true, lines: [
         'A knight, out here? Ash put you up to this. He worries.',
         'They hid their takings in that hollow log. Have them: they are more yours than theirs.',
         'I know the deer paths home. Watch for the thorns in the ravine!',
       ] },
-      { id: 'herbwife', look: 'herbwife', name: 'Old Nettle', x: GLADE.x + 1, z: GLADE.z + 1.6, face: -1, lines: [
+      { id: 'herbwife', look: 'herbwife', name: 'Old Nettle', x: HERBS.x + 1, z: HERBS.z + 1.6, face: -1, lines: [
         'A stag is held in the Warden\'s thorns, in a hollow of the Deep Wood west of the oaks. His goblins keep it. Cut it loose and it will carry you.',
         'And the oaks themselves: stand in their ring and they will test you. The seed they keep makes a heart stronger.',
         'Nettle tonic, if you want it. Clears the head; your second wind comes sooner. It costs, mind.',
