@@ -111,6 +111,8 @@ class Herd {
   mesh: THREE.InstancedMesh;
   phase: Float32Array;
   private phaseAttr: THREE.InstancedBufferAttribute;
+  /** How far a body reaches from its middle (at size 1). */
+  private reach: number;
   constructor(geo: THREE.BufferGeometry, mat: THREE.Material, n: number, g: Game, tint: (i: number) => Col = () => '#ffffff') {
     const own = new THREE.BufferGeometry();
     for (const k of Object.keys(geo.attributes)) own.setAttribute(k, geo.attributes[k]);
@@ -120,7 +122,9 @@ class Herd {
     own.setAttribute('aPhase', this.phaseAttr);
     this.mesh = new THREE.InstancedMesh(own, mat, n);
     this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    this.mesh.frustumCulled = false;
+    // (Drawn only when some of its bodies are in view: see flush.)
+    own.computeBoundingSphere();
+    this.reach = own.boundingSphere!.radius + own.boundingSphere!.center.length();
     this.mesh.name = 'sealife';
     for (let i = 0; i < n; i++) this.tint(i, tint(i));
     g.scene.add(this.mesh);
@@ -158,6 +162,23 @@ class Herd {
   flush() {
     this.mesh.instanceMatrix.needsUpdate = true;
     this.phaseAttr.needsUpdate = true;
+    // A sphere round all its bodies, padded by a body's reach at the largest size, so that a group out of view
+    // costs no draw (a shoal, a smack of jellies; one spread over the whole realm is drawn as before).
+    const e = this.mesh.instanceMatrix.array, n = this.mesh.count * 16;
+    let x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity, s = 0;
+    for (let o = 0; o < n; o += 16) {
+      x0 = Math.min(x0, e[o + 12]);
+      x1 = Math.max(x1, e[o + 12]);
+      y0 = Math.min(y0, e[o + 13]);
+      y1 = Math.max(y1, e[o + 13]);
+      z0 = Math.min(z0, e[o + 14]);
+      z1 = Math.max(z1, e[o + 14]);
+      s = Math.max(s, e[o] * e[o] + e[o + 1] * e[o + 1] + e[o + 2] * e[o + 2], e[o + 4] * e[o + 4] + e[o + 5] * e[o + 5] + e[o + 6] * e[o + 6]);
+    }
+    if (!n) return;
+    const b = (this.mesh.boundingSphere ??= new THREE.Sphere());
+    b.center.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+    b.radius = Math.hypot(x1 - x0, y1 - y0, z1 - z0) / 2 + this.reach * Math.sqrt(s) + 0.5;
   }
 }
 

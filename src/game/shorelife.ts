@@ -658,6 +658,7 @@ export class ShoreLife {
     for (const s of this.seals) {
       s.model.animate(0, s.x, s.z, 'bask', 0, 0);
       s.model.rig.place(g.cam, s.x, s.y, s.z, s.y, true);
+      s.model.rig.setCastShadow(false); // (a basking seal needs no moon shadow until the knight comes near)
     }
     for (const c of this.crabs) {
       c.model.animate(0, c.x, c.z, 'idle', 0, 0);

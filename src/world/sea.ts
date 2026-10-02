@@ -1,3 +1,4 @@
+import { MOBILE } from '../config';
 import type { Geo } from '../engine/geo';
 import { K } from '../engine/materials';
 import { P } from '../engine/particles';
@@ -29,7 +30,8 @@ export const SEA = {
 
 /** A clump of kelp: tall strands with blades off them; the swell sways the tops, the holdfast stays. */
 export function kelp(b: Builder, x: number, z: number, h = 4, n = 3) {
-  const g = b.g(x, z), y = b.y(x, z), r = b.rng;
+  // (On phones the kelp casts no moon shadow: half the reef's leaves, a faint dapple on the floor; see kelpStand.)
+  const g = MOBILE ? b.d(x, z) : b.g(x, z), y = b.y(x, z), r = b.rng;
   for (let k = 0; k < n; k++) {
     const a = r() * Math.PI * 2, d = k ? 0.25 + r() * 0.4 : 0;
     const sx = x + Math.cos(a) * d, sz = z + Math.sin(a) * d;
@@ -728,7 +730,9 @@ export function longboat(b: Builder, x: number, z: number, rot: number) {
  *  then; at the top they bow over with the swell and spread their fronds out flat beneath the surface, a canopy over
  *  the floor (foliage: dithered away round the knight). */
 export function kelpStand(b: Builder, x: number, z: number, h: number, n = 4) {
-  const g = b.g(x, z), y = b.y(x, z), r = b.rng, lean = 0.6 + (r() - 0.5) * 0.8;
+  // (On phones no moon shadow from the stands: they're half the reef's triangles, and the shadow pass drew them all
+  // again for a faint dapple on the floor.)
+  const g = MOBILE ? b.d(x, z) : b.g(x, z), y = b.y(x, z), r = b.rng, lean = 0.6 + (r() - 0.5) * 0.8;
   g.blob(x, y + 0.06, z, 0.32, 0.16, 0.32, SEA.kelpDark, Math.floor(r() * 999), { kind: K.Leaves, flatBottom: true, jitter: 0.3 });
   for (let k = 0; k < n; k++) {
     const a = r() * Math.PI * 2, d = 0.08 + r() * 0.25, sx = x + Math.cos(a) * d, sz = z + Math.sin(a) * d;

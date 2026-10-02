@@ -240,7 +240,12 @@ export class Enemy {
   update(dt: number, g: Game) {
     if (this.state === 'idle' || this.state === 'sleep' || this.state === 'lurk') {
       const fx = g.cam.focus.x - this.x, fz = g.cam.focus.z - this.z;
-      if (fx * fx + fz * fz > 45 * 45 && Math.hypot(g.player.x - this.x, g.player.z - this.z) > 45) return;
+      if (fx * fx + fz * fz > 45 * 45 && Math.hypot(g.player.x - this.x, g.player.z - this.z) > 45) {
+        // (Set where it stands once, even far off: else its model waits at the world's origin, drawn whenever the
+        // view takes in that corner.)
+        if (!this.placed) this.render(g, 0);
+        return;
+      }
     }
     this.t += dt;
     this.animT += dt;
@@ -318,6 +323,7 @@ export class Enemy {
 
   private seenT = 0;
   private seen = false;
+  private placed = false;
 
   private render(g: Game, dt: number) {
     const rig = this.model.rig;
@@ -347,6 +353,7 @@ export class Enemy {
     // Sink into the ground once fallen.
     const sink = this.state === 'dead' && !this.flying ? Math.max(0, this.deathT - 0.5) * 0.8 : 0;
     rig.place(g.cam, this.x, by - sink, this.z, gy, this.state !== 'lurk');
+    this.placed = true;
     if (this.state === 'stun') rig.tint.setRGB(0.75, 0.82, 1.25);
     else if (this.golden) rig.tint.setRGB(1.7, 1.3, 0.45);
     else if (this.elite) rig.tint.setRGB(1.15, 0.8, 0.8);

@@ -55,6 +55,9 @@ export class Critter {
       this.model.rig.scale = 1.6;
     }
     this.model.rig.face(def.kind === 'owl' ? 0.7 : Math.random() - 0.5, def.kind === 'owl' ? 0.7 : Math.random() - 0.5, 0);
+    // (Set where it stands from the start: one never yet near the camera would wait at the world's origin, drawn
+    // whenever the view takes in that corner.)
+    this.model.rig.place(g.cam, this.x, this.y, this.z, g.grid.groundAt(this.x, this.z), true);
   }
 
   private pick() {

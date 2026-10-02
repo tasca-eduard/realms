@@ -45,6 +45,9 @@ void main() {
 }
 `;
 
+/** Steps along the view ray for the sea's light shafts (fewer and longer on phones: the same reach). */
+const RAYS = MOBILE ? 5 : 8;
+
 const COMPOSITE_FRAG = /* glsl */ `
 uniform sampler2D tColor, tDepth, tBloom1, tBloom2;
 uniform vec2 uTexel;
@@ -131,14 +134,14 @@ void main() {
       vec4 n0 = uInvViewProj * vec4(vUv * 2.0 - 1.0, -1.0, 1.0);
       vec3 back = normalize(n0.xyz / n0.w - wp);
       float acc = 0.0;
-      for (int k = 1; k <= 8; k++) {
-        vec3 q = wp + back * (float(k) * 1.7);
+      for (int k = 1; k <= ${RAYS}; k++) {
+        vec3 q = wp + back * (float(k) * ${(13.6 / RAYS).toFixed(2)});
         if (q.y > uSeaSurface) break;
         vec2 s = q.xz + vec2(0.42, 0.26) * (uSeaSurface - q.y);
         float band = vnoise(vec2(s.x * 0.11 + s.y * 0.04, s.y * 0.02) + vec2(uTime * 0.035, -uTime * 0.02));
         acc += smoothstep(0.64, 0.9, band);
       }
-      col += uSeaRayColor * (acc / 8.0) * uSeaRays * (1.0 - f * 0.6);
+      col += uSeaRayColor * (acc / ${RAYS}.0) * uSeaRays * (1.0 - f * 0.6);
     }
 
     // Fog of war: unexplored land lies under a soft haze. The edge is a wide

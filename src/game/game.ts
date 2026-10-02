@@ -2031,6 +2031,7 @@ export class Game {
     shared.uPlayer.value.set(p.x, p.y, p.z);
     this.updateStructures(real);
     this.updateCamera(dt, real);
+    this.smallShadows();
     this.updateAudio(real);
     this.updateDawn(real);
 
@@ -2185,6 +2186,26 @@ export class Game {
       for (const m of s.meshes) if (m.material instanceof THREE.MeshBasicMaterial) m.visible = s.fade > 0.5;
       for (const m of s.shellMeshes) m.visible = s.shellFade > 0.02;
       for (const m of s.shellMeshes) if (m.material instanceof THREE.MeshBasicMaterial) m.visible = s.shellFade > 0.5;
+    }
+  }
+
+  private viewFrustum = new THREE.Frustum();
+  private viewMat = new THREE.Matrix4();
+  private viewSphere = new THREE.Sphere();
+  /** Chests and lore stones cast their moon shadows only in and about the view: the shadow pass reaches well past
+   *  its edges, and out there each would cost a draw or two for a shadow no one sees (the drowned kingdom's
+   *  twenty chests most of all). */
+  private smallShadows() {
+    const c = this.cam.cam;
+    this.viewFrustum.setFromProjectionMatrix(this.viewMat.multiplyMatrices(c.projectionMatrix, c.matrixWorldInverse));
+    for (const it of this.interactables) {
+      if (!(it instanceof Chest) && !(it instanceof LoreStone)) continue;
+      const on = this.viewFrustum.intersectsSphere(this.viewSphere.set(this.viewSphere.center.set(it.x, it.y + 0.6, it.z), 3.5));
+      it.group.traverse((o) => {
+        if (!(o instanceof THREE.Mesh)) return;
+        o.userData.caster ??= o.castShadow;
+        o.castShadow = o.userData.caster && on;
+      });
     }
   }
 
