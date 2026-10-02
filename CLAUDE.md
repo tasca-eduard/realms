@@ -93,6 +93,14 @@ turns its lists into objects, foes and people; `story.apply(g)` restores the sto
   mixes areas), and pushes master (a plain push, never `--force`); never
   `reset`, `checkout --`/`restore` of files, `clean`, `stash drop`, `rebase`, `branch -D` or a forced push. Agents in copies never run a git command
   that changes anything. Reading (`status`, `diff`, `log`, `ls-files`) is always fine.
+- **Every commit's title starts with what kind it is**, so the user can tell from the log what to look for in the
+  deploy (the user, 2026-10-02: "add "UI" as a prefix of a commit so i can know if there's anything visually
+  changed..."): `UI:` anything you can see changes (places, light, models, effects, the HUD); `Sound:` new or
+  changed sounds or music, nothing new to see; `Func:` mostly how things work (gameplay, balance, saves, fixes),
+  little to see; `Perf:` faster or lighter, looks the same; `Test:` checks and test bots only; `Tools:` dev
+  tools, scripts, `.claude/`; `Docs:` mostly docs; `Board:` the board and plans. A commit that mixes kinds takes
+  the most visible one, in this order: UI, Sound, Func, Perf, Test, Tools, Docs, Board. E.g. `UI: Whisperwood: the
+  inn tree where the road comes in`. Commits already pushed keep their titles.
 - **The board.** Every task and every problem found goes on the board (`board/README.md` says how): new work and
   found problems into the backlog, the current work in progress, finished work to done with the date and what was
   checked. When asked to review, or when you find a flaw, add it to the board rather than only mentioning it.
