@@ -109,8 +109,8 @@ a half minutes (the bots).
 border, which reloads it. Then each `AFTER` script runs once the new page is ready, reads `sessionStorage`, adds its
 own findings and sets `window.__report`. See `tests/kip1.js` and `tests/kip2.js`.<a id="reloads-after"></a> The
 runner waits for `window.__ready` before each `AFTER` script, but a page that never reloaded is still ready, so
-part 2 then runs on the same page and proves nothing about reloads: part 1 must reload. (Today
-`tests/costumedrop1.js` doesn't.)
+part 2 then runs on the same page and proves nothing about reloads: part 1 must reload (`tests/costumedrop1.js`
+also marks the old page and sets `__ready = false` first, and part 2 reports that the page is a fresh one).
 
 ## Writing a check script
 

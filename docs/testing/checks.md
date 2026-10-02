@@ -171,7 +171,7 @@ How to run them and read their reports: [how the game is checked](testing.md). U
 | Check | Script | Run | Wait | What it checks |
 |---|---|---|---|---|
 | `costume` † | `costume.js` | `shot&play&realm=aqua` | 32 | Deep water stops him without the suit; Brassbelly drops it; air runs down and fills; breathless never costs a heart. |
-| `costumedrop` ↻ | `costumedrop1.js`, `costumedrop2.js` | `shot&play&realm=aqua` | 1.5 | Brassbelly's suit left lying stays there after a reload; walked onto, it is the knight's. (Part 1 never reloads the page today, so part 2 runs on the same page: see [testing.md](testing.md#toolstest-allmjs-the-suite).) |
+| `costumedrop` ↻ | `costumedrop1.js`, `costumedrop2.js` | `shot&play&realm=aqua` | 1.5 | Brassbelly's suit left lying stays there after a reload (a real one: the report shows `page: "reload"`, `fresh: true`); walked onto, it is the knight's. |
 | `salvagerbot` † | `salvagerbot.js` | `shot&play&realm=aqua&lvl=5` | 160 | A fair fight: a level-5 bot beats Brassbelly and his crew in 25 to 90 s, losing at most 5 hearts. |
 
 ### Foes
