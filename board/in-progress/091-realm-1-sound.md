@@ -3,11 +3,11 @@ id: 091
 title: Realm 1's sound
 realm: castle
 area: sound
-status: todo
+status: in-progress
 priority: high
 created: 2026-10-02
 done:
-owner:
+owner: an agent (its own copy)
 depends: [089]
 links: [../plans/realms-1-2-revisit.md]
 ---
@@ -24,3 +24,6 @@ Beds of its own per place: the smithy's hammer and bellows, the tavern's voices 
 
 A sound check for realm 1 like `seasound` (read from the audio graph: each place its beds); travel, border; tsc. Before/after shots from the game camera at the comparison's spots (the user's rule: changes plainly
 visible from where the player looks).
+
+Widened (2026-10-03): Whisperwood's sound from 095 too (the canopy's hush and creak, the falls, frogs, chimes, the inn's
+voices and lute, cracking branches, a dawn chorus, a nightingale), both realms in one agent.

@@ -102,7 +102,7 @@ Realm 1, the Moonlit Keep:
   the keep; Pip's cat in the Hollow; the shepherd's strays in Blackpine; the chapel's bell rope back from
   Gnasher's camp, and the bell rings the hour); lore 5 to ~12, chests 11 to ~18; things that answer the sword
   (bells, crows bursting up, falling apples); the economy re-balanced.
-- [ ] **91 Realm 1's sound** ([091](../todo/091-realm-1-sound.md)): beds of its own per place (the smithy's hammer
+- [ ] **91 Realm 1's sound** ([091](../in-progress/091-realm-1-sound.md)): beds of its own per place (the smithy's hammer
   and bellows, the tavern's voices through its walls, the chapel bell, the mill wheel, frogs and bitterns in the
   marsh, the ford's babble, wind in the pines, crows over the keep, banners and chains at the bailey) and animal
   voices placed in space.

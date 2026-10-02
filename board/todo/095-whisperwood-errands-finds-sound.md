@@ -24,3 +24,6 @@ Four errands of the wood: the beekeeper's lost swarm, the forester's snares, Old
 
 An errands check for realm 2; a sound check like `seasound`; economy2, treasures2, secrets2, reach2; tsc. Before/after shots from the game camera at the comparison's spots (the user's rule: changes plainly
 visible from where the player looks).
+
+Note (2026-10-03): its sound part went to group 91, which builds both realms' sound together (one agent, the shared
+audio code); this group keeps the errands and the finds.
