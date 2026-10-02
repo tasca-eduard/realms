@@ -516,7 +516,9 @@ export class DarkLamp {
           const own = this.cells.get(i)!, ground = grid.h[i], bare = !(firm && ground >= ROCK_Y - 0.1);
           let best = bare && ground <= reach ? ground : -Infinity;
           for (const t of this.tops) if (t <= reach && t > best) best = t;
-          if (best === -Infinity) best = this.tops[0];
+          // (A wall at the lowest; where the bare rock under the stair is lower than that, the rock itself: else a
+          // foe standing there, Brassbelly on the steps from his yard, is lifted onto a turn of the stair high above.)
+          if (best === -Infinity) best = bare ? Math.min(ground, this.tops[0]) : this.tops[0];
           grid.deck[i] = bare && best === ground ? own : best;
         }
     }

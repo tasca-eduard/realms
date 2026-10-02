@@ -8,8 +8,10 @@ import { SERPENT_LIP } from './serpent';
 // With `serpent`, on the Tide Serpent as well: it swims the sea, he gets on and off at its edges.
 
 const CLIMB = 1.5;
-/** Below the sea's surface a jump floats higher (1.3 m) and the step-up comes on top. */
+/** Below the sea's surface a jump floats higher (1.3 m) and the step-up comes on top: only where the floor is deep
+ *  enough that his head stays under the whole way up (2.5 m), or he breaks the surface mid-jump and drops back. */
 const UNDER_CLIMB = 1.7;
+const UNDER_FLOOR = 2.5;
 /** On the Thornstag: its double leap (2.3 m) plus the step-up at the top (0.45 m). */
 export const STAG_CLIMB = 2.75;
 const JUMP_CLEAR = 1.1;
@@ -76,7 +78,7 @@ export function reachability(g: Game, assumeProgress = true, climb = CLIMB, serp
   const sea = g.realm.sea;
   const dives = !!sea && (assumeProgress || g.player.dives);
   const deep = (x: number, z: number) => !dives && grid.isDeep(x, z);
-  const climbAt = (h: number) => (dives && sea && h < sea.surface - 1.2 ? Math.max(climb, UNDER_CLIMB) : climb);
+  const climbAt = (h: number) => (dives && sea && h < sea.surface - UNDER_FLOOR ? Math.max(climb, UNDER_CLIMB) : climb);
   const seen = new Uint8Array(grid.w * grid.d);
   const from = new Int32Array(grid.w * grid.d).fill(-1);
   const top = (x: number, z: number) => grid.cellTop(x, z, x + 0.5, z + 0.5);

@@ -498,7 +498,8 @@ export function buildSeaCaves(b: Builder, grid: Grid, under: (x: number, z: numb
   const inSeaCave = (x: number, z: number) => z < 0 && z > -15 && x > 106 && x < 134 && !!seaCaveZone(caveUV(SEA_CAVE, x, z).u, caveUV(SEA_CAVE, x, z).v, 0.6);
   const inGrotto = (x: number, z: number) => {
     const { u, v } = caveUV(GROTTO, x, z);
-    return grottoFloor(u, v, 0.4) !== null && grid.groundAt(x, z) > -11;
+    // (On its floor, below its roof: not on the reef round and over it, where its name would give the secret away.)
+    return grottoFloor(u, v, 0.4) !== null && grid.groundAt(x, z) > -11 && grid.groundAt(x, z) < grottoCeil(u);
   };
   const enemies: EnemySpawn[] = [
     // The cache's watchman, a crew diver in the channel.

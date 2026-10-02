@@ -1,5 +1,5 @@
 import { K } from '../engine/materials';
-import { fbm, mulberry32, type Rng } from '../engine/util';
+import { fbm, mulberry32, smoothstep, type Rng } from '../engine/util';
 import * as D from './details';
 import type { Builder } from './builder';
 import { Grid, NONE, S, T } from './grid';
@@ -22,7 +22,7 @@ import { buildShoreLife } from './shorelife';
 // Realm 3: the Sunken Reef (the prototype's third realm). 140 x 110. A drowned coast, about half land and
 // half sea: the camera stays above, and the sea is clear water you look down into; walk off the strand
 // into deep water and the knight goes down onto the sea floor (under the surface everything floats).
-// Being built (group 28 of the realm 3 plan): a rough coast to try the look and the diving on.
+// Built in groups 28 to 36 of the realm 3 plan (board/plans/); its builder modules are listed in docs/code/architecture.md.
 //
 //   north-west   the strand: dunes, driftwood, rocks, a goblin camp (where you arrive)
 //   offshore     the lighthouse isle (the goblins' salvage yard, Brassbelly the salvager and his diving suit),
@@ -63,8 +63,9 @@ const BAR: Pt[] = [[50, 27], [62, 31], [74, 31], [86, 34], [94, 35]];
 /** The trench between the kingdom and the palace, 12 m down, sheer-sided: currents carry a diver over it. */
 const TRENCH: Pt[] = [[48, 118], [70, 110], [92, 105], [108, 97], [116, 87], [126, 77], [136, 67], [150, 60]];
 const ABYSS = { x: 121, z: 82, r: 3.2 };
-/** Columns of bubbles up out of the trench (on its floor: either side of the crossing, and past the abyss). */
-const LIFTS: Pt[] = [[104.8, 98.6], [117.5, 85.5], [132.5, 70.5]];
+/** Columns of bubbles up out of the trench (on its floor: either side of the crossing, and past the abyss; the
+ *  second on the floor short of the abyss, out from under the currents). */
+const LIFTS: Pt[] = [[104.8, 98.6], [114, 86.9], [132.5, 70.5]];
 /** Currents over the trench, both ways between the kingdom's terrace and the palace's floor ("the currents know
  *  the way: ride them, not against them"). */
 const CURRENTS: { pts: Pt[]; y: number; r: number; speed: number }[] = [
@@ -78,6 +79,17 @@ const PLAZA = { x: 90, z: 86, r: 7 };
 /** Vents on the sea floor: their streams of bubbles are air pockets for a diver. */
 const VENTS: Pt[] = [[64, 58], [92, 64], [80, 96], [110, 70]];
 const START = { x: 12, z: 12 };
+/** Stairfoot Cove, under the north-west cliffs where the Sea Stair comes down (the first of the Reef the knight sees):
+ *  the sea come in from the west between two headlands, a beach shelving up from it toward the camera to the heights
+ *  at the stair's foot. */
+const COVE = { x: 4.8, z: 9.6, rx: 6, rz: 7.8 };
+/** How far a point lies outside the cove's water (negative inside); the stair's moonfire and the realm's start kept
+ *  on the beach. */
+const coveDist = (x: number, z: number) =>
+  Math.max((Math.hypot((x - COVE.x) / COVE.rx, (z - COVE.z) / COVE.rz) - 1) * Math.min(COVE.rx, COVE.rz) + (fbm(x * 0.22, z * 0.22, 2, 87) - 0.5) * 2.4, 2.4 - Math.hypot(x - START.x, z - START.z));
+/** Beyond the west edge the cove opens to the open sea between two headlands (the cliffs falling back as they go). */
+const coveMouth = (x: number, z: number, edgeH: number) =>
+  z > 2.5 && z < 20.5 && (edgeH < 0 || Math.abs(z - 11.4) < 4.6 - x * 0.25 + (fbm(x * 0.3, z * 0.3, 2, 91) - 0.5) * 2.4);
 const CAMP = { x: 36, z: 26 };
 /** The Tide Serpent's prison: netted in the pool south of the sandbar, the nets' lines staked out on the bar and
  *  in the shallows west of the pool, where its keepers stand guard (src/game/serpent.ts). */
@@ -103,6 +115,11 @@ function isleHeight(x: number, z: number) {
   const d = Math.hypot(x - YARD.x, z - YARD.z) + n;
   if (d < YARD.r) return 1;
   if (d < YARD.r + 1.6) return 0.1;
+  // East and south (the camera's side, and the reef where Cockle went down) the beach shelves into the sea: a wading
+  // ledge, then the reef's own step down (the floor's smoothing, below), so a diver climbs out there. (Not north,
+  // where the lens lies in the deep.)
+  const a = Math.atan2(z - YARD.z, x - YARD.x);
+  if (d < YARD.r + 2.8 && a > -0.6 && a < 2.9) return -0.3;
   return NaN;
 }
 
@@ -335,6 +352,11 @@ export function buildRealm3(builder: Builder): RealmData {
   lifts.push({ x: TOWER_TOP.x + 2.3, z: TOWER_TOP.z + 0.9, r: 1.1, top: towerTop + 0.45 });
   // The lighthouse isle: the salvage yard (heaps of what the goblins have hauled up round its edge, the middle
   // clear: Brassbelly fights there). (The lighthouse on its rock, its stair and its keeper: src/world/lighthouse.ts.)
+  // Steps cut up from the beach (the yard a metre above it, more than a stride): where the sandbar comes ashore (by
+  // the keeper's skiff), on the south shore and on the east, between the heaps.
+  p.ramp(93, 33, 95, 35, 0, 0.1, 1, true, T.Flag);
+  p.ramp(98, 40, 101, 42, 3, 0.1, 1, true, T.Flag);
+  p.ramp(105, 33, 107, 36, 2, 0.1, 1, true, T.Flag);
   for (const [a, k] of [[0.3, 0], [1.2, 1], [2.3, 2], [3.4, 3], [4.6, 1], [5.5, 0]] as const)
     salvageHeap(b, YARD.x + Math.cos(a) * (YARD.r - 1.1), YARD.z + Math.sin(a) * (YARD.r - 1.1), k, a);
   b.rowboat(YARD.x - 3.5, ground(YARD.x - 3.5, YARD.z + 3.8), YARD.z + 3.8, 0.6);
@@ -561,6 +583,9 @@ export function buildRealm3(builder: Builder): RealmData {
   regions.unshift(...grotto.regions);
   lifts.push(...grotto.lifts);
   dressSeaBed(b, grid);
+  // Stairfoot Cove, at the foot of the Sea Stair (cut after everything else is placed, so that nothing shifts).
+  cutCove(b, grid);
+  regions.unshift({ name: 'Stairfoot Cove', music: 'fields', amb: 'sea', test: (x, z) => coveDist(x, z) < 0.5 && x < 14 && under(x, z) });
   // Where boardwalks and platforms built by different hands leave a lone cell of water boxed in by planks or land,
   // board it over: a diver dropped into it could never climb back out.
   for (let z = 1; z < MAP_D - 1; z++)
@@ -612,6 +637,104 @@ export function buildRealm3(builder: Builder): RealmData {
   };
 }
 
+/** Stairfoot Cove (group 36): the Sea Stair comes down the cliff over it, so it's the first of the Reef the knight
+ *  sees. Sheer rock on its far side, deep right to the cliffs' feet; toward the camera a beach shelving up 0.4 m a
+ *  metre to the heights where the stair comes down (low, so nothing in front hides the water), sand by the stair's
+ *  moonfire, shingle further round, the wading shallows along it; rocks fallen from the cliffs standing in the
+ *  water, wrack and driftwood on the beach, the reef's folk's old landing for whoever comes down the stair (posts,
+ *  a boat, a lamp). Its own random stream. */
+function cutCove(b: Builder, grid: Grid) {
+  const keep = b.rng, r = (b.rng = mulberry32(3838));
+  // How far round toward the camera a point lies from the cove's middle: 0 under the cliffs, 1 on the beach.
+  const near = (x: number, z: number) => {
+    const dx = x - COVE.x, dz = z - COVE.z;
+    return smoothstep(-0.25, 0.55, ((dx + dz) * 0.7071) / (Math.hypot(dx, dz) || 1));
+  };
+  const p = new Painter(grid);
+  p.each((x, z, i) => {
+    // (The corner under the stair's head stays rock, as high as the stair beside it: a buttress of the cliff, a
+    // lookout over the cove. What the game keeps parked out of sight at the world's origin stays buried in it.)
+    if (x <= 1 && z <= 1) {
+      grid.h[i] = Math.max(grid.h[i], 10);
+      grid.t[i] = T.Rock;
+      return;
+    }
+    // (Under the stair's upper flights the water comes right to the cliff's foot: no ledge there to jump down onto
+    // and be stranded on.)
+    const cx = x + 0.5, cz = z + 0.5, d = z <= 2 && x <= 7 ? Math.min(coveDist(cx, cz), -0.6) : coveDist(cx, cz), n = near(cx, cz);
+    if (d >= 0) {
+      // (The stair's foot stays as it was: its steps are cut to meet it.)
+      if (x >= 9 && z < 2) return;
+      const h = 0.1 + Math.round(((1 - n) * 5.6 + 0.42 * d) / 0.4) * 0.4;
+      if (h >= grid.h[i]) return;
+      grid.h[i] = h;
+      if (grid.t[i] === T.Path || h > 2.5) return;
+      grid.t[i] = n < 0.45 || fbm(cx * 0.35, cz * 0.35, 2, 93) > 0.66 ? T.Rock : Math.hypot(cx - START.x, cz - START.z) < 7.5 ? T.Sand : T.Gravel;
+      return;
+    }
+    // The water: a wading margin along the beach (none under the cliffs, deep at their feet), then down in steps.
+    const dd = -d + (1 - n) * 1.6;
+    grid.h[i] = dd < 1.2 ? -0.3 : Math.max(-5.2, -0.3 - 1.1 * Math.ceil((dd - 1.2) / 1.3));
+    grid.water[i] = SEA_LEVEL;
+    grid.t[i] = grid.h[i] > -1 ? T.Sand : fbm(cx * 0.3, cz * 0.3, 2, 89) > 0.55 ? T.Seagrass : grid.h[i] > -3 ? T.Sand : T.Silt;
+    grid.noGrass[i] = 0;
+  }, 0, 0, 22, 30);
+  // Below the water every step one a floating jump climbs (1.2 m), as on the rest of the sea floor.
+  for (let pass = 0; pass < 6; pass++)
+    p.each((x, z, i) => {
+      if (grid.water[i] === NONE || grid.h[i] >= SEA_LEVEL) return;
+      let top = grid.h[i];
+      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const j = grid.i(x + dx, z + dz);
+        if (x + dx >= 0 && grid.water[j] !== NONE && grid.h[j] < SEA_LEVEL) top = Math.max(top, grid.h[j]);
+      }
+      if (top - grid.h[i] > 1.2) grid.h[i] = top - 1.2;
+    }, 0, 0, 22, 30);
+  const wet = (x: number, z: number) => grid.waterAt(x, z) !== NONE;
+  // Blocks fallen from the cliffs, standing out of the water under them (as in the cove at the stair's head).
+  for (const [x, z, s] of [[4.2, 4.4, 1.25], [7.6, 3.8, 0.9], [2.9, 6.3, 0.8]] as const) {
+    const fl = b.y(x, z), top = 0.5 + s * 0.6;
+    b.g(x, z).blob(x, (fl + top) / 2, z, 1.0 * s, (top - fl) / 2 + 0.25, 0.85 * s, s > 1 ? '#716d78' : '#5a5662', Math.round(x * 13 + z), { kind: K.Rock, jitter: 0.25 });
+    b.collide({ kind: 'c', x, z, r: 0.85 * s, y0: fl - 1, y1: top + 0.2 });
+  }
+  // Barnacled rocks at the cliffs' feet, kelp rising from the deep middle, anemones by the fallen blocks.
+  for (const [x, z, s] of [[6, 3, 0.7], [2.5, 9.5, 0.8], [2.6, 13.4, 0.6], [9.4, 5.2, 0.6]] as const) if (wet(x, z)) seaRock(b, x, z, s);
+  for (const [x, z] of [[5.6, 7.2], [6.4, 9.6], [4.6, 10.4], [7.3, 8.4], [5.2, 12.6]] as const) {
+    const fl = b.y(x, z);
+    if (wet(x, z) && fl < -2) kelp(b, x, z, Math.min(-fl - 0.5, 2.2 + r() * 1.2), 2 + Math.floor(r() * 2));
+  }
+  for (const [x, z] of [[5.3, 5.4], [3.7, 7.4], [8.4, 5.4]] as const) if (wet(x, z) && b.y(x, z) < -0.8) anemone(b, x, z, 0.7 + r() * 0.3, r() < 0.5 ? SEA.coralTeal : SEA.coralPink, r() < 0.6 ? SEA.glowCyan : SEA.glowPink);
+  // The beach: wrack along the tide line, driftwood thrown up above it, a boulder or two, marram on its upper edge.
+  for (const [x, z, len, rot] of [[10.6, 10.2, 1.8, 1.5], [9.9, 16.4, 1.6, -0.7], [5, 16.9, 2.2, 0.1]] as const) wrack(b, x, z, len, rot);
+  driftwood(b, 7.6, 19.8, 3.2, 0.4);
+  driftwood(b, 3.6, 17.8, 1.8, -0.3);
+  for (const [x, z, s] of [[4.6, 21.2, 0.7], [1.9, 17.7, 0.9], [12.4, 20.6, 0.5]] as const) b.rock(x, z, s);
+  for (const [x, z, n] of [[3.4, 20.4, 6], [9.6, 21.6, 9], [13.4, 19.4, 4], [6.2, 22.4, 5]] as const)
+    for (let k = 0; k < n; k++) {
+      const a = r() * Math.PI * 2, rr = Math.sqrt(r()) * (0.4 + n * 0.12), tx = x + Math.cos(a) * rr, tz = z + Math.sin(a) * rr;
+      if (!wet(tx, tz) && grid.typeAt(tx, tz) !== T.Path) marram(b, tx, tz, 0.7 + r() * 0.5);
+    }
+  // The reef's folk's old landing, for whoever comes down the stair: the posts of a jetty whose planks are gone, a
+  // boat drawn up on the shingle, and a lamp they keep lit on a post by it (warm against the sea's green).
+  for (let k = 0; k < 4; k++) {
+    const x = 10.4 - k * 0.9, z = 14 + k * 0.4, fl = b.y(x, z), top = 0.75 - k * 0.12 + (r() - 0.5) * 0.2;
+    b.g(x, z).cyl(x, fl - 0.1, z, 0.1, 0.08, top - fl + 0.1, 6, '#4e3826', { kind: K.Wood });
+    if (k > 0) b.g(x, z).cyl(x, -0.15, z, 0.11, 0.11, 0.3, 6, SEA.barnacle, { kind: K.Rock });
+  }
+  b.rowboat(6.4, b.y(6.4, 18.2) + 0.05, 18.2, 0.35);
+  {
+    const x = 10.9, z = 15.3, y = b.y(x, z), g = b.g(x, z), gl = b.gl(x, z);
+    g.cyl(x, y - 0.1, z, 0.07, 0.06, 1.9, 6, '#4e3826', { kind: K.Wood });
+    g.box(x - 0.18, y + 1.72, z, 0.42, 0.06, 0.06, '#4e3826', { kind: K.Wood });
+    g.box(x - 0.34, y + 1.36, z, 0.2, 0.04, 0.2, '#3a3a3a', { kind: K.Rock });
+    gl.box(x - 0.34, y + 1.48, z, 0.15, 0.2, 0.15, [2.4, 1.5, 0.6], { kind: 0 });
+    g.box(x - 0.34, y + 1.61, z, 0.22, 0.05, 0.22, '#3a3a3a', { kind: K.Rock });
+    b.lights.add(x - 0.34, y + 1.5, z, 0xffb060, 3, 6, 0.2);
+    b.collide({ kind: 'c', x, z, r: 0.12, y0: y - 1, y1: y + 1.9 });
+  }
+  b.rng = keep;
+}
+
 /** Beyond the edges: sea cliffs along the far (north and west) edges, rising toward Whisperwood; along the
  *  near (south and east) edges the open sea, its floor falling away into the abyss (nothing tall on the
  *  camera's side). */
@@ -635,9 +758,16 @@ export function paintSeaOutskirts(grid: Grid, W: number, D: number) {
         // Where the strand meets the near edges: dunes falling to the sea.
         grid.h[i] = Math.max(0.1, edgeH - out * 0.8);
         grid.t[i] = T.Sand;
+      } else if (gx < 0 && coveMouth(gx + 0.5, gz + 0.5, edgeH)) {
+        // Stairfoot Cove's mouth, out to the open sea: the floor falling away at once.
+        grid.h[i] = out <= 2 ? -1.8 : -34;
+        grid.water[i] = SEA_LEVEL;
+        grid.t[i] = T.Silt;
       } else {
         // The sea cliffs.
         grid.h[i] = Math.round(Math.max(edgeH, 2) + 3 + out * 0.7 + n * 5);
+        // (South of Stairfoot Cove's mouth a low headland, rising as it goes, so the sea shows past it.)
+        if (gx < 0 && gz >= 14 && gz < 32) grid.h[i] = Math.min(grid.h[i], Math.round(Math.max(edgeH, 1) + 0.6 + out * 0.45 + n * 3 + Math.max(0, gz - 24) * 0.6));
         grid.t[i] = n > 0.55 ? T.DarkGrass : T.Rock;
       }
     }
