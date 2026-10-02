@@ -85,7 +85,7 @@ Shared groundwork (one agent each, side by side):
 
 Realm 1, the Moonlit Keep:
 
-- [ ] **88 Keepsfoot lived in** ([088](../todo/088-keepsfoot-lived-in.md)): about 12 more villagers, each doing
+- [ ] **88 Keepsfoot lived in** ([088](../in-progress/088-keepsfoot-lived-in.md)): about 12 more villagers, each doing
   something (a night watchman's round with a lantern, the smith at his anvil with sparks, children at the well, a
   couple on a bench, a lamplighter, a fisher on the bridge, washing hung, a drinker at the tavern door, a girl
   feeding the hens); villagers turn and speak as he passes (as the prototype's did); lanterns strung across the
@@ -115,7 +115,7 @@ Realm 2, Whisperwood:
   (white hawthorn by the Heartpool, rowans with red berries on the lanes); the prototype's pink campion and
   foxgloves; vines on more cliff faces; Hollowbough's camera side cleared (near crowns thinned, the hidden doors in
   view: [082](../backlog/082-hollowbough-doors-hidden.md), cut-away trunks drawn as faint outlines).
-- [ ] **93 Hollowbough lived in** ([093](../todo/093-hollowbough-lived-in.md)): 15-20 more villagers doing things
+- [ ] **93 Hollowbough lived in** ([093](../in-progress/093-hollowbough-lived-in.md)): 15-20 more villagers doing things
   (children on a rope swing, a lamplighter, foragers coming home, a storyteller with listeners, a lookout up a
   treehouse, a carver, the weaver at her loom); the inn's hollow as a room to walk into, with voices and a lute;
   the village changes with the story (the thorn-scarred trees green again when the Thorn Heart is torn out,

@@ -3,11 +3,11 @@ id: 088
 title: Keepsfoot lived in
 realm: castle
 area: people
-status: todo
+status: in-progress
 priority: high
 created: 2026-10-02
 done:
-owner:
+owner: an agent (its own copy)
 depends: [085]
 links: [../plans/realms-1-2-revisit.md]
 ---

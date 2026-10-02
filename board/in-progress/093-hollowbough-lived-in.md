@@ -3,11 +3,11 @@ id: 093
 title: Hollowbough lived in
 realm: forest
 area: people
-status: todo
+status: in-progress
 priority: high
 created: 2026-10-02
 done:
-owner:
+owner: an agent (its own copy)
 depends: [092]
 links: [../plans/realms-1-2-revisit.md]
 ---
