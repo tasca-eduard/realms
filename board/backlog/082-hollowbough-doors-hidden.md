@@ -9,7 +9,7 @@ created: 2026-10-02
 done:
 owner:
 depends: []
-links: [../done/067-ash-door-under-inn-tree-crown.md, ../todo/081-realms-1-2-as-beautiful-as-realm-3.md]
+links: [../done/067-ash-door-under-inn-tree-crown.md, ../in-progress/081-realms-1-2-as-beautiful-as-realm-3.md]
 ---
 
 # 082 Four Hollowbough doors hidden by crowns
@@ -23,7 +23,7 @@ crown (along 16 m, across 0.5); the others not confirmed.
 ## Why
 
 Homes and the people at their doors are meant to be seen from the camera (group 21's rule); part of making realm 2
-as good to look at as realm 3 ([081](../todo/081-realms-1-2-as-beautiful-as-realm-3.md)).
+as good to look at as realm 3 ([081](../in-progress/081-realms-1-2-as-beautiful-as-realm-3.md)).
 
 ## Checks
 

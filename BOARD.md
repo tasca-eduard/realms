@@ -33,11 +33,11 @@ _Written by `node tools/board.mjs index` on 2026-10-02; the folders are always t
 
 **In progress**
 
-- (none)
+- [081 Realms 1 and 2 made as beautiful and interesting as realm 3](board/in-progress/081-realms-1-2-as-beautiful-as-realm-3.md)
 
 **Todo (next)**
 
-- [081 Realms 1 and 2 made as beautiful and interesting as realm 3](board/todo/081-realms-1-2-as-beautiful-as-realm-3.md)
+- (none)
 
 **Blocked**
 
