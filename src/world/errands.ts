@@ -160,7 +160,7 @@ function people(): NpcDef[] {
     { id: 'pike', look: 'reeflad2', name: 'Pike the Diver Lad', x: 47.4, z: 65.6, lines: [
       'You dive in THAT? In a goblin\'s suit? Bet you cannot beat my time.',
       'The race is off Gull Rock, past the wreck: glowing rings, on the trench\'s lip west of the rock. Ride the current over the abyss, up the column of bubbles at the trench\'s end, and back on the current to the rock.',
-      'Swim through the first ring and the clock starts. Sixteen breaths, that is my time. Beat it and my winnings are yours.',
+      'Swim through the first ring and the clock starts. Seven breaths, that is my time. Beat it and my winnings are yours.',
     ], after: ['You cheated. I do not know how, but you cheated.', 'Again? The rings are still lit. Go on, then.'] },
     // Merrow on the green's south-west, watching the sea for her husband; Cockle beside her once he's home.
     { id: 'merrow', look: 'reefwife2', name: 'Merrow the Diver\'s Wife', x: WINKLE.x, z: WINKLE.z, face: 1, pose: 'sit', heading: Math.PI / 2, lines: [

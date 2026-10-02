@@ -14,8 +14,8 @@ import { Model } from './models';
 // strand, the lighthouse, the wreck's rock and the village, landing on posts, rocks and roofs and taking off
 // when the knight comes near; seals basking on the skerries, sliding into the water when he comes at them and
 // hauling out again once he's gone; crabs scuttling on the beaches; surf lapping along every shore and breaking
-// over the sandbar, spray against the cliffs and the rocks; fish leaping; fishermen's boats out on the water,
-// a lantern on each, a fisherman rowing and casting; driftwood and floats bobbing on the swell; moths over the
+// over the sandbar, spray against the cliffs and the rocks; fish leaping; once the lamp burns, fishermen's boats
+// out, a lantern on each, a fisherman rowing and casting; driftwood and floats bobbing on the swell; moths over the
 // dune grass; mist over the water at the edges. Where it all sits is src/world/shorelife.ts; the realm's story
 // (story/aqua.ts) applies it and ticks it. Cheap: only what's near the camera moves.
 // ---------------------------------------------------------------------------
@@ -26,7 +26,7 @@ const NEAR = 44;
 const C = {
   gull: '#e8e8e2', gullGrey: '#9aa2ac', gullTip: '#26262c', beak: '#e0b040', beakSpot: '#c03a2a', gullLeg: '#d89a50',
   seal: '#9a9284', sealDark: '#625a52', sealBelly: '#c8bca8',
-  crab: '#c4502e', crabTop: '#e07a42', crabLeg: '#a4402a',
+  crab: '#cdb48a', crabTop: '#e6d6b2', crabLeg: '#a8936c',
   hull: '#5a4632', hullDark: '#3e2e22', thwart: '#7a6048', oilskin: '#c8a03a', oilskinDark: '#9a7a2a', skin: '#c89a78', beard: '#a8a49c', rod: '#4a3a2a',
   fish: '#b8c8cc', fishBack: '#4a6478', fishFin: '#7a8a94',
   drift: '#948a78', driftDark: '#6e6556', cork: '#a87c48', rope: '#8a7a5a', barrel: '#6a4a2e', hoop: '#3a3a40',
@@ -171,7 +171,8 @@ function makeSeal(): Model {
   }, 1);
 }
 
-/** A shore crab: a broad orange-red shell, eyes on stalks, two claws held up, legs splayed. It walks sideways. */
+/** A shore crab, a ghost crab: small, a broad pale sand-tan shell, dark eyes on stalks, two claws held up, legs
+ *  splayed (nothing like the sea's big red-orange crab foe with its armoured claw). It walks sideways. */
 function makeCrab(): Model {
   const r = new Rig({ shadow: 0.3 });
   r.joint('body', 'root', 0, 0.08, 0);
@@ -407,7 +408,7 @@ class Crab {
     this.x = home.x + (Math.random() - 0.5) * 1.5;
     this.z = home.z + (Math.random() - 0.5) * 1.5;
     this.y = g.grid.groundAt(this.x, this.z);
-    this.model.rig.scale = 1.35;
+    this.model.rig.scale = 1;
     this.model.rig.addTo(g.scene);
     this.model.rig.setCastShadow(false);
   }
@@ -434,6 +435,8 @@ class Boat {
   t = 0;
   /** How long it rows before it stops to fish. */
   go = 15 + Math.random() * 15;
+  /** Out fishing: only once the lamp burns and the fleet that waited for it is home (see putOut). */
+  out = false;
   light;
   line: THREE.Line;
   float: THREE.Mesh;
@@ -626,6 +629,10 @@ export class ShoreLife {
       const p = b.at(b.a);
       b.x = p.x;
       b.z = p.z;
+      // The lamp lit before (a reload, a journey): the fleet's home and they're out fishing; else none yet.
+      b.out = !!g.save.data.flags.lampLit;
+      b.light.on = b.out;
+      b.light.level = b.out ? 1 : 0;
     }
     this.flotsam(g, solid, glow);
     for (let k = 0; k < 2; k++) {
@@ -666,7 +673,7 @@ export class ShoreLife {
     }
     for (const b of this.boats) {
       b.model.animate(0, b.x, b.z, 'row', 0, 0);
-      b.model.rig.place(g.cam, b.x, this.sea - 0.18, b.z, 0, true);
+      b.model.rig.place(g.cam, b.x, this.sea - 0.18, b.z, 0, b.out);
       b.model.rig.shadow.visible = false;
     }
   }
@@ -1175,7 +1182,20 @@ export class ShoreLife {
     rig.place(g.cam, c.x, c.y, c.z, c.y, true);
   }
 
+  /** No fishers on the night sea while the lighthouse is dark: old Wick's three boats wait out past the reef for
+   *  its light (story/lighthouse.ts), and these stay ashore. Once it burns and the fleet's home (Ness, its fisher,
+   *  up from the jetty), they put out to fish, each where the knight isn't looking. */
+  private putOut(b: Boat, g: Game, isNear: boolean) {
+    if (isNear || !g.save.data.flags.lampLit || !g.npc('ness')?.visible) return false;
+    b.out = true;
+    b.model.rig.root.visible = true;
+    b.light.on = true;
+    b.light.level = 1;
+    return true;
+  }
+
   private boat(b: Boat, dt: number, g: Game, isNear: boolean) {
+    if (!b.out && !this.putOut(b, g, isNear)) return;
     const r = b.round, rig = b.model.rig;
     b.t += dt;
     // Rowing round: easing to a stop to fish, casting, waiting on a bite, reeling in, rowing on.

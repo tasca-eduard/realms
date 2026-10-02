@@ -170,7 +170,7 @@ const AQUA: QuestDef[] = [
     id: 'currentrace',
     title: 'The Current Race',
     steps: [
-      "Pike the diver lad bets you can't beat his time: through the glowing rings off Gull Rock, from the trench's lip west of the rock, along the current over the abyss, up the column of bubbles, back to the rock. Sixteen breaths.",
+      "Pike the diver lad bets you can't beat his time: through the glowing rings off Gull Rock, from the trench's lip west of the rock, along the current over the abyss, up the column of bubbles, back to the rock. Seven breaths.",
       "You beat Pike's time, and took his winnings.",
     ],
   },

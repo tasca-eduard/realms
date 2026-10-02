@@ -30,6 +30,10 @@ const SALVAGER = 'Brassbelly the Salvager';
  * tidelord.ts). The reef's people, the pearl-diver's son and the coral shrine (story/reef.ts), the village's night
  * (story/reeflife.ts), its errands (story/errands.ts).
  */
+/** Where the way to the palace goes: the drowned kingdom (and its places with names of their own), the trench, the
+ *  palace's floor. Down there without having rung the bell, the quest says to ring it. */
+const KINGDOM_WAY = ['The Drowned Kingdom', 'The Drowned Plaza', 'The Trench', 'The Drowned Palace', 'The Sunken Temple', 'The Royal Treasury', 'The Royal Library', "The Kings' Way", 'The Market Square', "The Queen's Gardens", 'The Old Harbour'];
+
 export class AquaStory implements RealmStory {
   title = 'III &middot; THE SUNKEN REEF';
   victoryTitle = 'The Tide Turns';
@@ -123,7 +127,7 @@ export class AquaStory implements RealmStory {
     this.errands.onRegion(g, r);
     // Down in the drowned kingdom, or over the trench: the palace and its bell. (In the suit: swum over on the
     // serpent's back before it, the quest mustn't skip "Go down into the deep".)
-    if (g.save.data.flags.costume && !g.save.data.flags.bell && ['The Drowned Kingdom', 'The Drowned Plaza', 'The Trench', 'The Drowned Palace'].includes(r.name)) g.quest('main', step(g, 'Ring the sunken bell'));
+    if (g.save.data.flags.costume && !g.save.data.flags.bell && KINGDOM_WAY.includes(r.name)) g.quest('main', step(g, 'Ring the sunken bell'));
   }
   areaSub(g: Game, r: RegionDef) {
     // The way on to realm 4: only the serpent swims it, and not yet.

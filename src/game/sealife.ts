@@ -488,7 +488,8 @@ const KEEP: { x: number; z: number; r: number }[] = [
 ];
 
 const OCTO = { camo: ['#7a7a66', '#6a7a6c', '#8a7a5a', '#5a6458'], show: ['#d8482a', '#ec8a2a', '#a8489c', '#e8d4b0', '#c83a5c'] };
-const CRABS = ['#f0b040', '#4a80e0', '#80b040', '#a060c8', '#40b0b0', '#f08a60'];
+/** The shallows' small crabs: blue-violet, all of them (the beach's are pale sand-tan, the crab foe big and red-orange). */
+const CRABS = ['#6a7cf0', '#8a6ae8', '#5a8ef0', '#7a64dc', '#9a80f0', '#6670e0'];
 
 /** Ink an octopus leaves behind it. */
 const INK: PSpec = { color: [0.02, 0.02, 0.05], color2: [0.04, 0.04, 0.08], size: 4, size2: 10, life: 2.4, drag: 2.5, wobble: 0.3, alpha: 0.75, soft: true, fadeIn: 0.05 };

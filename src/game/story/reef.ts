@@ -110,6 +110,7 @@ export class ReefFolk {
       shale: 'Bring that edge back when it dulls. It will not, but bring it.',
       maren: 'Kip wants to dive the drowned kingdom now. I said yes. I must be mad.',
       kiphome: 'The glowing thing in the trench went out. I checked.',
+      kip: 'The sea is clear all the way home! I can see Mum from here. Nearly.',
       tally: 'The tide says: go home, knight. It is going home too.',
       shrimp: 'I held my breath the whole fight! Nearly.',
       ling: 'Nets to mend, kelp to dry. Some things do not change, and good.',

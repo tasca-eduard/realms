@@ -1044,6 +1044,8 @@ export class Game {
     return false;
   }
 
+  /** What's dazing the knight this moment, if it's a heavy blow the tip can name (else a charge, say). */
+  private dazedBy: string | undefined;
   /** The first time each effect lands, say how to deal with it. */
   effectTip(kind: string) {
     if (!this.firstTime('fx-' + kind)) return;
@@ -1054,7 +1056,7 @@ export class Game {
       burn: `<b>Burning</b>: ${roll} to roll, or step into water, before it costs a heart.`,
       maim: `<b>Maimed</b>: you move slower for a while. Drink a flask (${drink}) to cure it, even at full health.`,
       poison: `<b>Poisoned</b>: stamina comes back at half speed. Drink a flask (${drink}) to cure it, even at full health.`,
-      daze: `<b>Dazed</b>: the brute's maul and charges knock the wits out of you. A parry turns them back.`,
+      daze: `<b>Dazed</b>: ${this.dazedBy ?? 'a heavy blow or a charge'} knocks the wits out of you. Your shield stops such blows; a parry turns them back.`,
       snare: `<b>Snared</b>: held fast for a moment. You can still swing and block; a flask (${drink}) frees you.`,
     };
     this.ui.hint(tips[kind] ?? '', 7);
@@ -1119,7 +1121,12 @@ export class Game {
   bruteHits(e: Enemy) {
     const spec = e.type === 'salvager' ? FOES.salvager : FOES.brute;
     const res = this.enemyHitsPlayer(e, 1, { kb: 9, guardCost: spec.guardCost });
-    if (res === 'hit' && this.player.alive && Math.random() < spec.dazeChance) this.player.afflict('daze', this);
+    if (res === 'hit' && this.player.alive && Math.random() < spec.dazeChance) {
+      // (The first daze's tip names what did it.)
+      this.dazedBy = e.type === 'salvager' ? "Brassbelly's anchor" : "the brute's maul";
+      this.player.afflict('daze', this);
+      this.dazedBy = undefined;
+    }
     if (res === 'blocked') this.pop(this.player, 'heavy blow!', '#c0c0cc');
     return res;
   }
@@ -1250,10 +1257,12 @@ export class Game {
     this.fx.burst(P.puff, e.x, e.y + 0.5, e.z, 8, 2);
     if (!e.isBoss) {
       // The trial's foes carry nothing (the stones pay once, when it's won), so dying and
-      // retrying can't farm them. A thief bat's loot comes back as it was, never multiplied.
-      const n = (e.group === 'trial' ? 0 : e.coinDrop * this.comboMult) + e.loot;
+      // retrying can't farm them. A thief bat's loot comes back as it was, never multiplied; nor
+      // a mini-boss's purse (the salvager's, Old Inkarm's: a long fight is a long combo).
+      const mult = e.type === 'salvager' || e.type === 'inkarm' ? 1 : this.comboMult;
+      const n = (e.group === 'trial' ? 0 : e.coinDrop * mult) + e.loot;
       if (n) this.combat.coins(e.x, e.y + 0.5, e.z, n);
-      if (this.comboMult > 1 && e.group !== 'trial') this.pop(e, `x${this.comboMult} coins`, '#feae34');
+      if (mult > 1 && e.group !== 'trial') this.pop(e, `x${mult} coins`, '#feae34');
       if (Math.random() < 0.12 && this.player.hp < this.player.maxHp) this.combat.spawnPickup('heart', e.x, e.y + 0.5, e.z);
       if (e.elite) {
         this.combat.powerOrb(e.x, e.y + 0.8, e.z);

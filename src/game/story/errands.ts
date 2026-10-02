@@ -42,8 +42,9 @@ const SAND: PSpec = { color: [0.55, 0.5, 0.4], color2: [0.35, 0.32, 0.26], size:
 const SHRIMP_MOTE: PSpec = { color: [2.6, 1.0, 0.8], color2: [1.2, 0.3, 0.3], size: 1, life: 1.4, gravity: -0.5, wobble: 0.3 };
 /** The race's rings: lit sea-green, the next one bright, those passed gold. */
 const RING = { idle: [0.25, 0.8, 0.9], next: [1.0, 2.6, 2.8], done: [2.4, 1.7, 0.5] } as const;
-/** How long Pike's best time is (the knight must beat it), in breaths (seconds). */
-const RACE_TIME = 16;
+/** How long Pike's best time is (the knight must beat it), in breaths (seconds). A clean ride takes about five
+ *  (a bot steering at each ring 4.7 s, with a player's lag 5.0 s); slip off the current's bend and it's lost. */
+const RACE_TIME = 7;
 /** How long Cockle's bubble lasts once he sets off (it holds while he keeps still), and when the knight shares air. */
 const BUBBLE = 35, SHARED = 25, SHARE_COST = 15;
 
@@ -701,6 +702,8 @@ export class ReefErrands {
       pike: 'Race you to the trench again. In daylight I will win.',
       merrow: 'He wants to dive the palace now. Over my body, I said. He said that was the idea.',
       cocklehome: 'I can see the bottom from the jetty. Forty years and I never could.',
+      // (Still on his ledge when the sea is freed: talking to him still sets him following.)
+      cockle: 'The water has gone clear as glass. I can see the way up from here, but not on the breath I have left. Lead on, knight.',
     };
     return L[id];
   }

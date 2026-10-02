@@ -102,7 +102,7 @@ export class SeaCaves {
           }
           g.ui.say(n.name, [
             'Thirty coins. A fair price for the only thing I own.',
-            'Below the reef south of the whale\'s isle, the sea floor drops into the trench. In the trench\'s wall there is a mouth that breathes light.',
+            'Below the reef south-east of the whale\'s isle, the sea floor drops into the trench. In the trench\'s wall there is a mouth that breathes light.',
             'A diver went in there before my ship ever sailed, and left something he could not carry up. I was younger when I found it. Now I cannot hold my breath past a sneeze.',
           ], done);
         },
