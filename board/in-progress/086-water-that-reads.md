@@ -3,11 +3,11 @@ id: 086
 title: Water that reads (realms 1 and 2)
 realm: castle, forest
 area: look
-status: todo
+status: in-progress
 priority: high
 created: 2026-10-02
 done:
-owner:
+owner: an agent (its own copy)
 depends: []
 links: [../plans/realms-1-2-revisit.md]
 ---

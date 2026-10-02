@@ -64,7 +64,7 @@ fungi and the Mushroom Dell, the Drowned Shrine, the rope bridges, the Warden's 
 
 Shared groundwork (one agent each, side by side):
 
-- [ ] **85 Light, mist and dawn per zone** ([085](../todo/085-light-mist-dawn-per-zone.md)): a light per zone,
+- [ ] **85 Light, mist and dawn per zone** ([085](../in-progress/085-light-mist-dawn-per-zone.md)): a light per zone,
   blended at the borders (realm 1: Keepsfoot warm amber, Blackpine green-black, the barrows cold violet with
   ghost-cyan, the marsh sallow, the fields silver-blue, the keep indigo against torch orange, the hall ember-red;
   realm 2: mist by zone, thin and low over open ground, water and the village, thick only in the Deep Wood, the
@@ -72,11 +72,11 @@ Shared groundwork (one agent each, side by side):
   green meadows, silver water; realm 2 gold through the trunks, mist burning off); moon-blue as realm 1's
   signature glow (moonpetals, moon-blue banners with a gold crescent, as the prototype had). `tools/look.mjs` for
   the measures.
-- [ ] **86 Water that reads** ([086](../todo/086-water-that-reads.md)): a lapping edge on every bank and shores that
+- [ ] **86 Water that reads** ([086](../in-progress/086-water-that-reads.md)): a lapping edge on every bank and shores that
   aren't square steps; flow on streams and rivers (ripples and foam drifting downstream, white water at fords,
   falls and bridges); clear shallows over a visible bed, dark deeps as a mirror; a moon path and lamps' light laid
   on the water. Realm 3's sea unchanged.
-- [ ] **87 Life in the air, the water and the fields** ([087](../todo/087-life-air-water-fields.md)): the reef's
+- [ ] **87 Life in the air, the water and the fields** ([087](../in-progress/087-life-air-water-fields.md)): the reef's
   instanced flocks and schools made general; realm 1: crows round the keep's towers, harmless bats over the
   barrows, swans and ducks on Mirrormere and the moat, a heron at the ford, frogs, fish rising, sheep, cows,
   geese, moths at every lamp, glow-worms in Blackpine, pale chimney smoke; realm 2: rooks over Rookfall, a heron

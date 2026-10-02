@@ -3,11 +3,11 @@ id: 087
 title: Life in the air, the water and the fields (realms 1 and 2)
 realm: castle, forest
 area: life
-status: todo
+status: in-progress
 priority: high
 created: 2026-10-02
 done:
-owner:
+owner: an agent (its own copy)
 depends: []
 links: [../plans/realms-1-2-revisit.md]
 ---

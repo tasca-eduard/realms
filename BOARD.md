@@ -33,11 +33,22 @@ _Written by `node tools/board.mjs index` on 2026-10-02; the folders are always t
 
 **In progress**
 
-- [081 Realms 1 and 2 made as beautiful and interesting as realm 3](board/in-progress/081-realms-1-2-as-beautiful-as-realm-3.md)
+- [081 Realms 1 and 2 made as beautiful and interesting as realm 3](board/in-progress/081-realms-1-2-as-beautiful-as-realm-3.md): two agents (findings for realm 1 and realm 2), then the lead (the plan)
+- [085 Light, mist and dawn per zone (realms 1 and 2)](board/in-progress/085-light-mist-dawn-per-zone.md)
+- [086 Water that reads (realms 1 and 2)](board/in-progress/086-water-that-reads.md)
+- [087 Life in the air, the water and the fields (realms 1 and 2)](board/in-progress/087-life-air-water-fields.md)
 
 **Todo (next)**
 
-- (none)
+- [088 Keepsfoot lived in](board/todo/088-keepsfoot-lived-in.md)
+- [089 Realm 1's set pieces](board/todo/089-realm-1-set-pieces.md)
+- [090 Realm 1's errands and finds](board/todo/090-realm-1-errands-finds.md)
+- [091 Realm 1's sound](board/todo/091-realm-1-sound.md)
+- [092 Whisperwood's trees and colours](board/todo/092-whisperwood-trees-colours.md)
+- [093 Hollowbough lived in](board/todo/093-hollowbough-lived-in.md)
+- [094 Whisperwood's set pieces](board/todo/094-whisperwood-set-pieces.md)
+- [095 Whisperwood's errands, finds and sound](board/todo/095-whisperwood-errands-finds-sound.md)
+- [096 Realms 1 and 2: review and balance](board/todo/096-realms-1-2-review-balance.md)
 
 **Blocked**
 
