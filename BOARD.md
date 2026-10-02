@@ -33,9 +33,6 @@ _Written by `node tools/board.mjs index` on 2026-10-02; the folders are always t
 
 **In progress**
 
-- [067 Ash's door under the inn tree's crown](board/in-progress/067-ash-door-under-inn-tree-crown.md): an agent (realm-builder, its own copy)
-- [068 The Ring of Oaks partly hidden by Ash's home tree](board/in-progress/068-ring-of-oaks-partly-hidden.md): an agent (realm-builder, its own copy)
-- [069 The Ash family's home tree covers Old Nettle's glade](board/in-progress/069-ash-home-tree-covers-nettles-glade.md): an agent (realm-builder, its own copy)
 - [078 The costumedrop check never reloads the page](board/in-progress/078-costumedrop-never-reloads.md): an agent (balancer, its own copy)
 - [079 Brassbelly sometimes costs the bot six hearts](board/in-progress/079-brassbelly-sometimes-six-hearts.md): an agent (balancer, its own copy)
 
@@ -49,6 +46,7 @@ _Written by `node tools/board.mjs index` on 2026-10-02; the folders are always t
 
 **Next in the backlog**
 
+- [082 Four Hollowbough doors hidden by crowns](board/backlog/082-hollowbough-doors-hidden.md) (medium)
 - [037 Groundwork (realm 4)](board/backlog/037-dunes-groundwork.md) (first group of plan realm-4-draft, waiting)
 
 **Done lately**

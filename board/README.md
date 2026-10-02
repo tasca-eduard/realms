@@ -153,7 +153,7 @@ Everything was moved, word for word; only links were added (and group 36 ticked 
 | Old section | Now |
 |---|---|
 | The header | This file |
-| In progress (group 36) | [036](done/036-reef-review-and-balance.md) (its two rounds, the decisions, and the first round's "To decide" and "Small things" from the committed board), [064](done/064-suite-on-the-merged-whole.md) (the full suite), [067](in-progress/067-ash-door-under-inn-tree-crown.md) and [068](in-progress/068-ring-of-oaks-partly-hidden.md) (left as known), [069](in-progress/069-ash-home-tree-covers-nettles-glade.md) (the open choice from group 21) |
+| In progress (group 36) | [036](done/036-reef-review-and-balance.md) (its two rounds, the decisions, and the first round's "To decide" and "Small things" from the committed board), [064](done/064-suite-on-the-merged-whole.md) (the full suite), [067](done/067-ash-door-under-inn-tree-crown.md) and [068](done/068-ring-of-oaks-partly-hidden.md) (left as known), [069](done/069-ash-home-tree-covers-nettles-glade.md) (the open choice from group 21) |
 | Realm 4 plan (draft) | [plans/realm-4-draft.md](plans/realm-4-draft.md); groups 37-46 in `backlog/` |
 | Realm 3 plan | [plans/realm-3.md](plans/realm-3.md); groups 28-36 and the content round in `done/` |
 | Follow-up plan | [plans/follow-up.md](plans/follow-up.md); groups 20-27 in `done/` |

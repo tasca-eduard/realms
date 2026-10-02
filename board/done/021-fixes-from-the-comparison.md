@@ -10,7 +10,7 @@ created: 2026-10-01
 done: 2026-10-01
 owner: lead
 depends: []
-links: [../plans/follow-up.md, ../in-progress/069-ash-home-tree-covers-nettles-glade.md]
+links: [../plans/follow-up.md, ../done/069-ash-home-tree-covers-nettles-glade.md]
 ---
 
 # 021 Fixes from the comparison

@@ -10,7 +10,7 @@ created: 2026-10-01
 done: 2026-10-02
 owner: seven agents' copies, then a second round (merged by the lead)
 depends: []
-links: [../plans/realm-3.md, ../done/064-suite-on-the-merged-whole.md, ../in-progress/067-ash-door-under-inn-tree-crown.md, ../in-progress/068-ring-of-oaks-partly-hidden.md, ../../docs/design/realm-scores.md]
+links: [../plans/realm-3.md, ../done/064-suite-on-the-merged-whole.md, ../done/067-ash-door-under-inn-tree-crown.md, ../done/068-ring-of-oaks-partly-hidden.md, ../../docs/design/realm-scores.md]
 ---
 
 # 036 Review and balance (realm 3)
@@ -79,5 +79,5 @@ _Moved from BOARD.md on 2026-10-02; the record below is the board's text, word f
 ## Left over
 
 - The full suite on the merged whole: [064](../done/064-suite-on-the-merged-whole.md).
-- Left as known: [067 Ash's door under the inn tree's crown](../in-progress/067-ash-door-under-inn-tree-crown.md), [068 the Ring of Oaks partly hidden by Ash's home tree](../in-progress/068-ring-of-oaks-partly-hidden.md).
+- Left as known: [067 Ash's door under the inn tree's crown](../done/067-ash-door-under-inn-tree-crown.md), [068 the Ring of Oaks partly hidden by Ash's home tree](../done/068-ring-of-oaks-partly-hidden.md).
 - Committing it all is the user's: [065](../done/065-commit-the-merged-work.md).
