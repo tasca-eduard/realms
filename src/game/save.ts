@@ -36,6 +36,8 @@ export interface Place {
   fow: string;
   /** Story moments: the drawbridge is down, the captive is free, the tyrant fell... */
   flags: Record<string, boolean>;
+  /** Where things were left, by name (the Tide Serpent: where it waits for the knight). */
+  spots: Record<string, [number, number]>;
 }
 
 /** The working view the game reads and changes: the carried part plus the current realm. */
@@ -52,10 +54,10 @@ interface Stored extends Carried {
 
 const KEY = 'realms-save';
 const CARRIED: (keyof Carried)[] = ['coins', 'flasksMax', 'sword', 'relics', 'mounts', 'deaths', 'playTime', 'kills', 'kit'];
-const PLACE: (keyof Place)[] = ['checkpoint', 'chests', 'lit', 'read', 'walls', 'shards', 'quests', 'killed', 'fow', 'flags'];
+const PLACE: (keyof Place)[] = ['checkpoint', 'chests', 'lit', 'read', 'walls', 'shards', 'quests', 'killed', 'fow', 'flags', 'spots'];
 
 const freshCarried = (): Carried => ({ coins: 0, flasksMax: 3, sword: 0, relics: [], mounts: [], deaths: 0, playTime: 0, kills: 0, kit: {} });
-const freshPlace = (): Place => ({ checkpoint: '', chests: [], lit: [], read: [], walls: [], shards: [], quests: {}, killed: [], fow: '', flags: {} });
+const freshPlace = (): Place => ({ checkpoint: '', chests: [], lit: [], read: [], walls: [], shards: [], quests: {}, killed: [], fow: '', flags: {}, spots: {} });
 
 /** A version-1 save (realm 1 only, everything at the top) as version 2. Nothing is dropped. */
 export function migrateV1(d: Record<string, unknown>): Stored {
@@ -89,6 +91,7 @@ export function migrateV1(d: Record<string, unknown>): Stored {
         killed,
         fow: typeof d.fow === 'string' ? d.fow : '',
         flags,
+        spots: {},
       },
     },
   };

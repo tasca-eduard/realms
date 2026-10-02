@@ -19,7 +19,7 @@ Add these to the URL while the dev server runs:
   (`__reach(false)` checks before the story opens anything, such as realm 1's drawbridge;
   `__reach(true, 2.75)` on the Thornstag; `__reach(true, undefined, true)` with the Tide Serpent).
 
-**Automated checks.** `PORT=<port> npm test` (all 90) or `PORT=<port> npm test -- talk pad` (only those) against a
+**Automated checks.** `PORT=<port> npm test` (all 91) or `PORT=<port> npm test -- talk pad` (only those) against a
 running server; what each check covers is in [the checks](checks.md), how to run and read them in
 [how the game is checked](testing.md).
 

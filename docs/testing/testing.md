@@ -4,7 +4,7 @@ There are no unit tests. Every check drives the real game in headless Microsoft 
 moves the knight, presses keys, reads the game's state and leaves a report. You read each report against the check's
 description, which is its pass condition. Screenshots back up anything about looks.
 
-- [The checks](checks.md): all 90 checks in `npm test`, by realm and area, one line each.
+- [The checks](checks.md): all 91 checks in `npm test`, by realm and area, one line each.
 - [Testing shortcuts](shortcuts.md): URL flags (`?play`, `&at=`, `&god`, `&realm=`...), debug keys, `__reach()` in
   the console, one-line screenshot commands.
 - [The docs index](../README.md); the code map in [architecture](../code/architecture.md); the user's
@@ -81,7 +81,7 @@ Playwright waits for it: the whole block runs before `waitMs` starts. A script t
 
 ### tools/test-all.mjs: the suite
 
-A list of 90 checks; for each, it runs `tools/shot.mjs` with the check's query, wait, script, size and variables,
+A list of 91 checks; for each, it runs `tools/shot.mjs` with the check's query, wait, script, size and variables,
 saves `shots/test-<name>.png`, and prints:
 
 ```
@@ -97,7 +97,7 @@ hand (the same query, wait, size, script and variables as its entry) to see them
 
 Each entry is `[name, query, waitMs, script, description, env?, size?]`; `env` holds `MOBILE` or `AFTER` and
 `AFTER_WAIT`. The suite takes the names to run as arguments: `PORT=5175 node tools/test-all.mjs bats economy` (or
-`PORT=5175 npm test -- bats economy`); with none it runs all 90.
+`PORT=5175 npm test -- bats economy`); with none it runs all 91.
 
 **How long.** The waits add up to about 31 minutes. Each check also spends 3 to 4 s starting Edge and building
 the realm, and awaited scripts add their own time: a full run is about 40 to 45 minutes on a quiet machine, longer
@@ -298,12 +298,12 @@ The full suite takes about 40 to 45 minutes. Never sit in a wait loop for it, an
 2. Keep doing read-only work. Every few minutes post a one-line status, from the log:
 
    ```
-   grep -c '^[^ ]' shots/suite.txt                          # checks started, of 90
+   grep -c '^[^ ]' shots/suite.txt                          # checks started, of 91
    grep -n -E 'FAILED|pageerror|script error' shots/suite.txt   # anything gone wrong so far
    tail -n 2 shots/suite.txt                                # the check running now
    ```
 
-   e.g. "Suite: 41 of 90, no errors so far, now on `wardenfair`."
+   e.g. "Suite: 41 of 91, no errors so far, now on `wardenfair`."
 3. **Don't edit `src/` while it runs** (nor `tests/` or `tools/`): Vite reloads the page when a source file changes,
    in the middle of whatever check is running, and spoils it; a changed test changes what later checks do. Work in a
    copy if you must change code (see [parallel work](../workflow/parallel-work.md)).

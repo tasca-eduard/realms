@@ -1,6 +1,6 @@
 # The checks
 
-All 90 checks in `tools/test-all.mjs`, by realm and area, one line each. The line here is a summary;
+All 91 checks in `tools/test-all.mjs`, by realm and area, one line each. The line here is a summary;
 the check's full description in `tools/test-all.mjs` (printed above its report when it runs) is its pass condition.
 How to run them and read their reports: [how the game is checked](testing.md). URL flags: [shortcuts](shortcuts.md).
 
@@ -152,7 +152,7 @@ How to run them and read their reports: [how the game is checked](testing.md). U
 | `seastair` | `seastair.js` | `shot&play&realm=forest` | 1.5 | The Sea Stair's rockfall needs the Thornstag's second leap both ways (a reach check). |
 | `stairleap` ↻ | `seastair1.js`, `seastair2.js`, `seastair3.js` | `shot&play&realm=forest` | 14 | The Sea Stair played: on foot he cannot pass; on the stag over to the Reef and back. |
 
-## Realm 3, the Sunken Reef (`aqua`): 26 checks
+## Realm 3, the Sunken Reef (`aqua`): 27 checks
 
 ### The world
 
@@ -188,6 +188,7 @@ How to run them and read their reports: [how the game is checked](testing.md). U
 | `serpentswim` | `serpentswim.js` | `shot&play&realm=aqua&god` | 0.3 | Without the suit it keeps to the surface; with it, it dives, strokes up, and carries him up out of air. |
 | `serpentmoves` | `serpentmoves.js` | `shot&play&realm=aqua` | 0.3 | Bubble shot, whirlpool, bubble shell; thrown without the suit he is washed back. |
 | `serpentledge` | `serpentledge.js` | `shot&play&realm=aqua&god` | 0.3 | Places only the serpent reaches; no getting off in open water without the suit; the Dune Strait shut. |
+| `serpentspot` ↻ | `serpentspot1.js`, `serpentspot2.js` | `shot&play&realm=aqua` | 1.5 | Where the serpent waits is saved: left on open sea 30-40 m from its pen, after a reload it is still there. |
 
 ### Folk and the captive
 

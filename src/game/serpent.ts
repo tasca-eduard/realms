@@ -313,6 +313,11 @@ export class TideSerpent extends Mount {
     return 'Tide Serpent';
   }
 
+  /** Where it waits goes into the save: after a reload or a journey it is still there, not back by its old pen. */
+  private keepHome(g: Game) {
+    g.save.data.spots.serpent = [Math.round(this.home.x * 10) / 10, Math.round(this.home.z * 10) / 10];
+  }
+
   /** Where its belly lies when it floats at the surface. */
   private floatY(g: Game) {
     return (g.realm.sea?.surface ?? 0) - SWIM.float;
@@ -327,6 +332,7 @@ export class TideSerpent extends Mount {
     this.z = s.z;
     this.y = this.floatY(g);
     this.home = { ...s };
+    this.keepHome(g);
     this.state = 'idle';
     this.hp = this.maxHp;
     this.move = 'surface';
@@ -374,6 +380,7 @@ export class TideSerpent extends Mount {
       this.ridden = false;
       this.state = 'idle';
       this.home = { x: this.x, z: this.z };
+      this.keepHome(g);
     }
     this.t += dt;
     this.pitch *= Math.max(0, 1 - dt * 4);
@@ -415,6 +422,7 @@ export class TideSerpent extends Mount {
       default:
         if (this.comeTo && swimTo(this.comeTo, 3)) {
           this.home = { ...this.comeTo };
+          this.keepHome(g);
           this.comeTo = null;
         }
         // Left below the surface it settles onto the sea floor; at the surface it floats.
@@ -888,7 +896,9 @@ export class SerpentPen {
       g.grid.addCollider({ kind: 'c', x: sx, z: sz, r: 0.16, y0: y - 1, y1: y + 1.4 });
     }
     if (freed) {
-      this.addSerpent(g);
+      // (Waiting where the knight left it, if he rode it off.)
+      const s = this.addSerpent(g), at = g.save.data.spots.serpent;
+      if (at) s.arriveAt(at[0], at[1], g);
       return;
     }
     // The beast, thrashing; the net over it, floats round its edge; its lines out to the stakes.
