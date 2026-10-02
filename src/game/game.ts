@@ -15,6 +15,7 @@ import { TouchControls } from '../ui/touch';
 import { Grid, T } from '../world/grid';
 import { Builder, type Structure } from '../world/builder';
 import { buildTerrain, buildWater } from '../world/terrain';
+import { dressShores } from '../world/water';
 import { buildGrass } from '../world/grass';
 import type { BorderDef, RealmData, RealmId, RegionDef } from '../world/realm';
 import { ALERT_FRAME, type Assets } from './assets';
@@ -281,6 +282,8 @@ export class Game {
     this.def.paintOutskirts(this.grid, this.realm.w, this.realm.d);
     this.realm.afterOutskirts(this.grid, builder);
     this.def.decorateOutskirts(builder, this.grid, this.realm.w, this.realm.d, mulberry32(99));
+    // Reeds and stones along the rivers' and lakes' shores (a sea's are the shore life's).
+    if (!this.realm.sea) dressShores(builder, this.grid, this.realm.flows);
     this.fow = new FogOfWar(this.realm.w, this.realm.d, PAD);
     // Explore mode's mist: the whole realm clear, the land beyond its edges misty.
     this.exploreFow = new FogOfWar(this.realm.w, this.realm.d, PAD);
@@ -290,8 +293,8 @@ export class Game {
     builder.finish(this.scene);
     this.structures = builder.structures;
     const outside = (x: number, z: number) => x < 0 || z < 0 || x >= this.realm.w || z >= this.realm.d;
-    this.scene.add(buildTerrain(this.grid, WORLD.chunk, worldMaterial()));
-    this.scene.add(buildWater(this.grid, !!this.realm.sea));
+    this.scene.add(buildTerrain(this.grid, WORLD.chunk, worldMaterial(), !this.realm.sea));
+    this.scene.add(buildWater(this.grid, !!this.realm.sea, this.realm.flows));
     this.scene.add(buildGrass(this.grid, (x, z) => this.realm.grassDensity(x, z) * (MOBILE ? 0.5 : 1) * (outside(x, z) ? 0.6 : 1), (x, z) => this.realm.grassScale(x, z)));
     this.scene.add(this.lights.group, this.fx.group);
 

@@ -151,6 +151,9 @@ export interface RealmData {
     /** Columns of bubbles that lift a diver from the floor up to `top` (and give him air on the way). */
     lifts?: { x: number; z: number; r: number; top: number }[];
   };
+  /** Its streams and rivers: each a line in the way the water runs, and how fast (the water's ripples and
+   *  foam drift along them; elsewhere it lies still). */
+  flows?: { pts: Pt[]; speed: number }[];
   /** The realm's relic trial. */
   trial?: TrialDef;
   grid: Grid;

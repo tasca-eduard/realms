@@ -3,6 +3,7 @@ import { Geo } from '../engine/geo';
 import { K, shared } from '../engine/materials';
 import { fbm, hash2, hexToLinear, valueNoise } from '../engine/util';
 import { DIRS, Grid, NONE, S, T } from './grid';
+import { buildInlandWater, shoreBank, type Flow } from './water';
 
 type V3 = [number, number, number];
 
@@ -54,7 +55,8 @@ function tint(base: [number, number, number], x: number, z: number, type: number
   return [r, g, b];
 }
 
-export function buildTerrain(grid: Grid, chunk: number, material: THREE.Material) {
+/** banks: low shores shelve into the water (rivers and lakes; a sea's shores keep their steps, see water.ts). */
+export function buildTerrain(grid: Grid, chunk: number, material: THREE.Material, banks = false) {
   const group = new THREE.Group();
   group.name = 'terrain';
   const zEnd = grid.oz + grid.d, xEnd = grid.ox + grid.w;
@@ -62,7 +64,10 @@ export function buildTerrain(grid: Grid, chunk: number, material: THREE.Material
     for (let cx0 = grid.ox; cx0 < xEnd; cx0 += chunk) {
       const g = new Geo();
       for (let z = cz0; z < Math.min(zEnd, cz0 + chunk); z++)
-        for (let x = cx0; x < Math.min(xEnd, cx0 + chunk); x++) cell(grid, g, x, z);
+        for (let x = cx0; x < Math.min(xEnd, cx0 + chunk); x++) {
+          cell(grid, g, x, z);
+          if (banks) shoreBank(grid, g, x, z);
+        }
       if (!g.count) continue;
       const mesh = new THREE.Mesh(g.build(), material);
       mesh.receiveShadow = true;
@@ -246,8 +251,10 @@ void main() {
 }
 `;
 
-/** The water's surfaces; clear (the Sunken Reef's sea), a thin bright skin over a sea floor that shows through. */
-export function buildWater(grid: Grid, clear = false) {
+/** The water's surfaces; clear (the Sunken Reef's sea), a thin bright skin over a sea floor that shows through.
+ *  Rivers, lakes and pools (no sea): water.ts's, its streams running along flows. */
+export function buildWater(grid: Grid, clear = false, flows?: Flow[]) {
+  if (!clear) return buildInlandWater(grid, flows);
   const pos: number[] = [];
   const depth: number[] = [];
   for (let z = grid.oz; z < grid.oz + grid.d; z++)

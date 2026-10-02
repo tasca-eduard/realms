@@ -6,7 +6,7 @@ import { Builder, GLOW, PAL, type Structure } from './builder';
 import { Grid, S, T, NONE } from './grid';
 import { Painter, insidePoly, distLine, sdPoly, type Pt } from './paint';
 import type { CritterDef } from '../game/critters';
-import { OUTSKIRT_ROAD } from './outskirts';
+import { OUTSKIRT_ROAD, RIVER as MIRROW } from './outskirts';
 import * as D from './details';
 import { bramble, greatTree, thicket } from './wood';
 import { MapKit, dressRealm, forest, wallTorch, waterPoints, type EnemySpawn, type NpcDef, type ObjDef, type RealmData, type RegionDef } from './realm';
@@ -1018,6 +1018,8 @@ export function buildRealm1(builder: Builder): RealmData {
     builder,
     start: { x: 105.5, z: 105 },
     horse: { x: 103.2, z: 107.2 },
+    // The stream runs down from the hills to the Mirrow, and the Mirrow round into Mirrormere.
+    flows: [{ pts: STREAM, speed: 0.9 }, { pts: MIRROW, speed: 0.55 }],
     // The Seven Stones: the last wave is a brute, a shaman, a goblin and an elite boar.
     trial: {
       x: 111.5,

@@ -1785,6 +1785,8 @@ export function buildRealm2(builder: Builder): RealmData {
     builder,
     start: { x: 111.5, z: 109.5 },
     horse: { x: 109.5, z: 110.5 },
+    // The Whisper runs east and over the fall down Rookfall's floor; the brook east into the Greywater, which runs south.
+    flows: [{ pts: RIVER, speed: 0.8 }, { pts: GORGE, speed: 1.5 }, { pts: BROOK, speed: 0.6 }, { pts: [[127.5, -30], [127.5, 150]], speed: 0.45 }],
     enemies,
     npcs: [
       // Hollowbough's folk, at the doors of their home trees round the lake.
