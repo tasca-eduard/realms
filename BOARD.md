@@ -35,10 +35,9 @@ _Written by `node tools/board.mjs index` on 2026-10-03; the folders are always t
 
 - [081 Realms 1 and 2 made as beautiful and interesting as realm 3](board/in-progress/081-realms-1-2-as-beautiful-as-realm-3.md): two agents (findings for realm 1 and realm 2), then the lead (the plan)
 - [085 Light, mist and dawn per zone (realms 1 and 2)](board/in-progress/085-light-mist-dawn-per-zone.md): an agent (its own copy)
-- [086 Water that reads (realms 1 and 2)](board/in-progress/086-water-that-reads.md): an agent (its own copy)
 - [087 Life in the air, the water and the fields (realms 1 and 2)](board/in-progress/087-life-air-water-fields.md): an agent (its own copy)
-- [088 Keepsfoot lived in](board/in-progress/088-keepsfoot-lived-in.md)
-- [093 Hollowbough lived in](board/in-progress/093-hollowbough-lived-in.md)
+- [088 Keepsfoot lived in](board/in-progress/088-keepsfoot-lived-in.md): an agent (its own copy)
+- [093 Hollowbough lived in](board/in-progress/093-hollowbough-lived-in.md): an agent (its own copy)
 
 **Todo (next)**
 
@@ -62,9 +61,9 @@ _Written by `node tools/board.mjs index` on 2026-10-03; the folders are always t
 
 **Done lately**
 
+- [086 Water that reads (realms 1 and 2)](board/done/086-water-that-reads.md) (2026-10-03)
 - [080 Save where the Tide Serpent waits](board/done/080-serpent-waiting-place-saved.md) (2026-10-02)
 - [079 Brassbelly sometimes costs the bot six hearts](board/done/079-brassbelly-sometimes-six-hearts.md) (2026-10-02)
-- [078 The costumedrop check never reloads the page](board/done/078-costumedrop-never-reloads.md) (2026-10-02)
 
 <!-- /board:now -->
 

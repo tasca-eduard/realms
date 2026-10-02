@@ -72,7 +72,7 @@ Shared groundwork (one agent each, side by side):
   green meadows, silver water; realm 2 gold through the trunks, mist burning off); moon-blue as realm 1's
   signature glow (moonpetals, moon-blue banners with a gold crescent, as the prototype had). `tools/look.mjs` for
   the measures.
-- [ ] **86 Water that reads** ([086](../in-progress/086-water-that-reads.md)): a lapping edge on every bank and shores that
+- [ ] **86 Water that reads** ([086](../done/086-water-that-reads.md)): a lapping edge on every bank and shores that
   aren't square steps; flow on streams and rivers (ripples and foam drifting downstream, white water at fords,
   falls and bridges); clear shallows over a visible bed, dark deeps as a mirror; a moon path and lamps' light laid
   on the water. Realm 3's sea unchanged.
