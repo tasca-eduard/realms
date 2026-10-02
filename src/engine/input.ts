@@ -23,7 +23,7 @@ export function keyName(code: string) {
 /** The four movement keys, in W A S D order. */
 export const moveKeys = () => ['KeyW', 'KeyA', 'KeyS', 'KeyD'].map(keyName).join('');
 
-/** Gamepad buttons, named as on an Xbox pad (the README's names). */
+/** Gamepad buttons, named as on an Xbox pad (the names in docs/play/controls.md). */
 const PAD_LABEL: Record<Action | 'move' | 'aim', string> = {
   move: 'Left stick',
   aim: 'Right stick',
@@ -120,6 +120,7 @@ export class Input {
       this.anyPressed = true;
       if (e.pointerType === 'touch') {
         this.usingTouch = true;
+        this.usingPad = false;
         this.mouseAim = false;
       } else if (e.pointerType === 'mouse') {
         this.usingTouch = false;
@@ -210,7 +211,9 @@ export class Input {
       const now = !!p.buttons[i]?.pressed, was = !!this.padPrev[i];
       if (now && !was) {
         this.press(a);
+        // (A pad in use on a phone: its buttons and prompts, not the touch controls.)
         this.usingPad = true;
+        this.usingTouch = false;
         this.mouseAim = false;
       }
       if (!now && was) this.release(a);
@@ -218,6 +221,7 @@ export class Input {
     }
     if (Math.hypot(this.padMove.x, this.padMove.y) > 0.3) {
       this.usingPad = true;
+      this.usingTouch = false;
       this.mouseAim = false;
     }
   }

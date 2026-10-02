@@ -258,6 +258,7 @@ export class UI {
 
   toast(title: string, sub = '', dur = 2.6) {
     this.toastEl.innerHTML = `${title}${sub ? `<small>${sub}</small>` : ''}`;
+    this.toastEl.classList.toggle('under', this.areaEl.classList.contains('on'));
     this.toastEl.classList.add('on');
     this.toastT = dur;
   }
@@ -276,6 +277,7 @@ export class UI {
     (this.areaEl.querySelector('.name') as HTMLElement).textContent = name;
     (this.areaEl.querySelector('.sub') as HTMLElement).textContent = sub;
     this.areaEl.classList.add('on');
+    if (this.toastT > 0) this.toastEl.classList.add('under');
     this.areaT = 3.4;
   }
 

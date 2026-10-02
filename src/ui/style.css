@@ -53,6 +53,8 @@ kbd { display: inline-block; min-width: 20px; padding: 0 5px; margin-right: 8px;
 #toast { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); font-family: var(--serif); font-size: 22px; color: var(--gold); text-shadow: 0 2px 6px #000, 0 0 18px rgba(0, 0, 0, 0.9); letter-spacing: 1px; opacity: 0; transition: opacity 0.4s; text-align: center; width: max-content; max-width: 92vw; }
 #toast.on { opacity: 1; }
 #toast small { display: block; font-family: var(--font); font-size: 15px; color: var(--ink); letter-spacing: 0; margin-top: 3px; }
+/* A toast that comes up while a place's name shows goes under the name (and stays there till it's gone). */
+#toast.under { top: calc(16% + clamp(28px, 4vw, 46px) * 1.35 + 50px); }
 
 /* ---------- area title ---------- */
 #area { position: absolute; left: 0; right: 0; top: 16%; text-align: center; opacity: 0; transition: opacity 1.4s; }
@@ -183,6 +185,9 @@ body.touch #boss { bottom: auto; top: 56px; width: min(380px, 46vw); }
 body.touch #boss .bname { font-size: 14px; letter-spacing: 2px; margin-bottom: 3px; }
 body.touch:has(#boss.on) #area { opacity: 0; }
 body:not(.touch) #boss.on ~ #hint { bottom: calc(6% + 50px); }
+/* ...and over a prompt too, when one shows there (the prompt keeps clear of the bar). */
+body:not(.touch):has(#boss.on) #prompt { bottom: max(13%, calc(6% + 45px)); }
+body:not(.touch):has(#prompt.on) #boss.on ~ #hint { bottom: calc(max(13%, calc(6% + 45px)) + 46px); }
 @media (orientation: portrait) {
   body.touch #hint { max-width: 88vw; bottom: 276px; }
   body.touch #boss { top: auto; bottom: 190px; width: 80vw; }
@@ -271,6 +276,40 @@ body.touch .keys.tch, body.pad .keys.pad { display: grid; }
 body.touch .keys.desk, body.pad .keys.desk { display: none; }
 @media (max-height: 500px) { #questNote { top: 62px; left: auto; right: 14px; transform: none; text-align: right; font-size: 15px; } }
 @media (orientation: portrait) { #questNote { top: 104px; left: auto; right: 14px; transform: none; text-align: right; white-space: normal; max-width: calc(100vw - 200px); font-size: 16px; } }
+/* Phones: no two lines of the HUD on one another. Toasts show below the knight (the top holds the place's
+   name, the boss bar and warnings); the combo gets a place of its own; on short screens the boss bar sits up
+   top for a pad too, and the place's name gives way to it and to a warning. */
+@media (max-height: 500px) {
+  #combo { top: 9px; right: calc(50% + 32px); }
+  #combo .cn { font-size: 18px; }
+  #toast, #toast.under { top: 58%; max-width: min(92vw, calc(100vw - 360px)); }
+  #bossIntro { top: 34%; }
+  #boss, body.touch #boss { bottom: auto; top: 56px; width: min(380px, 46vw, calc(100vw - 450px)); }
+  #boss .bname { font-size: 14px; letter-spacing: 2px; margin-bottom: 3px; white-space: nowrap; }
+  body:not(.touch) #boss.on ~ #hint, body:not(.touch):has(#prompt.on) #boss.on ~ #hint { bottom: 3.2%; }
+  body:not(.touch):has(#boss.on) #prompt { bottom: 13%; }
+  body:has(#boss.on) #area, body.touch:has(#prompt.warn.on) #area { opacity: 0; }
+  .tb.act { bottom: 210px; }
+}
+@media (orientation: portrait) {
+  #combo { top: 100px; }
+  #combo .cn, #combo.bump .cn, #combo .cm { display: inline-block; }
+  #combo .cn { font-size: 18px; }
+  #combo .cm { margin-left: 7px; }
+  #questNote { top: 130px; }
+  #area { top: max(24%, 196px); }
+  body.touch:has(#prompt.warn.on) #area { opacity: 0; }
+  #toast, #toast.under { top: 52%; }
+  #bossIntro { top: 28%; }
+  /* The HUD's bars and hearts stop short of the pause button on narrow phones. */
+  #stam, #energy { width: min(150px, calc(50vw - 44px)); }
+  #hearts { max-width: min(150px, calc(50vw - 44px)); }
+}
+@media (orientation: portrait) and (max-width: 380px) { #hearts svg { width: 23px; height: 20px; } }
+/* Shorter upright phones: a tip waits behind a toast (they'd share the space under the knight). */
+@media (orientation: portrait) and (max-height: 840px) { body:has(#toast.on) #hint { opacity: 0; } }
+/* Tablets: the quest note goes under a boss bar that's up. */
+@media (orientation: landscape) and (min-height: 501px) { body.touch:has(#boss.on) #questNote { top: 96px; } }
 
 #effects { display: flex; flex-direction: column; gap: 3px; margin-top: 3px; }
 #effects .fx { position: relative; display: flex; align-items: center; gap: 5px; font-family: var(--px); font-size: 10px; text-shadow: 0 1px 0 #000; padding-bottom: 3px; width: 96px; }
