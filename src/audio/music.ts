@@ -133,6 +133,19 @@ export const REALM_TRACKS: Record<string, Record<string, Track>> = {
       pad: 'string_ensemble_1', padVol: 0.14, arp: 'orchestral_harp', arpVol: 0.3, arpStyle: 'up',
       lead: 'celesta', leadVol: 0.26, leadOct: 1, density: 0.42, bass: 'cello', bassVol: 0.2, bassStyle: 'half', echo: true,
     },
+    // A mini-boss's fight (Brassbelly on his isle, Old Inkarm in her grotto): quicker and darker than the sea's
+    // moods, lighter than the Tidelord's: Phrygian, an oboe over driving pizzicato and cello, the drums held back.
+    fight: {
+      bpm: 116, key: 62, scale: PHRYG, prog: [[0, 'm'], [1, 'M'], [0, 'm'], [-2, 'M']],
+      pad: 'string_ensemble_1', padVol: 0.12, lead: 'oboe', leadVol: 0.24, leadOct: 0, density: 0.45,
+      bass: 'cello', bassVol: 0.28, bassStyle: 'eighths', ost: 'pizzicato_strings', ostVol: 0.17, perc: 'boss', percVol: 0.3, echo: true,
+    },
+    // The Harbour Arms' tune: a shanty in D Dorian, rolling in sixes, an oboe for the squeezebox, a stamp on the boards.
+    tavern: {
+      bpm: 112, key: 62, scale: DORIAN, prog: [[0, 'm'], [-2, 'M'], [0, 'm'], [-5, 'M']], steps: 12,
+      arp: 'orchestral_harp', arpVol: 0.26, arpStyle: 'oompah', lead: 'oboe', leadVol: 0.28, leadOct: 0, density: 0.65,
+      bass: 'pizzicato_strings', bassVol: 0.34, bassStyle: 'pulse', perc: 'light', percVol: 0.2,
+    },
   },
   forest: {
     wilds: {
@@ -433,8 +446,14 @@ export class Music {
 
   /** The tavern tune, heard through the walls. gain 0..1, open: inside. */
   setTavern(gain: number, inside: boolean) {
+    // (A realm's own inn tune where it has one: the Harbour Arms' shanty.)
+    const own = REALM_TRACKS[this.realm]?.tavern;
+    if (this.tavern && this.tavern.track !== (own ?? TRACKS.tavern)) {
+      this.tavern.out.disconnect();
+      this.tavern = null;
+    }
     if (!this.tavern) {
-      this.tavern = new Channel('tavern', TRACKS.tavern, this, this.tavernFilter);
+      this.tavern = new Channel(own ? `${this.realm}:tavern` : 'tavern', own ?? TRACKS.tavern, this, this.tavernFilter);
       this.tavern.out.gain.value = 1;
       this.tavern.nextT = this.ctx.currentTime + 0.2;
     }

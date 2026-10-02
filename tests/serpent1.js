@@ -6,9 +6,14 @@
 const g = window.__game, p = g.player, out = {};
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const c = document.querySelector('#view canvas');
-// A click on the screen where a world point shows (the sword swings toward the mouse).
+// A click on the screen where a world point shows (the sword swings toward the mouse). The mouse goes there
+// first and the view is let settle (after a jump across the map the camera is still catching up, more so on a
+// slow frame rate, and the same spot on the screen would be somewhere else by the time of the click).
 const clickAt = async (x, y, z) => {
   const v = p.rig.root.position.clone().set(x, y, z), s = { x: 0, y: 0 };
+  g.cam.toScreen(v, s);
+  c.dispatchEvent(new MouseEvent('mousemove', { clientX: s.x, clientY: s.y, bubbles: true }));
+  await wait(700);
   g.cam.toScreen(v, s);
   c.dispatchEvent(new MouseEvent('mousemove', { clientX: s.x, clientY: s.y, bubbles: true }));
   await wait(60);
@@ -34,8 +39,9 @@ const key = async (code, ms = 60) => {
   p.place(76, 32.4, g);
   await wait(400);
   out.quest = g.save.data.quests.serpent ?? null;
-  // A swing away from the stakes (north, onto the bar) cuts nothing.
-  await clickAt(p.x - 2, 0, p.z - 2);
+  // A swing away from the stakes (north, onto the bar) cuts nothing. (Clicked at the height the game aims at, the
+  // knight's waist: a point on the sand shows on screen right beside him, and the swing could go any way.)
+  await clickAt(p.x - 2, p.y + 0.9, p.z - 2);
   await wait(700);
   out.miss = pen.left;
   // One blow at each stake, from the sand beside it (not the pool's side).

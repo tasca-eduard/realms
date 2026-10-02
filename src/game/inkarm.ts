@@ -696,7 +696,7 @@ export class Inkarm {
     g.audio.sfx('reel', p.x, p.z);
     g.shake(0.4);
     if (g.settings.hints && g.firstTime('inkarm-grab')) {
-      const how = g.input.usingTouch ? 'tap attack' : `press <kbd>${g.input.label('attack')}</kbd>`;
+      const how = g.input.usingTouch ? 'tap the sword' : `press <kbd>${g.input.label('attack')}</kbd>`;
       g.ui.hint(`Seized! Fight it: ${how} again and again to tear free.`, 6);
     }
   }

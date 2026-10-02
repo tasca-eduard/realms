@@ -16,6 +16,20 @@ export interface AmbState {
   fire: number;
   drums: number;
   indoor: boolean;
+  /** A sea realm's (the Sunken Reef): the surf breaking by how near the waterline is, and where it is (its pan);
+   *  the open sea lapping; boards and ropes creaking; an inn's voices (inside, or through its walls); drips and an
+   *  echo (caves, the drowned temple); the temple's choir; a lit lamp's hum. */
+  surf?: number;
+  surfX?: number;
+  surfZ?: number;
+  lap?: number;
+  creak?: number;
+  chatter?: number;
+  chatterIn?: boolean;
+  drips?: number;
+  echo?: number;
+  choir?: number;
+  hum?: number;
 }
 
 export class Audio {
@@ -47,6 +61,21 @@ export class Audio {
   private nextBird = 3;
   private nextBlub = 1;
   private drone: { gain: GainNode } | null = null;
+  // The sea realm's beds (made the first time they're wanted) and one-shots.
+  private surfBed: { gain: GainNode; filter: BiquadFilterNode } | null = null;
+  private chatterBus: { gain: GainNode; filter: BiquadFilterNode } | null = null;
+  private humBed: { gain: GainNode } | null = null;
+  private nextWave = 0;
+  private waveAt = -9;
+  private nextLap = 0;
+  private nextGust = 3;
+  private nextCreak = 1;
+  private nextSyl = 0;
+  private nextLaugh = 6;
+  private nextClink = 3;
+  private nextDrip = 0;
+  private nextChoir = 2;
+  private nextTick = 0;
   /** The realm being played (its own music). */
   realm = '';
   private muffle!: BiquadFilterNode;
@@ -212,6 +241,8 @@ export class Audio {
     const ctx = this.ctx!;
     const src = ctx.createBufferSource();
     src.buffer = brown ? this.brown : this.noise;
+    // (Looped: a long one started late in the buffer would otherwise fall silent at its end.)
+    src.loop = true;
     src.playbackRate.value = 0.8 + Math.random() * 0.4;
     const f = ctx.createBiquadFilter();
     f.type = type;
@@ -313,6 +344,14 @@ export class Audio {
           this.tone(o(0.08, 0.4), t + i * 0.3, 'square', f * 2, f * 1.2, 0.18, 0.02, 0.02);
         }
         break;
+      // A seal on its skerry: a hoarse bark, once or a few times.
+      case 'seal':
+        for (let i = 0, n = 1 + Math.floor(R() * 3); i < n; i++) {
+          const f = 300 + R() * 110, d = o(0.3, 0.3);
+          this.tone(d, t + i * 0.27, 'sawtooth', f, f * 0.68, 0.17, 0.12, 0.015);
+          this.noiseHit(d, t + i * 0.27, 0.15, 'bandpass', 950, 620, 3, 0.16, 0.01);
+        }
+        break;
       case 'thorns':
         this.noiseHit(o(0.7, 0.2), t, 0.18, 'bandpass', 1800, 700, 1.4, 0.8, 0.005);
         for (let i = 0; i < 4; i++) this.noiseHit(o(0.3, 0.1), t + i * 0.03, 0.06, 'highpass', 3000 + R() * 1500, 2000, 2, 0.4);
@@ -358,7 +397,7 @@ export class Audio {
       case 'splash':
         this.noiseHit(o(0.6, 0.3), t, 0.55, 'lowpass', 2400, 500, 0.7, 0.6, 0.01);
         break;
-      case 'snap':
+      case 'lineSnap':
         this.noiseHit(o(0.4, 0.1), t, 0.06, 'highpass', 3000, 2000, 1, 0.6, 0.002);
         this.tone(o(0.3, 0.2), t, 'sawtooth', 220, 110, 0.18, 0.12);
         break;
@@ -776,6 +815,185 @@ export class Audio {
         this.noiseHit(g, t, 0.12, 'lowpass', 500, 120, 0.7, 0.6, 0.002, true);
       }
     }
+    this.seaSounds(t, s);
     this.music?.update(dt);
+  }
+
+  /** A gain (and pan) into the ambience for one sound, with some of it sent to the reverb. */
+  private ambOut(vol: number, pan: number, rev = 0, dest: AudioNode = this.ambBus) {
+    const g = this.ctx!.createGain();
+    g.gain.value = vol;
+    const p = this.ctx!.createStereoPanner();
+    p.pan.value = pan;
+    g.connect(p).connect(dest);
+    if (rev > 0) {
+      const r = this.ctx!.createGain();
+      r.gain.value = rev;
+      p.connect(r).connect(this.revSend);
+    }
+    return g;
+  }
+
+  /** The Sunken Reef's ambience (each bed made the first time it's wanted, so other realms pay nothing): the surf,
+   *  gusts off the sea, the open sea lapping, boards and ropes creaking, an inn's voices, drips and an echo, the
+   *  drowned temple's choir, the lit lighthouse's hum. */
+  private seaSounds(t: number, s: AmbState) {
+    const ctx = this.ctx!, R = Math.random;
+    const surf = s.surf ?? 0;
+    // The sea's echo: the reverb swells in caves and the drowned temple (every sound there rings on).
+    if (s.echo !== undefined) this.revSend.gain.setTargetAtTime(0.35 + 0.55 * s.echo, t, 0.6);
+    // The surf: a steady wash, swelling as each wave comes in, and the waves breaking every few seconds, from
+    // the nearest waterline's side: rising, crashing, hissing up the sand.
+    if (surf > 0.02 && !this.surfBed) this.surfBed = this.loopNoise(this.brown, 'lowpass', 420, 0.6);
+    if (this.surfBed) {
+      const swell = Math.max(0, 1 - Math.abs(t - this.waveAt) / 1.8);
+      this.surfBed.gain.gain.setTargetAtTime(surf * (0.06 + 0.07 * swell), t, 0.35);
+    }
+    if (surf > 0.04 && t > this.nextWave) {
+      this.nextWave = t + 4.5 + R() * 4;
+      this.waveAt = t + 1.1;
+      const g = this.ambOut(0.75 * surf, this.spatial(s.surfX, s.surfZ).pan * 0.7, 0.1);
+      this.noiseHit(g, t, 1.8, 'lowpass', 220, 760, 0.7, 0.5, 1.1, true);
+      this.noiseHit(g, t + 1.0, 2.0, 'lowpass', 2600, 420, 0.6, 0.55, 0.05);
+      this.noiseHit(g, t + 1.15, 2.8, 'highpass', 3600, 1700, 0.5, 0.18, 0.35);
+    }
+    // Out on the open sea: water slapping and plopping round him.
+    const lap = s.lap ?? 0;
+    if (lap > 0.05 && t > this.nextLap) {
+      this.nextLap = t + 0.6 + R() * 2;
+      const g = this.ambOut(0.3 * lap, R() * 1.4 - 0.7);
+      this.noiseHit(g, t, 0.3 + R() * 0.3, 'lowpass', 700 + R() * 500, 260, 1.2, 0.5, 0.05, true);
+      if (R() < 0.5) this.tone(g, t + 0.06, 'sine', 160 + R() * 140, 90, 0.12, 0.25, 0.004);
+    }
+    // Gusts off the sea (on the strand and the isles: a wind stronger than the land's), whistling in the marram.
+    if (!s.indoor && s.wind > 1.05 && t > this.nextGust) {
+      this.nextGust = t + 5 + R() * 9;
+      const d = 2.5 + R() * 2, g = this.ambOut(Math.min(1, (s.wind - 1) * 2.5) * 0.16, R() * 1.6 - 0.8);
+      this.noiseHit(g, t, d, 'bandpass', 360 + R() * 200, 900 + R() * 400, 1.3, 0.7, d * 0.45, true);
+      this.noiseHit(g, t + d * 0.25, d * 0.6, 'bandpass', 1300 + R() * 500, 950, 7, 0.14, d * 0.3);
+    }
+    // Planks and ropes under strain: boardwalks, jetties, the wreck.
+    const creak = s.creak ?? 0;
+    if (creak > 0.05 && t > this.nextCreak) {
+      this.nextCreak = t + 1 + R() * (3.5 / creak);
+      this.creakAt(t, 0.07 * Math.min(1, creak * 1.4), R() < 0.3);
+    }
+    // An inn's voices: talkers murmuring (a run of syllables, each a voice through a vowel's formant), a laugh,
+    // mugs knocked together; through the walls, muffled.
+    const chat = s.chatter ?? 0;
+    if (chat > 0.02 && !this.chatterBus) {
+      const gain = ctx.createGain(), filter = ctx.createBiquadFilter();
+      gain.gain.value = 0;
+      filter.type = 'lowpass';
+      filter.frequency.value = 900;
+      gain.connect(filter).connect(this.ambBus);
+      this.chatterBus = { gain, filter };
+    }
+    if (this.chatterBus) {
+      this.chatterBus.gain.gain.setTargetAtTime(chat, t, 0.4);
+      this.chatterBus.filter.frequency.setTargetAtTime(s.chatterIn ? 5000 : 800, t, 0.3);
+    }
+    if (chat > 0.02 && this.chatterBus) {
+      const bus = this.chatterBus.gain;
+      if (t > this.nextSyl) {
+        this.nextSyl = t + 0.05 + R() * 0.17;
+        const who = Math.floor(R() * 5), f = [105, 125, 150, 195, 230][who] * (0.9 + R() * 0.25);
+        this.syllable(this.ambOut(0.09, [-0.6, 0.4, -0.2, 0.7, 0.1][who], 0.15, bus), t, f, 0.06 + R() * 0.13);
+      }
+      if (t > this.nextLaugh) {
+        this.nextLaugh = t + 6 + R() * 12;
+        const g = this.ambOut(0.1, R() * 1.4 - 0.7, 0.2, bus), f = 190 + R() * 90;
+        for (let k = 0, n = 4 + Math.floor(R() * 3); k < n; k++) this.syllable(g, t + k * 0.12, f * (1 - k * 0.05), 0.08, 800);
+      }
+      if (t > this.nextClink) {
+        this.nextClink = t + 2.5 + R() * 6;
+        const g = this.ambOut(0.05, R() * 1.4 - 0.7, 0.2, bus), f = 2100 + R() * 700;
+        this.bell(g, t, f, 0.2, 0.5, [1, 2.4, 4.1]);
+        if (R() < 0.6) this.bell(g, t + 0.09 + R() * 0.05, f * 1.07, 0.18, 0.4, [1, 2.4, 4.1]);
+      }
+    }
+    // Drips in a cave (a plink ringing on), or under the sea a slow, deep bloop.
+    const drips = s.drips ?? 0;
+    if (drips > 0.05 && t > this.nextDrip) {
+      this.nextDrip = t + 0.5 + R() * (2.6 / drips);
+      const wet = s.bubbles > 0.05, g = this.ambOut((wet ? 0.08 : 0.06) * drips, R() * 1.6 - 0.8, 0.9);
+      const f = wet ? 260 + R() * 220 : 1100 + R() * 900;
+      this.tone(g, t, 'sine', f, f * (wet ? 2.4 : 1.7), wet ? 0.11 : 0.05, 0.9, 0.002);
+      if (!wet && R() < 0.4) this.tone(g, t + 0.07, 'sine', f * 1.4, f * 2, 0.03, 0.35, 0.002);
+    }
+    // The drowned temple: the Lady of the Tides' choir, a chord swelling out of the stone and dying away.
+    const choir = s.choir ?? 0;
+    if (choir > 0.05 && t > this.nextChoir) {
+      this.nextChoir = t + 8 + R() * 8;
+      const g = this.ambOut(0.05 * choir, R() * 0.8 - 0.4, 1);
+      const root = [146.8, 164.8, 196][Math.floor(R() * 3)];
+      [1, 1.5, 2.52].forEach((m, i) => this.tone(g, t + i * 0.35, 'triangle', root * m, root * m * 1.004, 4.5, 0.5 / (1 + i * 0.4), 1.8));
+    }
+    // A lit lamp's hum (the lighthouse): two near notes beating, a soft overtone, the clockwork turning its lens.
+    const hum = s.hum ?? 0;
+    if (hum > 0.01 && !this.humBed) {
+      const gain = ctx.createGain();
+      gain.gain.value = 0;
+      gain.connect(this.ambBus);
+      for (const [f, v] of [[110, 1], [110.8, 1], [220.5, 0.4], [331, 0.15]]) {
+        const o = ctx.createOscillator(), og = ctx.createGain();
+        o.frequency.value = f;
+        og.gain.value = v;
+        o.connect(og).connect(gain);
+        o.start();
+      }
+      this.humBed = { gain };
+    }
+    if (this.humBed) this.humBed.gain.gain.setTargetAtTime(0.05 * hum * (0.85 + 0.15 * Math.sin(t * 1.9)), t, 0.3);
+    if (hum > 0.25 && t > this.nextTick) {
+      this.nextTick = t + 0.5;
+      this.noiseHit(this.ambOut(0.12 * hum, 0, 0.3), t, 0.03, 'bandpass', 3200, 2400, 4, 0.5, 0.002);
+    }
+  }
+
+  /** A plank or a rope under strain: a low tone stuttering (stick and slip) through a wooden body. */
+  private creakAt(t: number, vol: number, rope: boolean) {
+    const ctx = this.ctx!, R = Math.random;
+    const dur = rope ? 0.7 + R() * 0.6 : 0.25 + R() * 0.4, f = rope ? 85 + R() * 50 : 140 + R() * 120;
+    const o = ctx.createOscillator(), lfo = ctx.createOscillator(), chop = ctx.createGain(), depth = ctx.createGain(), body = ctx.createBiquadFilter();
+    o.type = rope ? 'triangle' : 'sawtooth';
+    o.frequency.setValueAtTime(f, t);
+    o.frequency.linearRampToValueAtTime(f * (rope ? 1.25 : 0.7 + R() * 0.6), t + dur);
+    lfo.type = 'square';
+    lfo.frequency.setValueAtTime(rope ? 9 + R() * 6 : 20 + R() * 18, t);
+    lfo.frequency.linearRampToValueAtTime(rope ? 15 : 12 + R() * 10, t + dur);
+    chop.gain.value = 0.5;
+    depth.gain.value = 0.5;
+    lfo.connect(depth).connect(chop.gain);
+    body.type = 'bandpass';
+    body.frequency.value = rope ? 360 : 650 + R() * 650;
+    body.Q.value = rope ? 2 : 3;
+    const env = this.ambOut(1, R() * 1.4 - 0.7, 0.15);
+    env.gain.setValueAtTime(0.0001, t);
+    env.gain.exponentialRampToValueAtTime(vol, t + dur * 0.3);
+    env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(chop).connect(body).connect(env);
+    o.start(t);
+    lfo.start(t);
+    o.stop(t + dur + 0.05);
+    lfo.stop(t + dur + 0.05);
+  }
+
+  /** One spoken syllable: a voice at pitch f through a vowel's formant, gliding a little. */
+  private syllable(dest: AudioNode, t: number, f: number, dur: number, formant = 350 + Math.random() * 700) {
+    const ctx = this.ctx!;
+    const o = ctx.createOscillator(), bp = ctx.createBiquadFilter(), g = ctx.createGain();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(f, t);
+    o.frequency.linearRampToValueAtTime(f * (0.85 + Math.random() * 0.3), t + dur);
+    bp.type = 'bandpass';
+    bp.frequency.value = formant;
+    bp.Q.value = 4;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(1, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(bp).connect(g).connect(dest);
+    o.start(t);
+    o.stop(t + dur + 0.05);
   }
 }

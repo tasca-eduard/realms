@@ -78,7 +78,9 @@ window.__report = () => out;
   out.music = { realm: m?.realm, channel: m?.main?.name ?? null };
   const at = g.pipe.atmo;
   out.look = { sea: at.sea, caustics: +at.seaCaustics.toFixed(2), rays: +at.seaRays.toFixed(2), surface: at.seaSurface };
-  out.ok = out.realm === 'aqua' && !out.land.under && out.land.jump.height < 1.25 && out.sea.under && out.sea.jump.height > 1.2 && out.sea.jump.airTime > out.land.jump.airTime && Math.abs(out.sea.paceShare - 0.85) < 0.05
+  // (A jump's top comes out lower the slower the frames come, 1.27 m below the surface at 60 a second, 1.2 at 30:
+  // so it's held against the jump on land, measured the same moment.)
+  out.ok = out.realm === 'aqua' && !out.land.under && out.land.jump.height < 1.25 && out.sea.under && out.sea.jump.height > Math.max(1.15, out.land.jump.height + 0.05) && out.sea.jump.airTime > out.land.jump.airTime && Math.abs(out.sea.paceShare - 0.85) < 0.05
     && out.sea.fastestFall > -5.7 && out.shots.below < 1 && out.shots.above === 1 && out.deep.walker && !out.deep.diver && out.deep.creatureOnLand
     && out.burn === false && out.beasts.horse === null && out.beasts.mounts === 0 && /^aqua:/.test(out.music.channel ?? '') && out.look.sea === 1;
 })();

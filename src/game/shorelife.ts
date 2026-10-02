@@ -1048,7 +1048,8 @@ export class ShoreLife {
       if (near) {
         s.state = 'alert';
         s.t = 0;
-      }
+        g.audio.sfx('seal', s.x, s.z);
+      } else if (pd < 22 && Math.random() < dt * 0.04) g.audio.sfx('seal', s.x, s.z);
     } else if (s.state === 'alert') {
       if (s.t > 0.55) {
         s.state = 'slide';

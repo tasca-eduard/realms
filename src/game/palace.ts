@@ -120,7 +120,7 @@ export class SunkenBell implements Interactable {
 
 /**
  * The palace's floodgate: a bronze grille in a gateway (along z through (x, z), `w` wide), shut until the bell
- * is rung; then it rises into its towers. It stands in for the arena's door (the same open/setOpen/update): when
+ * is rung and the crew on the landing (who hold its winch) are beaten; then it rises into its towers. It stands in for the arena's door (the same open/setOpen/update): when
  * the Tidelord wakes it drops shut behind the knight, and a lost fight lifts it again.
  */
 export class Floodgate implements Interactable {
@@ -149,8 +149,9 @@ export class Floodgate implements Interactable {
     g.scene.add(this.leaf);
     this.collider = g.grid.addCollider({ kind: 'b', x0: x - 0.45, z0: z - w / 2, x1: x + 0.45, z1: z + w / 2, y0: this.y - 1, y1: this.y + h });
   }
-  prompt() {
-    return this.open ? null : '!The floodgate is shut fast. They say the kingdom\'s great bell once opened it.';
+  prompt(g: Game) {
+    const f = g.save.data.flags;
+    return this.open || (f.bell && f.garrison) ? null : !f.bell ? '!The floodgate is shut fast. They say the kingdom\'s great bell once opened it.' : "!The Tidelord's crew on the landing hold the floodgate's winch. Beat them.";
   }
   interact() {}
   setOpen(open: boolean, g: Game, instant = false) {
@@ -169,12 +170,22 @@ export class Floodgate implements Interactable {
     g.fx.burst(P.seaBubble, this.x, this.y + 0.4, this.z, 30, 3, 1.5);
     g.fx.burst(P.dust, this.x, this.y + 0.2, this.z, 16, 2.5);
   }
+  /** The bell rung while the crew still hold its winch: it jerks in its towers, rattling, and holds. */
+  strain(g: Game) {
+    if (this.open) return;
+    this.shudder = 1.8;
+    g.audio.sfx('chains', this.x, this.z);
+    g.fx.burst(P.seaBubble, this.x, this.y + 0.4, this.z, 24, 3, 1.5);
+    g.fx.burst(P.dust, this.x, this.y + this.lift, this.z, 12, 2);
+  }
+  private shudder = 0;
   update(dt: number) {
     // It grinds up slowly, and drops fast.
     const target = this.open ? 1 : 0;
     this.t += Math.sign(target - this.t) * Math.min(Math.abs(target - this.t), dt * (this.open ? 0.4 : 3));
     const k = this.open ? this.t * this.t * (3 - 2 * this.t) : this.t;
-    this.leaf.position.y = this.y + this.lift * k;
+    this.shudder = Math.max(0, this.shudder - dt);
+    this.leaf.position.y = this.y + this.lift * k + 0.3 * Math.min(1, this.shudder) * Math.abs(Math.sin(this.shudder * 20));
   }
 }
 

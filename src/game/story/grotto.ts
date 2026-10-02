@@ -29,6 +29,7 @@ export class InkGrotto {
     if (e.type !== 'inkarm') return;
     this.bar = false;
     g.ui.bossHide();
+    g.fightMusic = Math.min(g.fightMusic, 1.5);
     g.ui.toast('Old Inkarm is felled', 'It sinks into its own ink, and something comes up out of the floor', 4);
     g.after(1.4, () => this.dropChest(g, true));
   }
@@ -81,5 +82,7 @@ export class InkGrotto {
       else g.ui.bossHide();
     }
     if (on) g.ui.bossHp(e!.hp / e!.maxHp);
+    // (Its fight has its own music while the bar is up.)
+    if (on) g.fightMusic = 4;
   }
 }

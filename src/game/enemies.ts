@@ -133,7 +133,8 @@ export class Enemy {
       this.hp = this.maxHp = base * 3;
       this.r *= 1.3;
       this.model.rig.scale *= 1.35;
-    } else if (!this.isBoss && Math.random() < 0.08) {
+    } else if (!this.isBoss && type !== 'salvager' && type !== 'inkarm' && Math.random() < 0.08) {
+      // (Never the salvager or Old Inkarm: mini-bosses under a health bar, tuned as they are; golden they'd pay ten times over.)
       this.golden = true;
       this.hp = this.maxHp = Math.ceil(base * 1.5);
     }
@@ -467,6 +468,8 @@ export class Enemy {
   private ventDue(g: Game, d: number) {
     const V = FOES.salvager;
     if (this.type !== 'salvager' || this.ventCd > 0 || d > V.ventR + 1.5) return false;
+    // (Not while his anchor has the knight dazed: his ring shows only once he can step out of it.)
+    if (g.player.state === 'dazed' || g.player.state === 'down') return false;
     const struck = this.hitTimes.filter((t) => g.time - t < 3).length >= 3;
     if (!struck && this.closeT < V.ventClose) return false;
     this.hitTimes = [];

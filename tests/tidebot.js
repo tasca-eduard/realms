@@ -1,8 +1,8 @@
 // The Tidelord's fight with a player-like bot (run with &realm=aqua): real keys and aimed clicks, reacting a
 // quarter second after a warning shows. It steps out of his charge's fixed lane, out of a slam's marked spot and
 // jumps its wave as he lands, cuts down orbs that come close (or keeps away from them; the dodger too: a blow is
-// how an orb is dodged), backs off from his sweep and holds its blows while he winds up, goes to a vent for air
-// when its air runs low, and otherwise closes in and swings.
+// how an orb is dodged), backs off from his sweep and his crew's blows (along a wall, not into it) and holds its
+// blows while he winds up, goes to a vent for air when its air runs low, and otherwise closes in and swings.
 //   &lvl=N  balance: wins with a level-N sword (the coral-smith's 6; a knight arrives with 5) in about a minute,
 //           losing well under the hearts a knight has by then (5 to 8).
 //   &fair   fairness: his hall has room and nothing tall on the camera's side; every attack shows before it lands
@@ -145,6 +145,19 @@ const jump = (t) => {
     return t - seenAt.get(o) >= 0.25;
   };
   const inHall = (x, z) => x > a.x0 - 0.8 && x < a.x1 - 0.6 && z > a.z0 + 0.6 && z < a.z1 - 0.6;
+  // Away from him as a person goes: the way most away that keeps to the hall's open floor (along a wall, not into
+  // it, nor into his throne).
+  const open = (x, z) => x > a.x0 - 0.95 && x < a.x1 - 0.05 && z > a.z0 + 0.05 && z < a.z1 - 0.05 && Math.abs(grid.groundAt(x, z) - floor) < 0.45
+    && !grid.collidersNear(x, z).some((cl) => cl.on && cl.y1 > floor + 0.5 && (cl.kind === 'b' ? x > cl.x0 - 0.2 && x < cl.x1 + 0.2 && z > cl.z0 - 0.2 && z < cl.z1 + 0.2 : Math.hypot(x - cl.x, z - cl.z) < cl.r + 0.2));
+  const away = (x, z) => {
+    const dx = p.x - x, dz = p.z - z, l = Math.hypot(dx, dz) || 1;
+    let best = -0.2, bx = dx / l, bz = dz / l;
+    for (let k = 0; k < 16; k++) {
+      const th = (k / 16) * Math.PI * 2, ux = Math.cos(th), uz = Math.sin(th), sc = (ux * dx + uz * dz) / l;
+      if (sc > best && [0.7, 1.4, 2.1].every((r) => open(p.x + ux * r, p.z + uz * r))) [best, bx, bz] = [sc, ux, uz];
+    }
+    return [bx, bz];
+  };
   // The log: warnings and attacks, for the fairness rules.
   const log = { marks: [], lanes: [], startsWhileBusy: 0 }, sweepLog = [];
   out.sweeps = sweepLog;
@@ -214,7 +227,10 @@ const jump = (t) => {
       backOff = t + 0.6;
       roll = true;
     }
-    if (!busy && t < backOff) [vx, vz, busy] = [p.x - b.x, p.z - b.z, true];
+    if (!busy && t < backOff) [vx, vz, busy] = [...away(b.x, b.z), true];
+    // His crew's blows (a goblin flashes as it strikes): back from it, rolling if it can.
+    const jab = g.enemies.find((e) => e.alive && e !== b && e.telegraph > 0 && Math.hypot(e.x - p.x, e.z - p.z) < 2.4);
+    if (!busy && jab) [vx, vz, busy, roll] = [...away(jab.x, jab.z), true, true];
     // Air: to the nearest vent when it runs low, and stay till it's full.
     if (p.air < 22) breathing = true;
     if (p.air > 80) breathing = false;
@@ -236,7 +252,7 @@ const jump = (t) => {
     }
     steer(vx, vz);
     // (As soon as it can: a blow already swinging finishes first.)
-    if (roll && !['attack', 'roll', 'hurt', 'block'].includes(p.state)) rollAway(b.x, b.z, t, 0.4);
+    if (roll && !['attack', 'roll', 'hurt', 'block'].includes(p.state)) rollAway(p.x - vx, p.z - vz, t, 0.4);
   };
   const run = async (secs, mode) => {
     const hp0 = p.hp, t0 = now();

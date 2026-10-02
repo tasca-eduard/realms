@@ -800,7 +800,7 @@ export function buildKingdom(b: Builder, grid: Grid, under: (x: number, z: numbe
     { type: 'diver', x: 97.9, z: 84.4 },
     { type: 'crab', x: 81.3, z: 95 },
     { type: 'eel', x: 73.9, z: 91.3 },
-    { type: 'puffer', x: 98.6, z: 93.4 },
+    { type: 'puffer', x: 98.2, z: 93.4 },
   ];
   const objects: ObjDef[] = [
     // The treasury's cracked wall.
@@ -829,13 +829,13 @@ export function buildKingdom(b: Builder, grid: Grid, under: (x: number, z: numbe
   ];
   const inRect = (o: { x0: number; z0: number; x1: number; z1: number }, x: number, z: number, m = 0) => x > o.x0 - m && x < o.x1 + m && z > o.z0 - m && z < o.z1 + m;
   const regions: RegionDef[] = [
-    { name: 'The Sunken Temple', music: 'hall', amb: 'fields', test: (x, z) => inRect(TEMPLE, x, z) && under(x, z) },
-    { name: 'The Royal Treasury', music: 'hall', amb: 'fields', test: (x, z) => inRect(VAULT, x, z) && under(x, z) },
-    { name: 'The Royal Library', music: 'keep', amb: 'fields', test: (x, z) => inRect(LIBRARY, x, z, 0.5) && under(x, z) },
-    { name: 'The Kings\' Way', music: 'keep', amb: 'fields', test: (x, z) => distLine(WAY, x, z) < 2.6 && under(x, z) },
-    { name: 'The Market Square', music: 'keep', amb: 'fields', test: (x, z) => Math.hypot(x - SQUARE.x, z - SQUARE.z) < 3.8 && x < TEMPLE.x0 && under(x, z) },
-    { name: 'The Queen\'s Gardens', music: 'keep', amb: 'fields', test: (x, z) => insidePoly(GARDENS, x, z) && under(x, z) },
-    { name: 'The Old Harbour', music: 'keep', amb: 'fields', test: (x, z) => distLine(QUAY, x, z) < 3.2 && under(x, z) },
+    { name: 'The Sunken Temple', music: 'hall', amb: 'temple', test: (x, z) => inRect(TEMPLE, x, z) && under(x, z) },
+    { name: 'The Royal Treasury', music: 'hall', amb: 'grotto', test: (x, z) => inRect(VAULT, x, z) && under(x, z) },
+    { name: 'The Royal Library', music: 'keep', amb: 'grotto', test: (x, z) => inRect(LIBRARY, x, z, 0.5) && under(x, z) },
+    { name: 'The Kings\' Way', music: 'keep', amb: 'sea', test: (x, z) => distLine(WAY, x, z) < 2.6 && under(x, z) },
+    { name: 'The Market Square', music: 'keep', amb: 'sea', test: (x, z) => Math.hypot(x - SQUARE.x, z - SQUARE.z) < 3.8 && x < TEMPLE.x0 && under(x, z) },
+    { name: 'The Queen\'s Gardens', music: 'keep', amb: 'sea', test: (x, z) => insidePoly(GARDENS, x, z) && under(x, z) },
+    { name: 'The Old Harbour', music: 'keep', amb: 'sea', test: (x, z) => distLine(QUAY, x, z) < 3.2 && under(x, z) },
   ];
   return { enemies, objects, regions };
 }

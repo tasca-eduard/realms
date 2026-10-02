@@ -75,9 +75,12 @@ window.__report = () => out;
   // Strokes: one, then three more in time; each takes stamina.
   await wait(300);
   const st0 = p.stamina, y0 = p.y;
+  // (What the stroke took: the lowest the stamina goes before it starts to fill again; on a slow frame the
+  // stroke can land just after the key is let go.)
+  let low = st0;
   await key('Space', 30);
-  const cost = st0 - p.stamina;
-  const one = await watch(900);
+  const one = await watch(900, () => (low = Math.min(low, p.stamina)));
+  const cost = st0 - low;
   out.strokes = { one: r2(one.top - y0), cost: r2(cost) };
   for (let i = 0; i < 6 && p.y < top - 0.01; i++) {
     await key('Space');

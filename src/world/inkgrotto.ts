@@ -289,7 +289,7 @@ export function buildInkGrotto(b: Builder, grid: Grid, under: (x: number, z: num
     { kind: 'chest', id: 'r3_inkhoard', x: NICHE.x, z: NICHE.z + 0.75, rot: 0.15, coins: 55 },
   ];
   const regions: RegionDef[] = [
-    { name: 'The Ink Grotto', music: 'hall', amb: 'fields', test: (x, z) => x > G.x0 - 0.5 && x < G.x1 + 0.6 && z > G.z0 - 1.8 && z < G.z1 + 0.3 && under(x, z) && grid.groundAt(x, z) < G.floor + 0.5 },
+    { name: 'The Ink Grotto', music: 'hall', amb: 'grotto', test: (x, z) => x > G.x0 - 0.5 && x < G.x1 + 0.6 && z > G.z0 - 1.8 && z < G.z1 + 0.3 && under(x, z) && grid.groundAt(x, z) < G.floor + 0.5 },
   ];
   return {
     enemies,

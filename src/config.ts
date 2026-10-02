@@ -134,7 +134,7 @@ export const FOES = {
   // The Sunken Reef's: Brassbelly the salvager (the lighthouse isle's mini-boss): a brute's anchor blows, and
   // when he's struck three times in quick succession (or the knight hangs about close for `ventClose` s) his
   // suit hisses for `ventWind` s (a ring on the ground), then blows off steam all round (`ventR` m).
-  salvager: { hp: 30, r: 0.56, speed: 2.0, aggro: 10, reach: 2.1, windup: 1.0, coins: [30, 40], dazeChance: 0.4, guardCost: 2.6, ventR: 2.8, ventWind: 0.95, ventEvery: 6, ventClose: 6 },
+  salvager: { hp: 42, r: 0.56, speed: 2.0, aggro: 10, reach: 2.1, windup: 1.0, coins: [30, 40], dazeChance: 0.4, guardCost: 2.6, ventR: 2.8, ventWind: 1.2, ventEvery: 6, ventClose: 6 },
   // The crew's divers: goblins in a bucket, a kettle or a fishbowl, a hose up to a cork float on the surface;
   // they walk into deep water and fight as goblins do, with a boathook.
   diver: { hp: 3, r: 0.34, speed: 2.7, aggro: 8.5, reach: 1.45, windup: 0.55, coins: [3, 5] },
@@ -162,7 +162,7 @@ export const FOES = {
   // tear free); it swells `swell` s and inks the water (the screen dark for `ink` s). Its arms shield its body
   // except while they're down (`down` s after a slam or a grab torn free; `downEnraged` below half), `gap` s
   // between attacks (`gapEnraged`). One attack at a time.
-  inkarm: { hp: 26, r: 1.45, speed: 0, aggro: 0, reach: 8, windup: 1.2, coins: [40, 60], slamW: 1.5, ring: 1.3, hold: 2.4, mash: 5, swell: 1.0, ink: 3.2, down: 2.6, downEnraged: 2.1, gap: 1.1, gapEnraged: 0.7 },
+  inkarm: { hp: 44, r: 1.45, speed: 0, aggro: 0, reach: 8, windup: 1.2, coins: [40, 60], slamW: 1.5, ring: 1.3, hold: 2.4, mash: 5, swell: 1.0, ink: 3.2, down: 2.3, downEnraged: 1.9, gap: 1.1, gapEnraged: 0.7 },
   // The Thorn Warden (the Old Wood's tyrant): keeps its distance and shoots. Volleys fan 3 arrows
   // (5 enraged) along lines it shows, fixed `volleyLock` s before they fly; rain marks the knight's
   // spot and 2 more to one side of him (4 enraged) that arrows hit after `rainDelay`; enraged, roots
@@ -176,5 +176,5 @@ export const FOES = {
   // the floor to `waveR` (jump it). Close in and he sweeps his trident (its reach shown, filling for `windup` s).
   // Enraged at half health, the tide turns: a current sweeps the floor (`tide` m/s), turning every `tideEvery` s,
   // its new way shown `tideWarn` s before. One attack at a time.
-  tidelord: { hp: 95, r: 0.85, speed: 2.5, aggro: 30, reach: 2.6, windup: 1.2, coins: [0, 0], laneFollow: 0.8, laneLock: 0.65, chargeSpeed: 10, orbs: 3, orbSpeed: 2.3, orbLife: 5, slamDelay: 1.5, slamR: 2, waveR: 7.5, waveSpeed: 6.5, tide: 1.6, tideEvery: 7, tideWarn: 1.4 },
+  tidelord: { hp: 105, r: 0.85, speed: 2.5, aggro: 30, reach: 2.6, windup: 1.2, coins: [0, 0], laneFollow: 0.8, laneLock: 0.8, chargeSpeed: 10, orbs: 3, orbSpeed: 2.3, orbLife: 5, slamDelay: 1.5, slamR: 2, waveR: 7.5, waveSpeed: 6.5, tide: 1.25, tideEvery: 7, tideWarn: 1.4 },
 } as const;

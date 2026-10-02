@@ -450,9 +450,10 @@ export class TideSerpent extends Mount {
       this.told = true;
       if (g.firstTime('serpent')) {
         // (Two tips, one after the other: how it swims, then its moves.)
-        const k = (a: 'jump' | 'attack' | 'guard' | 'special') => (inp.usingTouch ? a === 'attack' ? 'sword' : a : `<kbd>${inp.label(a)}</kbd>`);
-        g.ui.hint(`On the serpent, ${k('jump')} leaps out of the water (in a diving suit, it dives). Under the water each tap swims up; it sinks between them.`, 7);
-        g.after(7.5, () => g.ui.hint(`The serpent's moves: ${k('attack')} bubble shot, ${k('guard')} bubble shell, ${k('special')} whirlpool.`, 6));
+        // (On a phone, its buttons as the pause menu names them: the arrow, the sword, the shield, the star.)
+        const k = (a: 'jump' | 'attack' | 'guard' | 'special') => `<kbd>${inp.label(a)}</kbd>`, touch = inp.usingTouch;
+        g.ui.hint(`On the serpent, ${touch ? 'the arrow button' : k('jump')} leaps out of the water (in a diving suit, it dives). Under the water each tap swims up; it sinks between them.`, 7);
+        g.after(7.5, () => g.ui.hint(touch ? "The serpent's moves: the sword, a bubble shot; the shield, a bubble shell; the star, a whirlpool." : `The serpent's moves: ${k('attack')} bubble shot, ${k('guard')} bubble shell, ${k('special')} whirlpool.`, 6));
       }
     }
     this.actT += dt;
@@ -944,7 +945,7 @@ export class SerpentPen {
     g.scene.remove(this.lines[i]!);
     this.lines[i] = null;
     g.quest('serpent', 0);
-    g.audio.sfx('snap', s.x, s.z);
+    g.audio.sfx('lineSnap', s.x, s.z);
     g.fx.burst(P.splinter, s.x, s.y + 1, s.z, 10, 2, 2);
     g.fx.burst(SPRAY, (s.x + this.def.x) / 2, this.y + 0.5, (s.z + this.def.z) / 2, 10, 2, 2);
     const left = this.left;
@@ -976,7 +977,7 @@ export class SerpentPen {
   /** The freed serpent, waiting in its pool (barding counts for it as for every mount). */
   private addSerpent(g: Game, model?: Model) {
     const s = new TideSerpent(this.def.x, this.def.z, g, model);
-    s.maxHp = s.hp = 3 + (g.player.kit.barding ?? 0);
+    s.maxHp = s.hp = 3 + (g.player.kit.barding ?? 0) + (g.save.data.relics.includes('tidepearl') ? 1 : 0);
     s.fx = -0.6;
     s.fz = 0.8;
     g.mounts.push(s);

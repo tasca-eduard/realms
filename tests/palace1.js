@@ -1,7 +1,7 @@
 // The way into the Tidelord's palace (run with &realm=aqua; tests/palace2.js runs after the reload): his
 // floodgate, across the trench, holds against a walk and a jump; the drowned kingdom's great bell in its plaza,
-// struck with a blow, tolls, and the floodgate rises (quest, saved); his crew on the landing fall (saved);
-// through the gate into the throne hall, he wakes and the gate drops shut behind; a lost fight lifts it again.
+// struck with a blow, tolls, and the floodgate strains but holds (quest, saved); his crew on the landing, who hold
+// its winch, fall (saved), and it rises; through the gate into the throne hall, he wakes and the gate drops shut behind; a lost fight lifts it again.
 const g = window.__game, p = g.player, out = {};
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const down = (c) => window.dispatchEvent(new KeyboardEvent('keydown', { code: c, bubbles: true }));
@@ -60,6 +60,7 @@ const swingAt = (o) => {
   out.bell = { rung: bell.rung, flag: !!g.save.data.flags.bell, quest: g.quests.def('main').short[g.save.data.quests.main] };
   await wait(4500);
   out.bell.gateOpen = gate.open;
+  out.bell.quest2 = g.quests.def('main').short[g.save.data.quests.main];
   // ---------- the crew ----------
   // (Back as they were: placed, alive, on the landing.)
   g.enemies = g.enemies.filter((e) => !garrison.includes(e));
@@ -80,9 +81,13 @@ const swingAt = (o) => {
   out.garrison.chasing = fresh.filter((e) => e.state !== 'idle').length;
   out.garrison.moved = +Math.max(...fresh.map((e) => Math.hypot(e.x - e.home.x, e.z - e.home.z))).toFixed(2);
   for (const e of fresh) e.die(g);
-  await wait(1500);
+  await wait(3000);
   out.garrison.flag = !!g.save.data.flags.garrison;
+  out.garrison.gateOpen = gate.open;
+  out.garrison.quest = g.quests.def('main').short[g.save.data.quests.main];
   // ---------- into the hall ----------
+  // (Once the camera is back from the floodgate rising.)
+  for (let k = 0; k < 100 && g.cutscene; k++) await wait(100);
   await at(gate.x - 1.6, gate.z);
   await hold(['KeyS', 'KeyD'], 1400);
   await wait(800);
@@ -94,12 +99,14 @@ const swingAt = (o) => {
   g.afterHit(res, p.x + 1, p.z, null);
   out.fell = { res, hp: p.hp, state: g.state };
   await wait(3600);
+  // (The death screen takes a press only after 3 s of game time, which a slow frame rate stretches.)
+  for (let i = 0; i < 40 && g.state === 'dead' && !(g.deadT > 3); i++) await wait(100);
   window.dispatchEvent(new PointerEvent('pointerdown', { pointerType: 'mouse' }));
   await wait(2600);
   out.lost = { fight: g.bossActive, gateOpen: gate.open, boss: g.boss.state, at: [+p.x.toFixed(1), +p.z.toFixed(1)] };
   g.writeSave();
-  out.ok = out.shut.held && !out.shut.open && !out.shut.fight && out.bell.rung && out.bell.flag && out.bell.gateOpen && out.bell.quest === 'Face the Tidelord'
-    && out.garrison.dive && out.garrison.moved > 0.5 && out.garrison.flag && out.hall.fight && out.hall.shutBehind && out.hall.inside && !out.lost.fight && out.lost.gateOpen && out.lost.boss === 'sleep';
+  out.ok = out.shut.held && !out.shut.open && !out.shut.fight && out.bell.rung && out.bell.flag && !out.bell.gateOpen && out.bell.quest === 'Clear the palace landing'
+    && out.garrison.dive && out.garrison.moved > 0.5 && out.garrison.flag && out.garrison.gateOpen && out.garrison.quest === 'Face the Tidelord' && out.hall.fight && out.hall.shutBehind && out.hall.inside && !out.lost.fight && out.lost.gateOpen && out.lost.boss === 'sleep';
   sessionStorage.setItem('test-palace', JSON.stringify(out));
   location.reload();
 })();

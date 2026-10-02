@@ -26,7 +26,7 @@ const SALVAGER = 'Brassbelly the Salvager';
  * knight walks into deep water, his air running down below the surface. The crew have netted the Tide Serpent
  * in a pool off the sandbar: cut free, it carries him across the sea, and in the suit down through it
  * (src/game/serpent.ts). Across the trench from the drowned kingdom, the Tidelord's palace: the kingdom's great
- * bell, rung, opens its floodgate; his crew wait before it, he waits on his throne within (src/game/palace.ts,
+ * bell, rung, opens its floodgate once his crew before it, who hold its winch, are beaten; he waits on his throne within (src/game/palace.ts,
  * tidelord.ts). The reef's people, the pearl-diver's son and the coral shrine (story/reef.ts), the village's night
  * (story/reeflife.ts), its errands (story/errands.ts).
  */
@@ -98,6 +98,7 @@ export class AquaStory implements RealmStory {
     if (e.type !== 'salvager') return;
     this.bar = false;
     g.ui.bossHide();
+    g.fightMusic = Math.min(g.fightMusic, 1.5);
     g.bubbleAt(e, 'My... suit...');
     if (!g.save.data.flags.costume) this.dropSuit(g, e.x, e.z);
   }
@@ -112,15 +113,17 @@ export class AquaStory implements RealmStory {
     g.audio.sfx('power', g.player.x, g.player.z);
     g.audio.sfx('clang', g.player.x, g.player.z);
     g.ui.toast('The diving suit', 'Patched and leaky, but yours: walk into deep water. Its air lasts a minute and a half under the surface; come up, or stand in a stream of bubbles.', 6);
-    g.quest('main', 1);
+    g.quest('main', step(g, 'Go down into the deep'));
     g.writeSave();
   }
   onRegion(g: Game, r: RegionDef) {
-    if (r.name === 'The Strand' || r.name === 'The Sandbar') g.quest('main', 0);
+    // The village first (as in the realms before): its harbourmaster sends the knight on to the salvager.
+    if (r.name === 'The Coral Village') g.quest('main', step(g, 'Talk to Gannet the Harbourmaster'));
     this.reef.onRegion(g, r);
     this.errands.onRegion(g, r);
-    // Down in the drowned kingdom, or over the trench: the palace and its bell.
-    if (!g.save.data.flags.bell && ['The Drowned Kingdom', 'The Drowned Plaza', 'The Trench', 'The Drowned Palace'].includes(r.name)) g.quest('main', step(g, 'Ring the sunken bell'));
+    // Down in the drowned kingdom, or over the trench: the palace and its bell. (In the suit: swum over on the
+    // serpent's back before it, the quest mustn't skip "Go down into the deep".)
+    if (g.save.data.flags.costume && !g.save.data.flags.bell && ['The Drowned Kingdom', 'The Drowned Plaza', 'The Trench', 'The Drowned Palace'].includes(r.name)) g.quest('main', step(g, 'Ring the sunken bell'));
   }
   areaSub(g: Game, r: RegionDef) {
     // The way on to realm 4: only the serpent swims it, and not yet.
@@ -132,8 +135,15 @@ export class AquaStory implements RealmStory {
     this.errands.struck(g, hit);
   }
   talk(g: Game, n: Npc, lines: string[]) {
+    if (n.def.id === 'gannet') g.after(0.1, () => g.quest('main', step(g, "Take the salvager's suit")));
     lines = this.grotto.talk(g, n, lines);
-    return this.caves.talk(g, n, lines) ?? this.errands.talk(g, n, lines) ?? this.reef.talk(g, n, lines) ?? this.life.talk(g, n, lines) ?? this.lamp.talk(g, n, lines) ?? lines;
+    // Each in turn adds its say to what the last left (or runs the talk itself): none swallows another's lines.
+    for (const part of [this.caves, this.errands, this.reef, this.life, this.lamp]) {
+      const said = part.talk(g, n, lines);
+      if (said === 'handled') return said;
+      if (said) lines = said;
+    }
+    return lines;
   }
   victoryLine(id: string) {
     return this.reef.victoryLine(id) ?? this.life.victoryLine(id) ?? this.errands.victoryLine(id) ?? this.caves.victoryLine(id) ?? this.lamp.victoryLine(id) ?? 'The sea is quiet again.';
@@ -148,9 +158,9 @@ export class AquaStory implements RealmStory {
     // (The game runs the victory; the morning comes down through the water into his hall with it.)
     g.after(2.5, () => (this.dawn ??= new DawnShafts(HALL.x0, HALL.z0, HALL.x1, HALL.z1, HALL.y, g.realm.sea?.surface ?? 0, g)));
   }
-  /** A lost fight: the floodgate lifts again (the bell has been rung). */
+  /** A lost fight: the floodgate lifts again (the bell has been rung, the crew on the landing beaten). */
   arenaOpen(g: Game) {
-    return !!g.save.data.flags.bell;
+    return !!(g.save.data.flags.bell && g.save.data.flags.garrison);
   }
   tick(g: Game, dt: number) {
     this.suit?.update(dt, g);
@@ -184,6 +194,8 @@ export class AquaStory implements RealmStory {
       else g.ui.bossHide();
     }
     if (on) g.ui.bossHp(s!.hp / s!.maxHp);
+    // (His fight has its own music while the bar is up.)
+    if (on) g.fightMusic = 4;
   }
 
   // ---------- the Tidelord's palace ----------
@@ -198,32 +210,44 @@ export class AquaStory implements RealmStory {
     g.interactables.push(gate);
     this.bell = new SunkenBell(BELL.x, BELL.z, BELL.top, g, () => this.rang(g));
     g.interactables.push(this.bell);
-    if (f.bell) {
-      this.bell.setRung();
-      gate.setOpen(true, g, true);
-    }
+    if (f.bell) this.bell.setRung();
+    if (f.bell && f.garrison) gate.setOpen(true, g, true);
     if (f.boss) this.dawn = new DawnShafts(HALL.x0, HALL.z0, HALL.x1, HALL.z1, HALL.y, g.realm.sea?.surface ?? 0, g, true);
   }
-  /** The bell tolls: across the trench the floodgate grinds up. */
+  /** The bell tolls: across the trench the floodgate grinds up, or, while his crew on the landing still hold its
+   *  winch, strains in its towers and holds. */
   private rang(g: Game) {
     const f = g.save.data.flags;
     if (f.bell) return;
     f.bell = true;
-    g.quest('main', step(g, 'Face the Tidelord'));
+    g.quest('main', step(g, f.garrison ? 'Face the Tidelord' : 'Clear the palace landing'));
     g.writeSave();
     const gate = g.hallDoor;
     g.after(0.9, () => {
+      if (!f.garrison) {
+        if (gate) g.focus(gate.x - 1, gate.y + 2.5, gate.z, 3.6, () => g.ui.toast('The floodgate strains', "Across the trench it shudders in its towers, but the Tidelord's crew on the landing hold its winch. Ride the current over and beat them."));
+        g.after(0.8, () => gate instanceof Floodgate && gate.strain(g));
+        return;
+      }
       if (gate) g.focus(gate.x - 1, gate.y + 2.5, gate.z, 3.6, () => g.ui.toast('The floodgate rises', "Across the trench the Tidelord's palace stands open. Ride the current over."));
       g.after(0.8, () => gate?.setOpen(true, g));
     });
   }
-  /** His crew before the palace, all down (saved: they stay down). */
+  /** His crew before the palace, all down (saved: they stay down). They held the floodgate's winch: with the
+   *  bell rung, it rises now. */
   private garrisonFalls(g: Game) {
     if (this.garrisonCleared || g.enemies.some((o) => o.alive && o.group === 'garrison')) return;
     this.garrisonCleared = true;
-    g.save.data.flags.garrison = true;
+    const f = g.save.data.flags;
+    f.garrison = true;
     g.writeSave();
-    g.after(1, () => g.ui.toast("The Tidelord's crew are beaten", g.save.data.flags.bell ? 'His throne hall lies beyond the floodgate' : 'The floodgate is still shut fast'));
+    if (!f.bell) return g.after(1, () => g.ui.toast("The Tidelord's crew are beaten", "The floodgate is still shut fast: they say the kingdom's great bell opens it"));
+    g.quest('main', step(g, 'Face the Tidelord'));
+    const gate = g.hallDoor;
+    g.after(1, () => {
+      if (gate) g.focus(gate.x - 1, gate.y + 2.5, gate.z, 3.2, () => g.ui.toast("The Tidelord's crew are beaten", 'Their winch runs free, and the floodgate rises'));
+      g.after(0.6, () => gate?.setOpen(true, g));
+    });
   }
 }
 

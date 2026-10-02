@@ -59,9 +59,10 @@ const swing = (s) => {
     for (const m of h?.marks ?? []) if (!marks.includes(m)) marks.push(m);
     if (h) orbs.most = Math.max(orbs.most, h.orbs.length);
   };
-  // The knight keeps his distance (out of the sweep's way, mostly), and stands still a while.
+  // The knight keeps his distance (out of the sweep's way, mostly), and stands still a while. (His fifth move is
+  // the call for his crew: with a sweep between each, that's about 30 s in, later on a slow frame rate.)
   const t0 = now();
-  while (now() - t0 < 30 && (seen.charge < 1 || seen.orbs < 1 || seen.slam < 1 || seen.summon < 1 || now() - t0 < 12)) {
+  while (now() - t0 < 42 && (seen.charge < 1 || seen.orbs < 1 || seen.slam < 1 || seen.summon < 1 || now() - t0 < 12)) {
     spy();
     await wait(40);
   }

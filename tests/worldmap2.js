@@ -1,5 +1,6 @@
 // World map, part 2 (in Whisperwood): pause; the Keep is visited and freed (its stats listed),
-// Whisperwood is where the knight is, the Sunken Reef a rumour, the rest unknown; clicking the
+// Whisperwood is where the knight is, the Sunken Reef visited (its stats listed), the Scorched Dunes a
+// rumour, the rest unknown; clicking the
 // Keep on the map travels there.
 const g = window.__game;
 g.setPaused(true);

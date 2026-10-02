@@ -1,4 +1,5 @@
-// Travel from the pause menu, part 1: light the wayshrine, open the menu, pick Whisperwood.
+// Travel from the pause menu, part 1: light the wayshrine, open the menu (a button for each other realm,
+// the Sunken Reef's no longer "being built"), pick Whisperwood.
 // Parts 2 and 3 (AFTER=tests/menutravel2.js,tests/menutravel3.js) follow the reloads.
 const g = window.__game;
 sessionStorage.removeItem('test-log');

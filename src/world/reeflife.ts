@@ -52,8 +52,8 @@ const at = (deg: number, r: number): Pt => {
 const STAGES = [40, 74.5];
 /** Who fishes where, which way they face, and where their float sits on the water. */
 export const FISHERS: { id: string; x: number; z: number; heading: number }[] = [
-  { id: 'bass', x: 49.5, z: 66.92, heading: Math.PI / 2 },
-  { id: 'sprat', x: 53.5, z: 66.95, heading: Math.PI / 2 - 0.15 },
+  { id: 'bass', x: 49.5, z: 66.65, heading: Math.PI / 2 },
+  { id: 'sprat', x: 54.6, z: 66.9, heading: Math.PI / 2 - 0.15 }, // (off Brill's shoulder: 0.5 m from him, his prompt was hers)
   ...STAGES.map((deg, k) => {
     const [x, z] = at(deg, 11.1);
     return { id: k ? 'skua' : 'tern', x, z, heading: (deg * Math.PI) / 180 };
@@ -599,12 +599,12 @@ function people(): NpcDef[] {
       'Cannot talk, being chased!',
       'Mum says not past the floats. The floats are where the deep starts.',
     ] },
-    { id: 'nipper', look: 'reefchild2', name: 'Nipper', x: 25.2, z: 68.4, speed: 1.1, pause: 3.5, roam: [[25.2, 68.4], [19.6, 69.2], [16.8, 64.6], [17.6, 59.6], [22.2, 58.8], [28.2, 60.6], [28.6, 66.2]], lines: [
+    { id: 'nipper', look: 'reefchild4', name: 'Nipper', x: 25.2, z: 68.4, speed: 1.1, pause: 3.5, roam: [[25.2, 68.4], [19.6, 69.2], [16.8, 64.6], [17.6, 59.6], [22.2, 58.8], [28.2, 60.6], [28.6, 66.2]], lines: [
       'This is Pinch. He is my crab. He is on a string so he does not go home.',
       'Pinch does not like knights. He does not like anyone. That is why he is the best crab.',
     ] },
     // At their work: the cook at the market's fire, the boatwright, the net-mender, the coral-carver, Granny Whelk.
-    { id: 'samphire', look: 'reefcook', name: 'Samphire the Cook', x: MARKET.x - 0.95, z: MARKET.z - 0.55, pose: 'work', heading: 0.5, lines: [
+    { id: 'samphire', look: 'reefcook', name: 'Samphire the Cook', x: MARKET.x - 1.1, z: MARKET.z - 0.62, pose: 'work', heading: 0.5, lines: [
       'Chowder: mussels, kelp, and whatever Bass did not lose. Sit by the fire and have a bowl.',
       'There was a fish hall on the quay once. Now it is three stalls and my pot, and the pot is the best part.',
     ] },
@@ -612,7 +612,7 @@ function people(): NpcDef[] {
       'Caulk and tar, plank by plank. Every boat on this shelf has sunk once and been raised again.',
       'The crew stove in half our boats to keep us off the wrecks. I mend them faster than they break them. Just.',
     ] },
-    { id: 'pollock', look: 'reefold2', name: 'Old Pollock the Net-mender', x: 16.4, z: 71.1, pose: 'sit', heading: 0.9, lines: [
+    { id: 'pollock', look: 'reefold3', name: 'Old Pollock the Net-mender', x: 16.4, z: 71.1, pose: 'sit', heading: 0.9, lines: [
       'A net is mostly holes. Mending it is knowing which holes to keep.',
       'Ling does the village\'s nets and I do the boats\'. We do not speak of whose knots are better. Mine are.',
     ] },
@@ -707,7 +707,7 @@ export function buildReefLife(b: Builder, grid: Grid, under: (x: number, z: numb
   const regions: RegionDef[] = [
     { name: INN.name, music: 'tavern', amb: 'indoor', test: (x, z) => x > INN.x0 && x < INN.x1 && z > INN.z0 && z < INN.z1 },
     // The beach the village spills onto (the inn's porch, the market, the boatyard) is the village too.
-    { name: 'The Coral Village', music: 'village', amb: 'village', test: (x, z) => x > 13 && x < 31 && z > 49.5 && z < 79 && !under(x, z) },
+    { name: 'The Coral Village', music: 'village', amb: 'harbour', test: (x, z) => x > 13 && x < 31 && z > 49.5 && z < 79 && !under(x, z) },
   ];
-  return { npcs: people(), enemies: [], objects: [], regions, inn: { x: (INN.x0 + INN.x1) / 2, z: INN.door, region: INN.name } };
+  return { npcs: people(), enemies: [], objects: [], regions, inn: { x: (INN.x0 + INN.x1) / 2, z: INN.door, region: INN.name, chatter: true } };
 }

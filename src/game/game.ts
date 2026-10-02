@@ -146,6 +146,9 @@ export class Game {
   dawn = 0;
   boss: Enemy | null = null;
   bossActive = false;
+  /** Seconds of a mini-boss's fight music left: its story keeps this up while the knight fights it (the Sunken
+   *  Reef's Brassbelly and Old Inkarm); the place's own music comes back once it runs out. */
+  fightMusic = 0;
   cutscene: { t: number; dur: number; x: number; y: number; z: number; onEnd?: () => void } | null = null;
   godMode = false;
   settings = { shake: true, hints: true, lines: 360, fly: false };
@@ -159,7 +162,7 @@ export class Game {
   private focusTarget = new THREE.Vector3();
   private raycaster = new THREE.Raycaster();
   private ambT = 0;
-  private ambCache = { water: 0, fire: 0 };
+  private ambCache = { water: 0, fire: 0, surf: 0, surfX: 0, surfZ: 0, creak: 0, lap: 0 };
   private deadT = 0;
   private titleT = 0;
   private hintsShown = new Set<string>(Game.loadTips());
@@ -755,7 +758,7 @@ export class Game {
   footstep(x: number, z: number) {
     const t = this.grid.typeAt(x, z);
     const w = this.grid.waterAt(x, z);
-    const surf = w > -100 && this.grid.deck[this.grid.i(Math.floor(x), Math.floor(z))] < -100 ? 'water' : t === T.Wood || this.grid.deck[this.grid.i(Math.floor(x), Math.floor(z))] > -100 ? 'wood' : t === T.Cobble || t === T.Flag || t === T.Floor || t === T.Rock ? 'stone' : 'soft';
+    const surf = w > -100 && this.grid.deck[this.grid.i(Math.floor(x), Math.floor(z))] < -100 && !this.player.under ? 'water' : t === T.Wood || this.grid.deck[this.grid.i(Math.floor(x), Math.floor(z))] > -100 ? 'wood' : t === T.Cobble || t === T.Flag || t === T.Floor || t === T.Rock ? 'stone' : 'soft';
     this.audio.sfx('step-' + surf);
     if (Math.random() < 0.35) this.fx.emit(P.dust, x, this.player.y + 0.05, z, 0, 0.2, 0);
   }
@@ -2152,7 +2155,7 @@ export class Game {
         this.ui.area(r.name, this.story.areaSub(this, r));
         this.audio.sfx('area');
       }
-      if (!this.bossActive || !this.boss?.alive) this.audio.music?.setTrack(this.victory ? 'dawn' : r.music === 'tavern' ? '' : r.music);
+      if ((!this.bossActive || !this.boss?.alive) && !(this.fightMusic > 0)) this.audio.music?.setTrack(this.victory ? 'dawn' : r.music === 'tavern' ? '' : r.music);
     }
   }
 
@@ -2270,10 +2273,12 @@ export class Game {
         fire += (f.big ? 1 : 0.35) / (1 + d2 / 6);
       }
       this.ambCache.fire = Math.min(1, fire);
+      if (this.realm.sea) this.seaAmb();
     }
     const amb = this.region?.amb ?? 'road';
     const prof: Record<string, [number, number, number]> = {
       fields: [1, 1, 0.7], road: [0.7, 0.9, 0.6], village: [0.5, 0.7, 0.4], woods: [0.6, 0.5, 1], keep: [0.9, 0.2, 0.2], indoor: [0, 0, 0],
+      shore: [1.4, 0.45, 0], harbour: [0.75, 0.45, 0], sea: [1.2, 0, 0], cave: [0, 0, 0], grotto: [1.2, 0, 0], temple: [1.2, 0, 0],
     };
     // (Under the surface: no wind or night sounds; bubbles and a low drone, muffled.)
     const sea = p.under;
@@ -2284,7 +2289,8 @@ export class Game {
     const dawnMul = 1 - this.dawn * 0.8;
     a.update(real, {
       x: p.x, z: p.z, wind, crickets: crickets * dawnMul, owls: owls * dawnMul, birds: this.def.birds * (0.4 + crickets * 0.6) * (1 + this.dawn), bubbles: sea ? this.def.bubbles ?? 0 : 0, water: sea ? 0 : this.ambCache.water, fire: this.ambCache.fire,
-      drums, indoor: amb === 'indoor',
+      drums, indoor: amb === 'indoor' || amb === 'cave',
+      ...this.seaSounds(amb),
     });
     // The inn's tune leaks out into the street.
     const inn = this.realm.inn;
@@ -2293,6 +2299,68 @@ export class Game {
       const inside = this.region?.name === inn.region;
       a.music?.setTavern(this.state === 'title' ? 0.25 : inside ? 0.8 : 0.9 / (1 + (td / 6) ** 2), inside);
     } else a.music?.setTavern(0, false);
+    // A mini-boss's fight music while its story keeps it up (not over the tyrant's), then the place's own again.
+    if (this.fightMusic > 0) {
+      this.fightMusic = Math.max(0, this.fightMusic - real);
+      const r = this.region;
+      if (!this.bossActive) a.music?.setTrack(this.fightMusic > 0 ? 'fight' : this.victory ? 'dawn' : !r || r.music === 'tavern' ? '' : r.music);
+    }
+  }
+
+  /** A sea realm's ambience by where the knight is (every quarter second): how near the nearest waterline is and
+   *  where (the surf), how many planks over the water are about him (boardwalks, jetties, the wreck: their creaks),
+   *  and whether he's out on the open sea (its lapping). */
+  private seaAmb() {
+    const p = this.player, grid = this.grid, sea = this.realm.sea!.surface, c = this.ambCache;
+    const wet = (x: number, z: number) => grid.waterAt(x, z) > -100 && grid.groundAt(x, z) < sea;
+    let best = 577;
+    const cx = Math.floor(p.x) + 0.5, cz = Math.floor(p.z) + 0.5;
+    for (let dz = -24; dz <= 24; dz += 2)
+      for (let dx = -24; dx <= 24; dx += 2) {
+        const d2 = dx * dx + dz * dz, x = cx + dx, z = cz + dz;
+        if (d2 >= best || !wet(x, z) || (wet(x + 1, z) && wet(x - 1, z) && wet(x, z + 1) && wet(x, z - 1))) continue;
+        best = d2;
+        c.surfX = x;
+        c.surfZ = z;
+      }
+    // (Loud within a few metres of the waterline, a distant roar out to 24 m.)
+    c.surf = best > 576 ? 0 : 1 / (1 + best / 16) + 0.25 / (1 + best / 200);
+    let boards = 0;
+    for (let dz = -4; dz <= 4; dz++)
+      for (let dx = -4; dx <= 4; dx++) {
+        const x = Math.floor(p.x) + dx, z = Math.floor(p.z) + dz;
+        if (dx * dx + dz * dz > 17 || !grid.inside(x, z)) continue;
+        const i = grid.i(x, z), dk = grid.deck[i];
+        // (Planks over the water; not the stone of a tower's top standing out of it.)
+        if (dk > -100 && grid.water[i] > -100 && dk - grid.h[i] < 5.2) boards++;
+      }
+    c.creak = Math.min(1, boards / 14);
+    c.lap = !p.under && grid.waterAt(p.x, p.z) > -100 && grid.groundAt(p.x, p.z) < sea - 0.6 ? 1 : 0;
+  }
+
+  /** The sea realm's part of the ambience (nothing elsewhere): the surf, the open sea, creaks, an inn's voices,
+   *  drips and an echo in caves and drowned halls, the temple's choir, a lit lamp's hum. */
+  private seaSounds(amb: string) {
+    const p = this.player, c = this.ambCache, under = p.under;
+    const echoes = amb === 'cave' || (under && (amb === 'grotto' || amb === 'temple'));
+    const inn = this.realm.inn;
+    let chatter = 0, chatterIn = false;
+    if (inn?.chatter && this.state !== 'title') {
+      chatterIn = this.region?.name === inn.region;
+      chatter = chatterIn ? 1 : 0.6 / (1 + (Math.hypot(p.x - inn.x, p.z - inn.z) / 5) ** 2);
+    }
+    let hum = 0;
+    for (const h of this.realm.hums ?? [])
+      if (this.save.data.flags[h.flag]) hum = Math.max(hum, Math.max(0, 1 - Math.hypot(p.x - h.x, p.y - h.y, p.z - h.z) / 20) ** 2);
+    if (!this.realm.sea) return { chatter, chatterIn, hum };
+    return {
+      // (Under the sea, or in a cave, the surf comes muffled and quieter.)
+      surf: c.surf * (under ? 0.35 : amb === 'cave' || amb === 'indoor' ? 0.5 : 1), surfX: c.surfX, surfZ: c.surfZ,
+      lap: c.lap, creak: c.creak, chatter, chatterIn, hum,
+      echo: echoes ? (amb === 'temple' ? 1 : 0.75) : 0,
+      drips: amb === 'cave' ? 1 : under && amb === 'grotto' ? 0.6 : under && amb === 'temple' ? 0.3 : 0,
+      choir: under && amb === 'temple' ? 1 : 0,
+    };
   }
 
   private realmFires() {

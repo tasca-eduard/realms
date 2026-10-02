@@ -5,7 +5,7 @@ import type { Builder } from './builder';
 import { Grid, NONE, S, T } from './grid';
 import { Painter, distLine, insidePoly, type Pt } from './paint';
 import type { EnemySpawn, ObjDef, RealmData, RegionDef } from './realm';
-import { buildLighthouse } from './lighthouse';
+import { buildLighthouse, LAMP } from './lighthouse';
 import { buildKingdom } from './kingdom';
 import { buildReef, reefClear, reefIsleHeight } from './reef';
 import { buildReefLife } from './reeflife';
@@ -445,7 +445,7 @@ export function buildRealm3(builder: Builder): RealmData {
     { type: 'goblin', x: YARD.x + 2.6, z: YARD.z + 1.4, group: 'salvager' },
     { type: 'shield', x: YARD.x + 1, z: YARD.z - 3, group: 'salvager' },
     // The crew on the strand: more at the camp, harpooners by the way to the sandbar and on it, divers in the deep either side (the serpent's keepers guard the bar's middle).
-    { type: 'shield', x: CAMP.x - 3, z: CAMP.z - 2, group: 'camp' },
+    { type: 'shield', x: CAMP.x - 3.6, z: CAMP.z - 2.6, group: 'camp' },
     { type: 'harpooner', x: 46, z: 30.5, guard: true },
     { type: 'harpooner', x: 30, z: 41 },
     { type: 'harpooner', x: 66, z: 31.6, guard: true },
@@ -459,7 +459,7 @@ export function buildRealm3(builder: Builder): RealmData {
     { type: 'crab', x: 58, z: 72 },
     { type: 'crab', x: 65.5, z: 80.5 },
     { type: 'puffer', x: 56.5, z: 64.5 },
-    { type: 'puffer', x: 50, z: 75.5 },
+    { type: 'puffer', x: 49.5, z: 75 },
     // The kelp forest: jellies drifting (two in a clearing), eels at the groves' edges, a pufferfish, divers.
     { type: 'jelly', x: 72, z: 52 },
     { type: 'jelly', x: 88, z: 56 },
@@ -472,7 +472,7 @@ export function buildRealm3(builder: Builder): RealmData {
     // The drowned kingdom: crabs on the plaza, eels in the ruins, divers, a jelly; at its edge by the current over
     // the trench, an elite crab (the gauntlet's end).
     { type: 'crab', x: 87, z: 89 },
-    { type: 'crab', x: 93, z: 84 },
+    { type: 'crab', x: 92.7, z: 84.3 },
     { type: 'eel', x: 80, z: 83 },
     { type: 'eel', x: 98, z: 91 },
     { type: 'diver', x: 84, z: 78 },
@@ -490,7 +490,7 @@ export function buildRealm3(builder: Builder): RealmData {
     { type: 'goblin', x: 75.2, z: 32.6, group: 'serpent' },
     { type: 'goblin', x: 83.4, z: 33.2, group: 'serpent' },
     { type: 'shield', x: 71.6, z: 36.2, group: 'serpent' },
-    { type: 'archer', x: 70.5, z: 31.4, group: 'serpent', guard: true },
+    { type: 'archer', x: 69.9, z: 32, group: 'serpent', guard: true },
     // The Tidelord's crew on the landing before his palace, and the Tidelord on his throne.
     ...palace.enemies,
   ];
@@ -506,22 +506,22 @@ export function buildRealm3(builder: Builder): RealmData {
   ];
   const under = (x: number, z: number) => grid.groundAt(x, z) < SEA_LEVEL - 0.6 && grid.waterAt(x, z) !== NONE;
   const regions: RegionDef[] = [
-    { name: 'The Dune Strait', music: 'road', amb: 'fields', test: (x, z) => x > STRAIT.x - 7 && Math.abs(z - STRAIT.z) < 7 },
-    { name: 'The Sunken Ship', music: 'keep', amb: 'fields', test: (x, z) => Math.hypot(x - SHIP.x, z - SHIP.z) < 9 },
-    { name: 'The Abyss', music: 'hall', amb: 'fields', test: (x, z) => Math.hypot(x - ABYSS.x, z - ABYSS.z) < ABYSS.r + 2 },
-    { name: 'The Trench', music: 'hall', amb: 'fields', test: (x, z) => distLine(TRENCH, x, z) < 4.5 && under(x, z) },
-    { name: 'The Throne Hall', music: 'hall', amb: 'fields', test: (x, z) => x > HALL.x0 && x < HALL.x1 && z > HALL.z0 && z < HALL.z1 && under(x, z) },
-    { name: 'The Drowned Palace', music: 'hall', amb: 'fields', test: (x, z) => Math.hypot(x - PALACE.x, z - PALACE.z) < PALACE.r + 1 && under(x, z) },
-    { name: 'The Drowned Plaza', music: 'keep', amb: 'fields', test: (x, z) => Math.hypot(x - PLAZA.x, z - PLAZA.z) < PLAZA.r + 3 && under(x, z) },
-    { name: 'The Drowned Kingdom', music: 'keep', amb: 'fields', test: (x, z) => insidePoly(KINGDOM, x, z) && under(x, z) },
-    { name: 'The Coral Village', music: 'village', amb: 'village', test: (x, z) => (Math.hypot(x - VILLAGE.x, z - VILLAGE.z) < VILLAGE.r + 6 || (x > 43 && x < 58 && Math.abs(z - 66.4) < 2)) && !under(x, z) },
-    { name: 'The Lighthouse Isle', music: 'road', amb: 'fields', test: (x, z) => Math.hypot(x - ISLES[0].x, z - ISLES[0].z) < ISLES[0].r + 2 && !under(x, z) },
-    { name: 'The Sandbar', music: 'road', amb: 'fields', test: (x, z) => distLine(BAR, x, z) < 2.4 && !under(x, z) },
-    { name: 'The Coral Gardens', music: 'fields', amb: 'fields', test: (x, z) => insidePoly(GARDENS, x, z) && under(x, z) },
-    { name: 'The Kelp Forest', music: 'wilds', amb: 'fields', test: (x, z) => insidePoly(KELP, x, z) && under(x, z) },
-    { name: 'The Reef Flats', music: 'fields', amb: 'fields', test: (x, z) => under(x, z) && grid.groundAt(x, z) > -5 },
-    { name: 'The Deep', music: 'fields', amb: 'fields', test: (x, z) => under(x, z) },
-    { name: 'The Strand', music: 'road', amb: 'fields', test: () => true },
+    { name: 'The Dune Strait', music: 'road', amb: 'sea', test: (x, z) => x > STRAIT.x - 7 && Math.abs(z - STRAIT.z) < 7 },
+    { name: 'The Sunken Ship', music: 'keep', amb: 'sea', test: (x, z) => Math.hypot(x - SHIP.x, z - SHIP.z) < 9 },
+    { name: 'The Abyss', music: 'hall', amb: 'sea', test: (x, z) => Math.hypot(x - ABYSS.x, z - ABYSS.z) < ABYSS.r + 2 },
+    { name: 'The Trench', music: 'hall', amb: 'sea', test: (x, z) => distLine(TRENCH, x, z) < 4.5 && under(x, z) },
+    { name: 'The Throne Hall', music: 'hall', amb: 'grotto', test: (x, z) => x > HALL.x0 && x < HALL.x1 && z > HALL.z0 && z < HALL.z1 && under(x, z) },
+    { name: 'The Drowned Palace', music: 'hall', amb: 'sea', test: (x, z) => Math.hypot(x - PALACE.x, z - PALACE.z) < PALACE.r + 1 && under(x, z) },
+    { name: 'The Drowned Plaza', music: 'keep', amb: 'sea', test: (x, z) => Math.hypot(x - PLAZA.x, z - PLAZA.z) < PLAZA.r + 3 && under(x, z) },
+    { name: 'The Drowned Kingdom', music: 'keep', amb: 'sea', test: (x, z) => insidePoly(KINGDOM, x, z) && under(x, z) },
+    { name: 'The Coral Village', music: 'village', amb: 'harbour', test: (x, z) => (Math.hypot(x - VILLAGE.x, z - VILLAGE.z) < VILLAGE.r + 6 || (x > 43 && x < 58 && Math.abs(z - 66.4) < 2)) && !under(x, z) },
+    { name: 'The Lighthouse Isle', music: 'road', amb: 'shore', test: (x, z) => Math.hypot(x - ISLES[0].x, z - ISLES[0].z) < ISLES[0].r + 2 && !under(x, z) },
+    { name: 'The Sandbar', music: 'road', amb: 'shore', test: (x, z) => distLine(BAR, x, z) < 2.4 && !under(x, z) },
+    { name: 'The Coral Gardens', music: 'fields', amb: 'sea', test: (x, z) => insidePoly(GARDENS, x, z) && under(x, z) },
+    { name: 'The Kelp Forest', music: 'wilds', amb: 'sea', test: (x, z) => insidePoly(KELP, x, z) && under(x, z) },
+    { name: 'The Reef Flats', music: 'fields', amb: 'sea', test: (x, z) => under(x, z) && grid.groundAt(x, z) > -5 },
+    { name: 'The Deep', music: 'fields', amb: 'sea', test: (x, z) => under(x, z) },
+    { name: 'The Strand', music: 'road', amb: 'shore', test: () => true },
   ];
   // The reef's people, quests and secrets (group 34: src/world/reef.ts).
   const reef = buildReef(b, grid, under);
@@ -589,6 +589,8 @@ export function buildRealm3(builder: Builder): RealmData {
     enemies,
     npcs: [...reef.npcs, ...life.npcs, ...errands.npcs, ...caves.npcs, ...light.npcs],
     inn: life.inn,
+    // The lighthouse's lamp hums once it's lit.
+    hums: [{ x: LAMP.x, y: LAMP.y, z: LAMP.z, flag: 'lampLit' }],
     trial: reef.trial,
     objects,
     regions,

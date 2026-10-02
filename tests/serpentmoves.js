@@ -49,11 +49,27 @@ window.__report = () => out;
   p.fz = -1;
   await wait(400);
   out.riding = p.riding === s;
+  // (The mouse where the foe will stand, and the view let settle first: the camera leans toward the mouse and
+  // follows the serpent's depth slowly, and a click made while it still moves aims somewhere else.)
+  {
+    const v = p.rig.root.position.clone().set(p.x, p.y + 0.9, p.z - 3.2), sc = { x: 0, y: 0 };
+    g.cam.toScreen(v, sc);
+    c.dispatchEvent(new MouseEvent('mousemove', { clientX: sc.x, clientY: sc.y, bubbles: true }));
+    await wait(1800);
+  }
 
   // Bubble shot at a foe standing on the bar ahead.
   put(foes[0], p.x, p.z - 3.2);
   put(foes[1], p.x + 14, p.z - 4);
   await wait(200);
+  // (The mouse on the foe first and the view let settle: just carried across the map, the camera is still
+  // catching up, more so on a slow frame rate, and the click would land somewhere else.)
+  {
+    const v = p.rig.root.position.clone().set(foes[0].x, foes[0].y + 0.8, foes[0].z), sc = { x: 0, y: 0 };
+    g.cam.toScreen(v, sc);
+    c.dispatchEvent(new MouseEvent('mousemove', { clientX: sc.x, clientY: sc.y, bubbles: true }));
+    await wait(700);
+  }
   const hp0 = foes[0].hp, spat = new Set();
   const iv = setInterval(() => s.bubbles.forEach((b) => spat.add(b)), 5);
   await clickAt(foes[0].x, foes[0].y + 0.8, foes[0].z);
@@ -72,10 +88,14 @@ window.__report = () => out;
   p.fx = 0;
   p.fz = -1;
   const hp1 = foes[1].hp, x1 = foes[1].x;
+  // (50 spent; a first tick on the foe gives 2 back. The lowest it goes: on a slow frame the whirlpool can
+  // start just after the key is let go.)
+  let low = p.energy;
+  const ivE = setInterval(() => (low = Math.min(low, p.energy)), 5);
   await key('KeyF', 30);
-  // (50 spent; a first tick on the foe gives 2 back.)
-  const energy = Math.round(p.energy);
   await wait(1500);
+  clearInterval(ivE);
+  const energy = Math.round(low);
   const w = s.whirls[0];
   out.whirl = { up: !!w, energy, dragged: r2(x1 - foes[1].x), hurt: r2(hp1 - foes[1].hp) };
   await wait(1500);

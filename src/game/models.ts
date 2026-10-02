@@ -467,6 +467,10 @@ export function makeGoblin(shield: boolean): Model {
     woodGoblin(r, shield);
     return new Model(r, (rig, a) => goblinPose(rig, a, shield), 0.8);
   }
+  if (FOE_LOOK === 'aqua') {
+    seaGoblin(r, shield);
+    return new Model(r, (rig, a) => goblinPose(rig, a, shield), 0.8);
+  }
   r.part('handR', (g) => {
     g.box(0, -0.14, 0, 0.05, 0.2, 0.05, '#4a3424');
     g.box(0, -0.52, 0.04, 0.04, 0.4, 0.17, '#8a8a96');
@@ -532,12 +536,166 @@ function woodGoblin(r: Rig, shield: boolean) {
     });
 }
 
+/** The Sunken Reef's crew and their kit (realm 3): oilskins, sea boots, shells, barnacles, kelp, nets and floats. */
+const SEA = {
+  oil: '#d4a22e', oilD: '#8a6418', oilF: '#c8a040', boot: '#26282e', bootL: '#3e414a', rope: '#c8b88a',
+  crab: '#d8482a', crabD: '#8e2a16', crabL: '#ff8a58', drift: '#a8987a', driftD: '#6e5e44', iron: '#5c6068', ironD: '#3a3d44',
+  barn: '#e4dcc6', barnD: '#4a4038', net: '#4a4232', sail: '#b8ad94', cork: '#d8a860', red: '#e83a2a', white: '#f4f0e4',
+  glass: '#4ac8a0', kelp: '#5a6a26', kelpD: '#3a4a1a', kelpL: '#7a8a34', bone: '#e8e0cc', boneD: '#b0a690',
+  shell: '#f0dcc0', shellD: '#c8a07a', pink: '#ff8aa0', clam: '#d8ceb8', clamD: '#a89c84', lip: '#5a6ad0',
+  turtle: '#6a7a3a', turtleD: '#3e4a22', turtleL: '#8e9a4a', star: '#ff7a3a',
+  coral: ['#ff5a4a', '#ff9a3a', '#ff5a9a'], coralL: '#ffb0a0',
+};
+
+/** A barnacle: a little cone, open at its top, standing out from (x, y, z), turned `a` round and tilted `tilt` from upright. */
+function barnacle(g: Geo, x: number, y: number, z: number, a: number, tilt: number, s = 1) {
+  g.push().translate(x, y, z).rotateY(-a).rotateZ(-tilt);
+  g.cyl(0, 0, 0, 0.04 * s, 0.018 * s, 0.045 * s, 5, SEA.barn, { top: SEA.barnD });
+  g.pop();
+}
+
+/** A cone hanging point-down from (x, y, z). */
+function coneDown(g: Geo, x: number, y: number, z: number, r: number, h: number, seg: number, col: string, kind = 0) {
+  g.push().translate(x, y, z).rotateX(Math.PI);
+  g.cyl(0, 0, 0, r, 0, h, seg, col, { kind });
+  g.pop();
+}
+
+/** The crew's oilskins: a smock to the knee with a rope belt and a string of coral beads (a shark's tooth on it),
+ *  sleeves to the wrist, and sea boots with their tops turned down. */
+function seaDress(r: Rig) {
+  r.part('torso', (g) => {
+    g.box(0, 0, 0, 0.42, 0.36, 0.32, SEA.oil, { kind: K.Cloth });
+    g.box(0, 0.33, 0, 0.44, 0.07, 0.33, SEA.oilD, { kind: K.Cloth });
+    g.box(0, 0.06, 0.163, 0.07, 0.27, 0.01, SEA.oilD);
+    g.box(0, 0.02, 0, 0.44, 0.05, 0.34, SEA.rope);
+    for (let i = 0; i < 7; i++) {
+      const u = (i - 3) / 3;
+      g.box(u * 0.13, 0.28 - (1 - u * u) * 0.08, 0.175, 0.04, 0.04, 0.025, SEA.coral[i % 3]);
+    }
+    coneDown(g, 0, 0.2, 0.18, 0.028, 0.08, 4, SEA.white);
+  });
+  r.part('hips', (g) => {
+    g.box(0, -0.3, 0, 0.42, 0.34, 0.32, SEA.oil, { kind: K.Cloth });
+    g.box(0, -0.3, 0, 0.43, 0.04, 0.33, SEA.oilD);
+  });
+  for (const arm of ['armR', 'armL'])
+    r.part(arm, (g) => {
+      g.box(0, -0.3, 0, 0.14, 0.32, 0.15, SEA.oil, { kind: K.Cloth });
+      g.box(0, -0.32, 0, 0.15, 0.05, 0.16, SEA.oilD);
+    });
+  for (const leg of ['legR', 'legL'])
+    r.part(leg, (g) => {
+      g.box(0, -0.55, 0, 0.15, 0.3, 0.16, SEA.boot);
+      g.box(0, -0.27, 0, 0.17, 0.06, 0.18, SEA.bootL);
+      g.box(0, -0.55, 0.05, 0.17, 0.1, 0.25, SEA.boot);
+    });
+}
+
+/** The Sunken Reef's crew goblins: sea-raiders in oilskins. A crab's red shell for a helm (toothed over the brow, its
+ *  eyes on stalks, its claws raised like horns) and a driftwood club with a boat-hook's iron lashed on, crusted with
+ *  barnacles; the shield goblins a kettle hat grown over with barnacles (a starfish on its crown, weed off its
+ *  brim), a shield of net and cork floats on a driftwood hoop with a green glass float for its boss, and a barbed
+ *  harpoon spear. */
+function seaGoblin(r: Rig, shield: boolean) {
+  seaDress(r);
+  if (!shield) {
+    r.part('head', (g) => {
+      g.push().translate(0, 0.29, -0.01).scale(1.12, 1, 0.92);
+      g.cyl(0, 0, 0, 0.3, 0.28, 0.06, 10, SEA.crabD);
+      g.cyl(0, 0.06, 0, 0.28, 0.17, 0.1, 10, SEA.crab);
+      g.cyl(0, 0.16, 0, 0.17, 0.05, 0.04, 10, SEA.crabL);
+      g.pop();
+      for (let i = -2; i <= 2; i++) {
+        const a = Math.PI / 2 + i * 0.34, x = Math.cos(a) * 0.33, z = Math.sin(a) * 0.27;
+        g.beam([x * 0.9, 0.31, z * 0.9], [x * 1.1, 0.28, z * 1.14], 0.02, SEA.crabL);
+      }
+      for (const s of [-1, 1]) {
+        // Eyes on stalks.
+        g.beam([s * 0.08, 0.36, 0.19], [s * 0.11, 0.5, 0.24], 0.02, SEA.crabD);
+        g.box(s * 0.11, 0.49, 0.24, 0.055, 0.055, 0.055, '#1a1010');
+        // The claws, raised.
+        g.beam([s * 0.27, 0.33, 0.02], [s * 0.37, 0.5, 0.06], 0.035, SEA.crab);
+        g.beam([s * 0.37, 0.48, 0.06], [s * 0.39, 0.64, 0.1], 0.065, SEA.crab);
+        g.beam([s * 0.35, 0.62, 0.1], [s * 0.3, 0.79, 0.1], 0.026, SEA.crabL);
+        g.beam([s * 0.43, 0.62, 0.1], [s * 0.44, 0.76, 0.11], 0.022, SEA.crabD);
+        // Two legs a side, folded down behind the ears.
+        for (const z of [-0.1, -0.2]) {
+          g.beam([s * 0.3, 0.32, z], [s * 0.43, 0.35, z - 0.02], 0.018, SEA.crab);
+          g.beam([s * 0.43, 0.35, z - 0.02], [s * 0.47, 0.17, z - 0.04], 0.016, SEA.crabD);
+        }
+      }
+    });
+    r.part('handR', (g) => {
+      g.box(0, -0.16, 0, 0.05, 0.22, 0.05, SEA.driftD);
+      g.cyl(0, -0.66, 0.03, 0.085, 0.045, 0.52, 6, SEA.drift, { kind: K.Wood });
+      g.box(0, -0.6, 0.03, 0.13, 0.06, 0.13, SEA.rope);
+      coneDown(g, 0, -0.66, 0.03, 0.035, 0.18, 4, SEA.iron, K.Metal);
+      g.beam([0, -0.6, 0.1], [0, -0.73, 0.22], 0.02, SEA.iron, { kind: K.Metal });
+      g.beam([0, -0.73, 0.22], [0, -0.6, 0.3], 0.02, SEA.iron, { kind: K.Metal });
+      for (let i = 0; i < 5; i++) {
+        const a = 2 + i * 1.3;
+        barnacle(g, Math.cos(a) * 0.075, -0.53 + (i % 3) * 0.06, 0.03 + Math.sin(a) * 0.075, a, Math.PI / 2, 0.8);
+      }
+    });
+    return;
+  }
+  r.part('head', (g) => {
+    g.cyl(0, 0.27, 0, 0.37, 0.35, 0.035, 12, SEA.iron, { kind: K.Metal });
+    g.cyl(0, 0.3, 0, 0.25, 0.22, 0.12, 10, SEA.iron, { kind: K.Metal });
+    g.cyl(0, 0.42, 0, 0.22, 0.1, 0.06, 10, SEA.ironD, { kind: K.Metal });
+    for (let i = 0; i < 9; i++) {
+      const a = i * 2.4, rr = i < 5 ? 0.31 : 0.22;
+      barnacle(g, Math.cos(a) * rr, i < 5 ? 0.3 : 0.37, Math.sin(a) * rr, a, i < 5 ? 0 : 0.8, 0.9 + (i % 3) * 0.2);
+    }
+    for (let k = 0; k < 5; k++) {
+      const a = (k / 5) * Math.PI * 2 + 0.3;
+      g.beam([0.03, 0.485, 0.02], [0.03 + Math.cos(a) * 0.14, 0.47, 0.02 + Math.sin(a) * 0.14], 0.024, SEA.star);
+    }
+    g.box(0.03, 0.47, 0.02, 0.07, 0.035, 0.07, SEA.star);
+    for (const [x, len] of [[-0.14, 0.24], [0.02, 0.3], [0.16, 0.2]]) g.box(x, 0.28 - len, -0.33, 0.06, len, 0.02, SEA.kelp, { wind: 0.5 });
+  });
+  r.part('handR', (g) => {
+    g.box(0, -0.85, 0.02, 0.045, 1.2, 0.045, SEA.driftD, { kind: K.Wood });
+    g.box(0, -0.9, 0.02, 0.065, 0.1, 0.065, SEA.ironD, { kind: K.Metal });
+    coneDown(g, 0, -0.9, 0.02, 0.055, 0.24, 4, '#b8bcc8', K.Metal);
+    for (const s of [-1, 1]) g.beam([0, -1.06, 0.02], [0, -0.95, 0.02 + s * 0.1], 0.016, '#b8bcc8');
+    g.box(0, -0.8, 0.02, 0.07, 0.05, 0.07, SEA.red);
+    g.box(0, -0.98, 0.065, 0.02, 0.2, 0.05, SEA.red, { wind: 0.6 });
+  });
+  r.part('handL', (g, gl) => {
+    g.push().rotateZ(Math.PI / 2);
+    // An old sail stretched on a driftwood hoop, the net over it, floats round its rim.
+    g.cyl(-0.25, -0.09, 0, 0.3, 0.3, 0.04, 10, SEA.sail, { kind: K.Cloth });
+    for (let i = 0; i < 10; i++) {
+      const a0 = (i / 10) * Math.PI * 2, a1 = ((i + 1) / 10) * Math.PI * 2;
+      g.beam([-0.25 + Math.cos(a0) * 0.31, -0.1, Math.sin(a0) * 0.31], [-0.25 + Math.cos(a1) * 0.31, -0.1, Math.sin(a1) * 0.31], 0.03, SEA.drift, { kind: K.Wood });
+    }
+    for (const d of [-0.2, -0.1, 0, 0.1, 0.2]) {
+      const h = Math.sqrt(0.3 * 0.3 - d * d) * 0.97, q = Math.SQRT1_2;
+      g.beam([-0.25 - (h + d) * q, -0.115, (d - h) * q], [-0.25 + (h - d) * q, -0.115, (h + d) * q], 0.009, SEA.net);
+      g.beam([-0.25 + (d - h) * q, -0.115, (h + d) * q], [-0.25 + (h + d) * q, -0.115, (d - h) * q], 0.009, SEA.net);
+    }
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2 + 0.5, cx = -0.25 + Math.cos(a) * 0.31, cz = Math.sin(a) * 0.31;
+      g.push().translate(cx, -0.07, cz).rotateX(Math.PI);
+      g.cyl(0, 0, 0, 0.055, 0.055, 0.1, 7, i % 2 ? SEA.white : SEA.red, { top: SEA.cork });
+      g.pop();
+    }
+    g.blob(-0.25, -0.16, 0, 0.12, 0.1, 0.12, SEA.glass, 51, { detail: 1, jitter: 0.03 });
+    gl.box(-0.29, -0.255, 0.05, 0.05, 0.02, 0.05, [0.9, 2.6, 2.0]);
+    g.pop();
+    g.box(0.08, -0.52, 0, 0.02, 0.5, 0.06, SEA.driftD);
+  });
+}
+
 // ---------- goblin kinds ----------
 
 /** The hammer brute: a head taller, iron-capped, with a great maul. */
 export function makeBrute(): Model {
   const r = new Rig({ shadow: 1.0 });
   goblinBody(r);
+  if (FOE_LOOK === 'aqua') return seaBrute(r);
   r.part('head', (g) => {
     g.box(0, 0.2, 0, 0.46, 0.18, 0.42, '#5a5a66', { kind: K.Metal });
     g.box(0, 0.08, 0.2, 0.08, 0.2, 0.06, '#5a5a66', { kind: K.Metal });
@@ -568,6 +726,61 @@ function brutePose(r: Rig, a: Anim) {
     r.j('armR').rotation.x = -0.15;
     r.j('handR').rotation.x = -0.2;
   }
+}
+
+/** The Sunken Reef's brute: the crew's oilskins and boots, a giant clam's fluted shell for a helm (its blue lip
+ *  showing under the rim, barnacles on it), a turtle's shell roped to its back, and for a maul a whale's backbone
+ *  lashed to a spar, its head rested on the ground until it swings. */
+function seaBrute(r: Rig): Model {
+  seaDress(r);
+  r.part('head', (g) => {
+    g.push().translate(0, 0.02, -0.05).rotateX(-0.3);
+    g.cyl(0, 0.21, 0, 0.335, 0.335, 0.05, 12, SEA.lip);
+    g.cyl(0, 0.25, 0, 0.32, 0.27, 0.1, 12, SEA.clam);
+    g.cyl(0, 0.35, 0, 0.27, 0.13, 0.11, 12, SEA.clam);
+    g.cyl(0, 0.46, 0, 0.13, 0.04, 0.03, 12, SEA.clamD);
+    for (let k = 0; k < 12; k++) {
+      const a = (k / 12) * Math.PI * 2, c = Math.cos(a), s = Math.sin(a);
+      g.beam([c * 0.335, 0.24, s * 0.335], [c * 0.285, 0.35, s * 0.285], 0.026, SEA.clamD);
+      g.beam([c * 0.285, 0.35, s * 0.285], [c * 0.14, 0.465, s * 0.14], 0.024, SEA.clamD);
+    }
+    for (const [a, h] of [[0.6, 0.31], [2.6, 0.39], [4.4, 0.33]]) {
+      const rr = h < 0.35 ? 0.3 : 0.22;
+      barnacle(g, Math.cos(a) * rr, h, Math.sin(a) * rr, a, 0.8, 1.2);
+    }
+    g.pop();
+  });
+  r.part('torso', (g) => {
+    g.push().translate(0, 0.2, -0.16).rotateX(-Math.PI / 2).scale(1, 1, 1.2);
+    g.cyl(0, 0, 0, 0.31, 0.28, 0.06, 10, SEA.turtleD);
+    g.cyl(0, 0.06, 0, 0.28, 0.16, 0.11, 10, SEA.turtle);
+    g.cyl(0, 0.17, 0, 0.16, 0.05, 0.03, 10, SEA.turtle);
+    for (const z of [-0.13, 0, 0.13]) g.box(0, 0.15, z, 0.13, 0.06, 0.12, SEA.turtleL);
+    for (const x of [-0.19, 0.19]) for (const z of [-0.1, 0.1]) g.box(x, 0.08, z, 0.1, 0.06, 0.12, SEA.turtleL);
+    g.pop();
+    for (const s of [-1, 1]) g.box(s * 0.13, 0.08, -0.005, 0.06, 0.345, 0.345, SEA.rope);
+  });
+  r.part('handR', (g) => {
+    g.box(0, -0.78, 0, 0.075, 1.18, 0.075, SEA.driftD, { kind: K.Wood });
+    g.box(0, -0.66, 0, 0.11, 0.08, 0.11, SEA.rope);
+    for (const s of [-1, 1]) {
+      g.push().translate(0, -0.82, 0).rotateX((s * Math.PI) / 2);
+      g.cyl(0, 0, 0, 0.16, 0.16, 0.16, 9, SEA.bone);
+      g.cyl(0, 0, 0, 0.1, 0.1, 0.18, 9, SEA.boneD);
+      g.pop();
+      g.beam([0, -0.82, 0], [s * 0.32, -0.88, 0], 0.055, SEA.bone);
+      g.box(s * 0.32, -0.94, 0, 0.08, 0.12, 0.14, SEA.boneD);
+    }
+    g.beam([0, -0.82, 0], [0, -1.05, -0.03], 0.045, SEA.bone);
+  });
+  const m = new Model(r, seaBrutePose, 0.9);
+  r.scale = 1.4;
+  return m;
+}
+
+function seaBrutePose(r: Rig, a: Anim) {
+  brutePose(r, a);
+  if (a.name !== 'windup' && a.name !== 'strike' && a.name !== 'dead') r.j('handR').rotation.x = -1.05;
 }
 
 /** The firepot thrower: a satchel of clay pots, one always in hand. */
@@ -630,6 +843,7 @@ function darterPose(r: Rig, a: Anim) {
 export function makeShaman(): Model {
   const r = new Rig({ shadow: 0.7 });
   goblinBody(r);
+  if (FOE_LOOK === 'aqua') return seaShaman(r);
   r.part('head', (g) => {
     g.box(0, 0.02, 0.2, 0.36, 0.3, 0.04, '#d8d0b8');
     g.box(-0.08, 0.06, 0.225, 0.07, 0.05, 0.01, '#1a1010');
@@ -667,6 +881,83 @@ function shamanPose(r: Rig, a: Anim) {
     r.j('torso').rotation.z = Math.sin(a.time * 8) * 0.12;
     r.j('hips').position.y += Math.abs(Math.sin(a.time * 8)) * 0.05;
   }
+}
+
+/** The Sunken Reef's shaman: a crown of red coral branching like antlers, a scallop shell for a mask (its eyes glow
+ *  through), robes of kelp hanging in ribbons to the ground, coral beads with a cowrie, and a driftwood staff
+ *  crowned with a conch that glows from within. */
+function seaShaman(r: Rig): Model {
+  r.part('head', (g, gl) => {
+    for (let k = 0; k < 7; k++) {
+      g.push().translate(0, -0.05, 0.27 + (k % 2) * 0.006).rotateZ((k - 3) * 0.27);
+      g.box(0, 0, 0, 0.08, 0.37 - Math.abs(k - 3) * 0.025, 0.025, k % 2 ? SEA.shellD : SEA.shell);
+      g.pop();
+    }
+    g.box(0, -0.08, 0.27, 0.14, 0.06, 0.04, SEA.shellD);
+    for (const s of [-1, 1]) {
+      g.box(s * 0.08, 0.15, 0.29, 0.07, 0.05, 0.01, '#1a1010');
+      gl.box(s * 0.08, 0.16, 0.296, 0.045, 0.03, 0.01, [0.6, 2.6, 2.2]);
+    }
+    g.box(0, 0.27, 0, 0.44, 0.06, 0.4, SEA.kelpD);
+    const crown: [number, number, number][][] = [
+      [[-0.12, 0.3, -0.02], [-0.18, 0.52, -0.05], [-0.3, 0.68, -0.02]],
+      [[-0.18, 0.52, -0.05], [-0.13, 0.72, -0.1]],
+      [[-0.15, 0.42, -0.04], [-0.28, 0.48, 0.02]],
+      [[0.12, 0.3, -0.02], [0.18, 0.52, -0.05], [0.3, 0.68, -0.02]],
+      [[0.18, 0.52, -0.05], [0.13, 0.72, -0.1]],
+      [[0.15, 0.42, -0.04], [0.28, 0.48, 0.02]],
+      [[0, 0.3, -0.06], [0.02, 0.6, -0.1], [-0.07, 0.8, -0.12]],
+      [[0.02, 0.6, -0.1], [0.11, 0.74, -0.1]],
+    ];
+    for (const b of crown) {
+      for (let i = 0; i < b.length - 1; i++) g.beam(b[i], b[i + 1], i ? 0.022 : 0.03, SEA.coral[0]);
+      const t = b[b.length - 1];
+      g.box(t[0], t[1] - 0.025, t[2], 0.05, 0.05, 0.05, SEA.coralL);
+    }
+    for (let i = 0; i < 5; i++) {
+      const len = 0.3 + (i % 2) * 0.08;
+      g.box(-0.16 + i * 0.08, 0.3 - len, -0.21, 0.065, len, 0.02, i % 2 ? SEA.kelp : SEA.kelpL, { wind: 0.5 });
+    }
+  });
+  r.part('torso', (g) => {
+    g.box(0, 0, 0, 0.42, 0.37, 0.31, SEA.kelpD, { kind: K.Cloth });
+    for (const s of [-1, 1]) {
+      g.blob(s * 0.17, 0.4, 0, 0.15, 0.08, 0.17, s > 0 ? SEA.kelp : SEA.kelpL, 60 + s, { kind: K.Leaves });
+      for (const z of [0.162, -0.162]) g.box(s * 0.17, -0.02, z, 0.07, 0.42, 0.012, s > 0 ? SEA.kelpL : SEA.kelp, { wind: 0.4 });
+    }
+    for (let i = 0; i < 9; i++) {
+      const u = (i - 4) / 4;
+      g.box(u * 0.13, 0.3 - (1 - u * u) * 0.12, 0.17, 0.045, 0.045, 0.03, SEA.coral[i % 3]);
+    }
+    g.blob(0, 0.12, 0.18, 0.05, 0.065, 0.03, SEA.white, 62, { jitter: 0.05 });
+  });
+  r.part('hips', (g) => {
+    g.box(0, -0.4, 0, 0.44, 0.42, 0.32, SEA.kelpD, { kind: K.Cloth });
+    for (let i = 0; i < 14; i++) {
+      const a = (i / 14) * Math.PI * 2, len = 0.26 + ((i * 5) % 4) * 0.045;
+      g.push().translate(Math.sin(a) * 0.235, -0.12, Math.cos(a) * 0.175).rotateY(a);
+      g.box(0, -len, 0, 0.075, len, 0.02, i % 2 ? SEA.kelp : SEA.kelpL, { wind: 0.5 });
+      g.pop();
+    }
+  });
+  r.part('handR', (g, gl) => {
+    g.beam([0, -0.25, 0], [0.03, 0.45, 0.02], 0.028, SEA.driftD, { kind: K.Wood });
+    g.beam([0.03, 0.45, 0.02], [-0.02, 0.95, 0], 0.026, SEA.driftD, { kind: K.Wood });
+    g.box(-0.02, 0.86, 0, 0.07, 0.06, 0.07, SEA.rope);
+    g.push().translate(-0.02, 0.93, 0).rotateZ(0.45);
+    g.cyl(0, 0, 0, 0.05, 0.13, 0.14, 7, SEA.shell);
+    g.cyl(0, 0.14, 0, 0.13, 0.11, 0.05, 7, SEA.shellD);
+    g.cyl(0, 0.19, 0, 0.11, 0, 0.17, 7, SEA.shell);
+    for (let k = 0; k < 7; k++) {
+      const a = (k / 7) * Math.PI * 2;
+      g.beam([Math.cos(a) * 0.11, 0.16, Math.sin(a) * 0.11], [Math.cos(a) * 0.17, 0.2, Math.sin(a) * 0.17], 0.02, SEA.shellD);
+    }
+    g.box(0.12, 0.0, 0.075, 0.05, 0.2, 0.05, SEA.pink);
+    gl.box(0.115, 0.02, -0.01, 0.03, 0.13, 0.1, [0.6, 2.6, 2.2]);
+    g.pop();
+    for (const s of [-1, 1]) g.box(s * 0.08, 0.7, 0, 0.025, 0.2, 0.025, SEA.coral[s > 0 ? 0 : 2], { wind: 0.6 });
+  });
+  return new Model(r, shamanPose, 0.8);
 }
 
 export function goblinPose(r: Rig, a: Anim, shield: boolean) {
@@ -741,6 +1032,7 @@ const ARCH = { bone: '#d8d0b8', boneD: '#a89f88', hood: '#4a3f7a', hoodD: '#342c
 
 export function makeArcher(): Model {
   const r = new Rig({ shadow: 0.6 });
+  const sea = FOE_LOOK === 'aqua';
   r.joint('hips', 'root', 0, 0.82, 0);
   r.joint('legR', 'hips', -0.1, 0, 0);
   r.joint('legL', 'hips', 0.1, 0, 0);
@@ -777,16 +1069,16 @@ export function makeArcher(): Model {
     g.box(0, -0.06, 0.04, 0.18, 0.08, 0.2, ARCH.boneD);
     g.box(0, 0.08, 0.131, 0.18, 0.07, 0.01, '#140c14');
     for (const s of [-1, 1]) gl.box(s * 0.055, 0.1, 0.135, 0.04, 0.04, 0.01, ARCH.eye);
-    // Hood.
-    g.box(0, 0.12, -0.04, 0.32, 0.22, 0.32, ARCH.hood);
-    g.box(0, -0.08, -0.12, 0.32, 0.22, 0.12, ARCH.hood);
-    for (const s of [-1, 1]) g.box(s * 0.15, -0.04, 0.02, 0.03, 0.24, 0.24, ARCH.hood);
+    // Hood (the Sunken Reef's archers wear sou'westers instead, below).
+    if (!sea) g.box(0, 0.12, -0.04, 0.32, 0.22, 0.32, ARCH.hood);
+    if (!sea) g.box(0, -0.08, -0.12, 0.32, 0.22, 0.12, ARCH.hood);
+    if (!sea) for (const s of [-1, 1]) g.box(s * 0.15, -0.04, 0.02, 0.03, 0.24, 0.24, ARCH.hood);
   });
   const arm = (g: Geo) => g.box(0, -0.5, 0, 0.06, 0.5, 0.06, ARCH.bone);
   r.part('armR', arm);
   r.part('armL', arm);
   const wood = FOE_LOOK === 'forest';
-  const limb = wood ? '#4a3a24' : '#6a4a2a';
+  const limb = wood ? '#4a3a24' : sea ? SEA.bone : '#6a4a2a';
   r.part('handL', (g) => {
     // Bow: limbs run along local z so it stands upright when the arm points forward.
     g.box(0, -0.02, 0, 0.05, 0.05, 0.16, '#4a3424');
@@ -823,6 +1115,37 @@ export function makeArcher(): Model {
     });
     r.part('cloak', (g) => {
       for (let i = 0; i < 4; i++) g.box(-0.15 + i * 0.1, -1.02 + (i % 2) * 0.06, 0.01, 0.08, 0.2, 0.03, i % 2 ? moss : mossD, { kind: K.Leaves });
+    });
+  }
+  if (sea) {
+    // The Sunken Reef's: drowned crew in sea-stained sou'westers, barnacles grown on their bones, a fishing net
+    // for a shawl with its cork floats, rags of kelp, and a bow of whalebone.
+    r.part('head', (g) => {
+      g.push().translate(0, 0.24, -0.02).rotateX(-0.34);
+      g.cyl(0, 0, 0, 0.155, 0.15, 0.08, 9, SEA.oilF);
+      g.cyl(0, 0.08, 0, 0.15, 0.07, 0.05, 9, SEA.oilF);
+      g.cyl(0, 0, 0, 0.16, 0.16, 0.03, 9, SEA.oilD);
+      g.push().translate(0, 0, -0.09).scale(1, 1, 1.4);
+      g.cyl(0, -0.01, 0, 0.23, 0.22, 0.025, 10, SEA.oilF);
+      g.pop();
+      g.pop();
+      barnacle(g, 0.12, 0.05, 0.06, 0.3, 1.3, 0.8);
+      barnacle(g, -0.12, 0.13, -0.02, Math.PI, 1.4, 0.7);
+      for (const [x, len] of [[-0.12, 0.2], [0.1, 0.26]]) g.box(x, 0.13 - len, -0.3, 0.05, len, 0.02, SEA.kelp, { wind: 0.5 });
+    });
+    r.part('torso', (g) => {
+      for (let i = 0; i < 5; i++) {
+        const x = -0.2 + i * 0.08;
+        g.beam([x, 0.5, 0.125], [x + 0.08, 0.28, 0.14], 0.01, SEA.net);
+        g.beam([x + 0.08, 0.5, 0.125], [x, 0.28, 0.14], 0.01, SEA.net);
+      }
+      for (const s of [-1, 1]) {
+        g.cyl(s * 0.14, 0.2, 0.15, 0.05, 0.05, 0.09, 7, s > 0 ? SEA.red : SEA.white, { top: SEA.cork });
+        barnacle(g, s * 0.17, 0.54, 0.02, s > 0 ? 0 : Math.PI, 0.3, 0.9);
+      }
+    });
+    r.part('cloak', (g) => {
+      for (let i = 0; i < 5; i++) g.box(-0.18 + i * 0.09, -1.05 + (i % 2) * 0.08, 0.01, 0.07, 0.3, 0.03, i % 2 ? SEA.kelp : SEA.kelpL, { wind: 0.5 });
     });
   }
   return new Model(r, archerPose, 0.9);

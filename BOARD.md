@@ -6,13 +6,29 @@ items move to **Done** with the date.
 
 ## In progress
 
-**36 Review and balance** for realm 3, in parallel (2026-10-02; "use agents!!!"). Done and merged: the economy (realm 3
-paid 3,535 against 1,860 sold, +90%; now 2,230, +20%: chests 1,840 by how hidden, quests 290, the trial 100;
-tests/economy3.js counts it all) and the docs (README for realm 3; REALMS.md measures it about 48% common against
-the 40% aim: its crew are realm 1's goblins recoloured, its night as blue as realm 1's). Ten agents at work, each
-in its own copy: the suite (88 checks), performance on desktop and phones, the boss fights, a code review, a
-playthrough from a fresh save, the crew's own look, realm 3's own light and first screens, the story's spine
-(the village first, the garrison's purpose, no golden mini-bosses, realm 3 off `wip`), its sound, phones and touch.
+**36 Review and balance** for realm 3 (2026-10-02), most of it merged:
+- Done: the economy (+20% over what it sells, was +90%); the docs (README; REALMS.md: about 48% common before the
+  crew's new look); the suite brought up to date (90 checks; ten spawns moved out of posts and raised ground;
+  timing-fragile serpent, sea and Tidelord checks steadied); the boss fights (Brassbelly 42 health and a 1.2 s steam
+  ring, never while the knight is dazed: a level-5 bot 34-45 s, 0-3 hearts; Old Inkarm 44 health, a new bot: 53-69 s,
+  0-2 hearts; the Tidelord 105 health, his lane and sweep fixed 0.8 s before, the tide at 1.25 m/s: 56-61 s, 0-3
+  hearts, tidefair 3 of 3); a code review's fixes (the bell step, hooks, duplicate ids, the serpent); a playthrough
+  from a fresh save to the victory (all 11 quests finish and stay done after reloads and travel; five flow-breakers
+  fixed); the crew's own look (oilskins, crab-shell and barnacle helms, net shields, harpoons, a conch shaman); the
+  story's spine (the village and Gannet first, the landing's crew hold the floodgate, no golden mini-bosses, realm 3
+  off `wip`); its sound (surf, the inn, the temple and caves, the lighthouse, a mini-boss track; tests/seasound.js);
+  phones and touch (HUD and prompts, the serpent's stroke, breaking Inkarm's grab).
+- Not done (the agents stopped at the usage limit): **performance** on desktop and phones, and **realm 3's own light**
+  (its night as blue as realm 1's) with first screens that show the sea.
+- To decide: the serpent can set the knight down at Kip's cage and the Whalebone Isle's trial before the diving suit
+  (allowed for now); the fishing boats row out all night while old Wick says they wait out past the reef for his
+  lamp; four kinds of crab look alike (two harmless, the crab foe, the giant clam's).
+- Small things: Brassbelly's yard has no step up from the beach (0.9 m); the second trench column stands over the
+  abyss; the lighthouse isle's east and south shores are a 2.8 m wall from the sea floor; the current race's time is
+  far too generous (16 s for a 4.3 s route); a long combo on Brassbelly pays up to four times; the Glowing Grotto's
+  name shows on the reef above it; Jetsam says "south" for south-east; Cockle has no victory line; the daze tip names
+  the brute's maul when Brassbelly's anchor dazes; on phones the combo counter, toasts and prompts can overlap other
+  HUD text; README and REALMS.md figures from before the balance; a full suite run on the merged whole.
 Open choice from the follow-up: the Ash family's home tree still
 covers Old Nettle's glade (group 21).
 

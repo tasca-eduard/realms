@@ -75,7 +75,8 @@ export class SeaCaves {
     if (n.def.id !== 'jetsam') return null;
     const f = g.save.data.flags, p = g.player;
     const done = () => (g.talking = null);
-    const said = [...lines];
+    // (Once the sea is free he opens with what he says of it: the game's victory line, which his own talk would hide.)
+    const said = g.victory ? [this.victoryLine('jetsam')!] : [...lines];
     if (g.save.data.chests.includes('r3_seacache')) said.push('You have been at the crew\'s cache, then. Good. They chalk their names on what they steal; I never could read goblin.');
     else if (f.costume) said.push('A suit of brass, is it? Then the deep water at the back of the cave is no wall to you. The crew\'s things are past it.');
     const hints = [

@@ -155,7 +155,6 @@ export const REALMS: Record<RealmId, RealmDef> = {
     // Under the surface everything floats (the prototype's: gravity x0.53, jump x0.77, falling x0.4, the knight x0.85).
     physics: { gravity: 13.8, jumpSpeed: 6, maxFall: 5.5, speed: 0.85, shots: 0.7, fallY: -20 },
     noFire: true,
-    wip: true,
   },
 };
 

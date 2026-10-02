@@ -126,8 +126,10 @@ export interface RegionDef {
   name: string;
   music: string;
   test: (x: number, z: number, y: number) => boolean;
-  /** Wind strength and ambience flavour. */
-  amb?: 'fields' | 'village' | 'woods' | 'keep' | 'indoor' | 'road';
+  /** Wind strength and ambience flavour. A sea realm's: 'shore' (the strand and the isles: a stronger wind in gusts,
+   *  few crickets, no owls), 'harbour' (a village by the water), 'sea' (out on it), 'cave' (dry: drips, an echo),
+   *  'grotto' and 'temple' (under the sea: an echo and drips; the temple's choir). */
+  amb?: 'fields' | 'village' | 'woods' | 'keep' | 'indoor' | 'road' | 'shore' | 'harbour' | 'sea' | 'cave' | 'grotto' | 'temple';
   quiet?: boolean;
 }
 
@@ -187,8 +189,10 @@ export interface RealmData {
   arena?: { x0: number; z0: number; x1: number; z1: number; y: number; summons: Pt[]; dust: [number, number, number, number, number]; mountOut?: Pt };
   /** A war drum that beats while its group lives. */
   drums?: { x: number; z: number; group: string };
-  /** The inn: its tune leaks out into the street. */
-  inn?: { x: number; z: number; region: string };
+  /** The inn: its tune leaks out into the street (and its voices, where it has `chatter`). */
+  inn?: { x: number; z: number; region: string; chatter?: boolean };
+  /** Lamps that hum once lit (the lighthouse's): where, and the save flag that lights them. */
+  hums?: { x: number; y: number; z: number; flag: string }[];
   /** Where the camera drifts behind the title screen, and where the model viewer stands. */
   titleView: { x: number; z: number };
   /** Where the character viewer (?viewer) lines the models up. */

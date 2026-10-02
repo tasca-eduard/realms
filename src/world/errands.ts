@@ -90,7 +90,8 @@ export function raceRings(grid: Grid): RingDef[] {
     at(116.0, 74.0, 0.5, 1),
     at(121.2, 76.8, 1, 0.27, -3.2),
     at(126.5, 74.3, 1, -0.52, -3.2),
-    at(EAST_LIFT.x, EAST_LIFT.z, 0, 0, floor + (top - floor) * 0.45),
+    // (Above where a knight straight off the current steps into the column, about 6.5 m down: lower, he rose past it.)
+    at(EAST_LIFT.x, EAST_LIFT.z, 0, 0, floor + (top - floor) * 0.7),
     at(EAST_LIFT.x, EAST_LIFT.z, 0, 0, top + 0.9),
     at(129.0, 70.56, -1, 0, top + 0.8),
     at(126.2, 70.6, -1, 0.1),
@@ -166,7 +167,7 @@ function people(): NpcDef[] {
       'Cockle went down at first light, to the boat we lost off the lighthouse isle\'s far side. He wanted its nets back.',
       'He has not come up. He always comes up. He holds his breath longer than his temper.',
     ], after: ['He is home and dripping on my floor, and I have never been so glad of it.'] },
-    { id: 'cocklehome', look: 'reefdiver3', name: 'Cockle the Diver', x: WINKLE.x - 1.1, z: WINKLE.z - 0.5, face: 1, hidden: true, lines: [
+    { id: 'cocklehome', look: 'reefdiver3', name: 'Cockle the Diver', x: WINKLE.x + 0.8, z: WINKLE.z - 0.8, face: 1, hidden: true, lines: [
       'A bubble of my own breath, and it went smaller every time I looked at it. I am never diving again.',
       'Tomorrow, maybe. Not today.',
     ] },

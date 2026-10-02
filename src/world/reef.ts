@@ -229,7 +229,7 @@ function folk(): NpcDef[] {
     { id: 'gannet', look: 'reefmaster', name: 'Gannet the Harbourmaster', x: gx, z: gz, face: 1, lines: [
       'The tide took our harbour. We built on the coral instead.',
       'There was a kingdom under the bay once. It drowned in a night, and its lord with it, and he never let go of it.',
-      'His crew row out from the lighthouse isle and dive the wrecks. Their salvager goes down in a suit of brass. You would need one like it.',
+      'His crew row out from the lighthouse isle and dive the wrecks. Their salvager goes down in a suit of brass. You would need one like it: take his. The shore road runs east to the sandbar, and the sandbar out to their isle.',
     ] },
     { id: 'dulse', look: 'reefwife', name: 'Dulse the Innkeeper', x: ix, z: iz, face: 1, shop: 'flask', lines: [
       'Sit down, you are dripping on my floor. Everyone is, these days.',
@@ -393,8 +393,8 @@ export function buildReef(b: Builder, grid: Grid, under: (x: number, z: number) 
     ],
   };
   const regions: RegionDef[] = [
-    { name: 'The Whalebone Isle', music: 'wilds', amb: 'fields', test: (x, z) => Math.hypot(x - WHALE_ISLE.x, z - WHALE_ISLE.z) < WHALE_ISLE.r + 2.6 && !under(x, z) },
-    { name: 'Gull Rock', music: 'wilds', amb: 'fields', test: (x, z) => Math.hypot(x - GULL_ROCK.x, z - GULL_ROCK.z) < 6 },
+    { name: 'The Whalebone Isle', music: 'wilds', amb: 'shore', test: (x, z) => Math.hypot(x - WHALE_ISLE.x, z - WHALE_ISLE.z) < WHALE_ISLE.r + 2.6 && !under(x, z) },
+    { name: 'Gull Rock', music: 'wilds', amb: 'shore', test: (x, z) => Math.hypot(x - GULL_ROCK.x, z - GULL_ROCK.z) < 6 },
   ];
   return { npcs: folk(), enemies, objects, trial, regions };
 }

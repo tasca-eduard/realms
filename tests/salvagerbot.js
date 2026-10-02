@@ -1,7 +1,8 @@
 // Brassbelly's fight is fair (run with &realm=aqua&lvl=N): a player-like bot (real keys, aimed clicks) that
-// steps out of his steam ring a quarter second after it shows, keeps back while a blow winds up (rolling
-// away), and otherwise closes in and swings at the nearest of the salvager and his crew, beats them with the
-// sword a knight brings from Whisperwood (level 4 or 5) in 25 to 90 s, losing no more than 5 hearts.
+// rolls out of his steam ring a quarter second after it shows, keeps back while a blow winds up (rolling
+// away, along the isle rather than into the sea round it), and otherwise closes in and swings at the nearest
+// of the salvager and his crew (jumping back up onto his yard when thrown off it), beats them with the sword a
+// knight brings from Whisperwood (level 4 or 5) in 25 to 90 s, losing no more than 5 hearts.
 const g = window.__game, p = g.player, out = {};
 const lvl = +(new URLSearchParams(location.search).get('lvl') ?? 5);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -31,12 +32,28 @@ const aimAt = (e) => {
   c.dispatchEvent(new MouseEvent('mousemove', { clientX: s.x, clientY: s.y, bubbles: true }));
   return s;
 };
-let clickN = 0, rolledAt = -9;
+let clickN = 0, rolledAt = -9, jumpedAt = -9;
+// Away from a foe as a person would go: the way most away from it that keeps to dry ground (the isle is ringed
+// by the sea, a sandbar wading-deep at its west end), sideways if he's cornered.
+const dry = (x, z) => {
+  const h = g.grid.groundAt(x, z);
+  if (g.grid.waterAt(x, z) > h + 0.05 || Math.abs(h - p.y) > 0.5) return false;
+  return !g.grid.collidersNear(x, z).some((c) => c.on && c.y1 > h + 0.5 && (c.kind === 'b' ? x > c.x0 - 0.3 && x < c.x1 + 0.3 && z > c.z0 - 0.3 && z < c.z1 + 0.3 : Math.hypot(x - c.x, z - c.z) < c.r + 0.3));
+};
+const away = (e) => {
+  const dx = p.x - e.x, dz = p.z - e.z, l = Math.hypot(dx, dz) || 1;
+  let best = -9, bx = dx / l, bz = dz / l;
+  for (let k = 0; k < 16; k++) {
+    const th = (k / 16) * Math.PI * 2, ux = Math.cos(th), uz = Math.sin(th), sc = (ux * dx + uz * dz) / l;
+    if (sc > best && [1, 2, 3].every((r) => dry(p.x + ux * r, p.z + uz * r))) [best, bx, bz] = [sc, ux, uz];
+  }
+  return [bx, bz];
+};
 const rollAway = (e, t) => {
   if (t - rolledAt < 0.9 || p.stamina < 30) return false;
   rolledAt = t;
-  const dx = p.x - e.x, dz = p.z - e.z, l = Math.hypot(dx, dz) || 1;
-  const s = aimAt({ x: p.x + (dx / l) * 3, y: p.y - 0.9, z: p.z + (dz / l) * 3 });
+  const [ux, uz] = away(e);
+  const s = aimAt({ x: p.x + ux * 3, y: p.y - 0.9, z: p.z + uz * 3 });
   c.dispatchEvent(new MouseEvent('mousedown', { button: 2, clientX: s.x, clientY: s.y, bubbles: true }));
   setTimeout(() => window.dispatchEvent(new MouseEvent('mouseup', { button: 2 })), 60);
   return true;
@@ -63,24 +80,28 @@ const swing = (s) => {
     g[fn] = (...args) => { const hp = p.hp, r = orig(...args); if (p.hp < hp) causes[name(args[0])] = (causes[name(args[0])] ?? 0) + (hp - p.hp); return r; };
   }
   const t0 = performance.now(), hp0 = p.hp;
-  let ringSeen = -1, vents = 0, backOff = 0;
+  let ringSeen = -1, vents = 0, backOff = 0, windSeen = -1;
   while ((b.alive || crew.some((e) => e.alive)) && performance.now() - t0 < 150000) {
     const t = performance.now() / 1000;
-    let vx = 0, vz = 0, busy = false;
-    // The steam ring: out of it, once seen for a quarter second.
+    let vx = 0, vz = 0, busy = false, roll = false;
+    // The steam ring: out of it, once seen for a quarter second (a roll as soon as a swing's done).
     if (b.alive && b.state === 'vent' && !b.struck) {
       if (ringSeen < 0) { ringSeen = t; vents++; }
-      if (t - ringSeen > 0.25 && Math.hypot(p.x - b.x, p.z - b.z) < 2.8 + 0.8) [vx, vz, busy] = [p.x - b.x, p.z - b.z, true];
+      if (t - ringSeen > 0.25 && Math.hypot(p.x - b.x, p.z - b.z) < 2.8 + 0.8) [vx, vz, busy, roll] = [...away(b), true, true];
     } else ringSeen = -1;
     const foes = g.enemies.filter((e) => e.alive);
+    // (His anchor drawn back is plain to see: away once it's been seen a quarter second. The crew's quick jabs:
+    // at their flash.)
+    if (b.alive && b.state === 'windup') { if (windSeen < 0) windSeen = t; } else windSeen = -1;
+    const winding = (e) => (e === b ? windSeen >= 0 && t - windSeen >= 0.25 : e.telegraph > 0 && e.state !== 'vent');
     for (const e of foes)
-      if (!busy && e.telegraph > 0 && e.state !== 'vent' && Math.hypot(e.x - p.x, e.z - p.z) < (e === b ? 3.2 : 2.4)) {
+      if (!busy && winding(e) && Math.hypot(e.x - p.x, e.z - p.z) < (e === b ? 3.2 : 2.4)) {
         backOff = t + 0.25;
         if (rollAway(e, t)) busy = true;
       }
     if (!busy && t < backOff) {
       const e = foes.sort((u, v) => Math.hypot(u.x - p.x, u.z - p.z) - Math.hypot(v.x - p.x, v.z - p.z))[0];
-      if (e) [vx, vz, busy] = [p.x - e.x, p.z - e.z, true];
+      if (e) [vx, vz, busy] = [...away(e), true];
     }
     if (!busy) {
       const target = foes.sort((u, v) => Math.hypot(u.x - p.x, u.z - p.z) - Math.hypot(v.x - p.x, v.z - p.z))[0];
@@ -88,9 +109,16 @@ const swing = (s) => {
         const d = Math.hypot(target.x - p.x, target.z - p.z), s = aimAt(target);
         if (d > 1.7) [vx, vz] = [target.x - p.x, target.z - p.z];
         else swing(s);
+        // (Thrown off the yard onto the beach below it: back up with a jump, as a person would.)
+        if (target.y - p.y > 0.45 && d < 3.5 && p.onGround && p.state === 'run' && t - jumpedAt > 0.9) {
+          jumpedAt = t;
+          window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', bubbles: true }));
+          setTimeout(() => window.dispatchEvent(new KeyboardEvent('keyup', { code: 'Space', bubbles: true })), 140);
+        }
       }
     }
     steer(vx, vz);
+    if (roll && !['attack', 'roll', 'hurt', 'block'].includes(p.state)) rollAway(b, t);
     await wait(60);
   }
   press([]);

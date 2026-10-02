@@ -105,21 +105,23 @@ const FOREST: QuestDef[] = [
   },
 ];
 
-// (Being built: the main quest grows with the realm.)
 const AQUA: QuestDef[] = [
   {
     id: 'main',
     title: 'The Sunken Reef',
     main: true,
     steps: [
-      'The sea swallowed a kingdom, and its lord still waits below. In armour you would sink like a stone, but the goblins out on the lighthouse isle dive the wrecks somehow: a sandbar runs out to it.',
+      'The sea swallowed a kingdom, and its lord still waits below. Find its people: what is left of them live in the coral village, south down the road from the foot of the sea stair.',
+      'The coral village. Ask Gannet the Harbourmaster, on his porch, how a knight in armour goes down into the sea.',
+      "Gannet says the goblins' salvager dives the wrecks in a suit of brass; in armour you would sink like a stone. Take his suit. The crew keep to the lighthouse isle, east along the shore road: a sandbar runs out to it.",
       "The salvager's diving suit is yours: patched and leaky, good for a minute and a half under the water. Go down into the deep.",
       // The Tidelord's palace (group 35).
       "Across the trench from the drowned kingdom stands the Tidelord's palace, its floodgate shut fast. The kingdom's great bell still hangs in its plaza: they say its toll once opened the palace's gates. Ring it.",
-      "Far off, the floodgate has risen. Ride the current over the trench, past the Tidelord's crew, into his throne hall.",
+      "The bell has tolled, but the Tidelord's crew on the landing before his palace hold the floodgate's winch. Ride the current over the trench and beat them.",
+      "The floodgate has risen. Ride the current over the trench into the Tidelord's throne hall.",
       'The sea is free, and daylight finds the floor again.',
     ],
-    short: ['Find a way down into the sea', 'Go down into the deep', 'Ring the sunken bell', 'Face the Tidelord', 'The sea is free'],
+    short: ['Find the coral village', 'Talk to Gannet the Harbourmaster', "Take the salvager's suit", 'Go down into the deep', 'Ring the sunken bell', 'Clear the palace landing', 'Face the Tidelord', 'The sea is free'],
   },
   {
     id: 'serpent',

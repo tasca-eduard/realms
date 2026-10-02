@@ -211,7 +211,7 @@ export class ReefLife {
         if (Math.random() < dt * 6) g.fx.burst(P.splash, f.x, 0.05, f.z, 2, 1, 1.4);
         if (f.bite <= 0) {
           f.wait = 6 + Math.random() * 14;
-          if (Math.random() < 0.4 && who) {
+          if (Math.random() < 0.4 && who?.visible) {
             f.caught = 0;
             f.fish.visible = true;
             g.fx.burst(P.splash, f.x, 0.05, f.z, 10, 2, 2.4);
@@ -238,7 +238,7 @@ export class ReefLife {
     this.walkCrab(g, dt);
     // Granny Whelk shells her mussels, flicking the shells onto the heap.
     const w = g.npc('whelk');
-    if (w && (this.shellT -= dt) <= 0 && g.talking !== w) {
+    if (w?.visible && (this.shellT -= dt) <= 0 && g.talking !== w) {
       this.shellT = 0.9 + Math.random() * 1.2;
       const hx = w.x + Math.cos(1.25) * 0.3, hz = w.z + Math.sin(1.25) * 0.3;
       g.fx.emit(SHELL, hx, w.y + 0.55, hz, (SHELLS.x - hx) * 1.6, 2.2, (SHELLS.z - hz) * 1.6);
@@ -249,6 +249,8 @@ export class ReefLife {
   private playBall(g: Game, dt: number) {
     const a = g.npc('minnow'), b = g.npc('smelt'), ball = this.ball;
     if (!a || !b || !ball) return;
+    // (Gone indoors from the night raid: the ball with them.)
+    ball.visible = a.visible && b.visible;
     const kids = [a, b], from = kids[this.holder], to = kids[1 - this.holder];
     const hold = g.talking === a || g.talking === b;
     if (!hold) this.throwT += dt / 1.15;
@@ -270,7 +272,8 @@ export class ReefLife {
    *  round the sand; caught, it's the other's turn. They splash where the water is. */
   private playTag(g: Game, dt: number) {
     const ids = ['winkle', 'limpet'], it = g.npc(this.itId), run = g.npc(ids.find((i) => i !== this.itId)!);
-    if (!it || !run || g.talking === it || g.talking === run) return;
+    // (No game while the crew are ashore: the night raid sends them running indoors.)
+    if (!it || !run || g.talking === it || g.talking === run || g.enemies.some((e) => e.alive && e.group === 'raid')) return;
     const d = Math.hypot(it.x - run.x, it.z - run.z);
     if (this.counting > 0) {
       this.counting -= dt;
@@ -305,6 +308,7 @@ export class ReefLife {
   private walkCrab(g: Game, dt: number) {
     const n = g.npc('nipper'), crab = this.crab, line = this.string;
     if (!n || !crab || !line) return;
+    crab.visible = line.visible = n.visible;
     const c = this.crabPos, dx = n.x - c.x, dz = n.z - c.z, d = Math.hypot(dx, dz) || 1;
     const moving = d > 0.95;
     if (moving) {

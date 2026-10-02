@@ -184,7 +184,8 @@ function showMap(g: Game) {
   k.fill();
   k.lineWidth = 3;
   k.strokeRect(1.5, 1.5, c.width - 3, c.height - 3);
-  c.style.cssText = 'display:block;margin:16px auto 0;width:min(420px,78vw);border-radius:4px;box-shadow:0 6px 30px #000;transform:rotate(-1.2deg)';
+  // (Sized to fit a phone held either way: never taller than half the screen.)
+  c.style.cssText = 'display:block;margin:16px auto 0;width:auto;height:auto;max-width:min(420px,78vw);max-height:46vh;border-radius:4px;box-shadow:0 6px 30px #000;transform:rotate(-1.2deg)';
   txt.appendChild(c);
 }
 
@@ -429,8 +430,9 @@ export class ReefErrands {
     const was = this.lastRegion, f = g.save.data.flags;
     this.lastRegion = r.name;
     // The crew come for the village on the knight's first homecoming after he took their salvager's suit (walking
-    // in from elsewhere: not on waking at its moonfire).
-    if (r.name === 'The Coral Village' && was && was !== r.name && f.costume && !f.raidDone && !f.boss && !this.raid && !g.victory) this.startRaid(g);
+    // in from elsewhere: not on waking at its moonfire, after a reload or a fall).
+    const fire = g.moonfires.find((m) => m.id === 'coralvillage'), waking = !!fire && Math.hypot(g.player.x - fire.x, g.player.z - fire.z) < 3;
+    if (r.name === 'The Coral Village' && was && was !== r.name && !waking && f.costume && !f.raidDone && !f.boss && !this.raid && !g.victory) this.startRaid(g);
   }
 
   /** A blow lands: the X of stones on the dunes. */
@@ -448,7 +450,8 @@ export class ReefErrands {
   /** Someone is spoken to: the lines to say, 'handled', or null (not one of the errands'). */
   talk(g: Game, n: Npc, lines: string[]): string[] | 'handled' | null {
     const id = n.def.id, f = g.save.data.flags, q = g.save.data.quests;
-    if (g.victory) return null;
+    // (Once the sea is free their words give way to the victory's, but Brill and Merrow still pay and Cockle still
+    // follows: an errand left open is still there to finish.)
     switch (id) {
       // Hints: the beachcomber has seen the bottle glint; the net-mender knows the crew will come.
       case 'flotsam':
@@ -695,8 +698,8 @@ export class ReefErrands {
   victoryLine(id: string): string | undefined {
     const L: Record<string, string> = {
       brill: 'Daylight, and the fish are still biting. I did not know they could.',
-      wrasse: 'Race you to the trench again. In daylight I will win.',
-      winkle: 'He wants to dive the palace now. Over my body, I said. He said that was the idea.',
+      pike: 'Race you to the trench again. In daylight I will win.',
+      merrow: 'He wants to dive the palace now. Over my body, I said. He said that was the idea.',
       cocklehome: 'I can see the bottom from the jetty. Forty years and I never could.',
     };
     return L[id];

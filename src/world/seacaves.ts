@@ -71,7 +71,8 @@ function seaCaveZone(u: number, v: number, n: number): Zone | null {
   if (v > 1.2 && u >= 6.4 && u <= 12.4) return v < 1.8 ? 'step' : 'cache';
   return 'channel';
 }
-const SEA_CAVE_FLOOR = (z: Zone, u: number) => (z === 'wade' || z === 'step' ? -0.3 : z === 'shelf' ? (u < 6.2 ? 0.5 : 0.9) : z === 'cache' ? 0.4 : u < 3.5 ? -1.5 : -1.9);
+// (The step 0.9 m under: from the channel a diver's jump, cut short as his head breaks the surface, reaches it.)
+const SEA_CAVE_FLOOR = (z: Zone, u: number) => (z === 'wade' ? -0.3 : z === 'step' ? -0.9 : z === 'shelf' ? (u < 6.2 ? 0.5 : 0.9) : z === 'cache' ? 0.4 : u < 3.5 ? -1.5 : -1.9);
 
 /** The grotto's floor at u (null: not the grotto): steps up from the trench's floor, a chamber at the back. In front
  *  of its mouth (u below 0) the trench's wall is notched down to the first step, open above, so that nothing of the
@@ -477,7 +478,7 @@ function trail(grid: Grid, b: Builder) {
 /** Jetsam the castaway, by his fire. (His talk, his hints and his trade: src/game/story/seacaves.ts.) */
 function castaway(): NpcDef {
   return {
-    id: 'jetsam', look: 'reefhermit', name: 'Jetsam the Castaway', x: HERMIT_AT[0], z: HERMIT_AT[1], pose: 'sit', heading: Math.atan2(FIRE_AT[0] - HERMIT_AT[0], FIRE_AT[1] - HERMIT_AT[1]), lines: [
+    id: 'jetsam', look: 'reefhermit', name: 'Jetsam the Castaway', x: HERMIT_AT[0], z: HERMIT_AT[1], pose: 'sit', heading: Math.atan2(FIRE_AT[1] - HERMIT_AT[1], FIRE_AT[0] - HERMIT_AT[0]), lines: [
       'A visitor. In thirty years, a visitor who is not a goblin. Sit, if you like. The rock is dry, mostly.',
       'The sea threw me in here off a ship that never came back for me. I stayed. Nobody asks me for anything.',
       'The crew row in at low water and dive to the back of the cave. What they bring, they leave past the deep water. I leave it be, and they leave me be.',
@@ -501,7 +502,7 @@ export function buildSeaCaves(b: Builder, grid: Grid, under: (x: number, z: numb
   };
   const enemies: EnemySpawn[] = [
     // The cache's watchman, a crew diver in the channel.
-    { type: 'diver', x: caveAt(SEA_CAVE, 7.6, 0.5)[0], z: caveAt(SEA_CAVE, 7.6, 0.5)[1] },
+    { type: 'diver', x: caveAt(SEA_CAVE, 7.4, 0.5)[0], z: caveAt(SEA_CAVE, 7.4, 0.5)[1] },
   ];
   const objects: ObjDef[] = [
     // The crew's cache (tucked away, a diver's: 55), the drowned diver's chest in the grotto (hidden as a Moon Shard:
@@ -514,8 +515,8 @@ export function buildSeaCaves(b: Builder, grid: Grid, under: (x: number, z: numb
     { kind: 'breakable', x: caveAt(SEA_CAVE, 6.9, 2.9)[0], z: caveAt(SEA_CAVE, 6.9, 2.9)[1], what: 'crate' },
   ];
   const regions: RegionDef[] = [
-    { name: 'The Castaway\'s Cave', music: 'wilds', amb: 'indoor', test: (x, z) => inSeaCave(x, z) },
-    { name: 'The Glowing Grotto', music: 'hall', amb: 'fields', test: (x, z) => inGrotto(x, z) && under(x, z) },
+    { name: 'The Castaway\'s Cave', music: 'hall', amb: 'cave', test: (x, z) => inSeaCave(x, z) },
+    { name: 'The Glowing Grotto', music: 'hall', amb: 'grotto', test: (x, z) => inGrotto(x, z) && under(x, z) },
   ];
   return {
     enemies, objects, regions, npcs: [castaway()],

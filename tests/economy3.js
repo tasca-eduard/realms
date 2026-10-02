@@ -44,7 +44,7 @@ window.__report = () => out;
   const sells = edges + wares + secret;
 
   // On top: the clams' pearls (once each), and the foes' coins as they fall on average (a little jelly splits off
-  // twice; one in 12.5 is golden, ten times as rich, never a boss or Inkarm; no combo counted). The trial's drop none.
+  // twice; one in 12.5 is golden, ten times as rich, never a boss, Brassbelly or Inkarm; no combo counted). The trial's drop none.
   const clams = (g.realm.clams?.length ?? 0) * HAZARDS.clamPearl;
   const mean = (type) => (FOES[type].coins[0] + FOES[type].coins[1]) / 2;
   let foesBase = 0, foesExp = 0;
@@ -53,7 +53,7 @@ window.__report = () => out;
     foesBase += m;
     foesExp += !elite && canGold ? m * (0.92 + 0.08 * 10) : m;
   };
-  for (const e of g.enemies) if (!e.isBoss && e.group !== 'trial') foe(e.type, e.elite, e.type !== 'inkarm');
+  for (const e of g.enemies) if (!e.isBoss && e.group !== 'trial') foe(e.type, e.elite, e.type !== 'inkarm' && e.type !== 'salvager');
   for (const r of RAID) foe(r.type, false, true);
 
   // Chests by how hidden.
