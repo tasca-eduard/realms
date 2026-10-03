@@ -38,11 +38,11 @@ _Written by `node tools/board.mjs index` on 2026-10-03; the folders are always t
 - [091 Realm 1's sound](board/in-progress/091-realm-1-sound.md): an agent (its own copy)
 - [092 Whisperwood's trees and colours](board/in-progress/092-whisperwood-trees-colours.md): an agent (its own copy)
 - [093 Hollowbough lived in](board/in-progress/093-hollowbough-lived-in.md): an agent (its own copy)
+- [094 Whisperwood's set pieces](board/in-progress/094-whisperwood-set-pieces.md)
 
 **Todo (next)**
 
 - [090 Realm 1's errands and finds](board/todo/090-realm-1-errands-finds.md)
-- [094 Whisperwood's set pieces](board/todo/094-whisperwood-set-pieces.md)
 - [095 Whisperwood's errands, finds and sound](board/todo/095-whisperwood-errands-finds-sound.md)
 - [096 Realms 1 and 2: review and balance](board/todo/096-realms-1-2-review-balance.md)
 

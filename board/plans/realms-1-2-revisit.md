@@ -120,7 +120,7 @@ Realm 2, Whisperwood:
   treehouse, a carver, the weaver at her loom); the inn's hollow as a room to walk into, with voices and a lute;
   the village changes with the story (the thorn-scarred trees green again when the Thorn Heart is torn out,
   lanterns up the lanes after the Warden falls).
-- [ ] **94 Whisperwood's set pieces** ([094](../todo/094-whisperwood-set-pieces.md)): moonlit glades (openings in
+- [ ] **94 Whisperwood's set pieces** ([094](../in-progress/094-whisperwood-set-pieces.md)): moonlit glades (openings in
   the canopy with light shafts and pale moss); the Great Tree as a landmark (a violet-green pulse of the Warden's
   sickness in its crown, seen from the village; it blossoms after the victory); Rookfall a gorge that reads (a
   falling curtain with spray, ferns and moss, mist only below the rim); the High Canopy dressed up high (glowing

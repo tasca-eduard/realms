@@ -3,11 +3,11 @@ id: 094
 title: Whisperwood's set pieces
 realm: forest
 area: places
-status: todo
+status: in-progress
 priority: high
 created: 2026-10-02
 done:
-owner:
+owner: an agent (its own copy)
 depends: [085, 086]
 links: [../plans/realms-1-2-revisit.md]
 ---
