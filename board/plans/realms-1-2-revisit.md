@@ -85,7 +85,7 @@ Shared groundwork (one agent each, side by side):
 
 Realm 1, the Moonlit Keep:
 
-- [ ] **88 Keepsfoot lived in** ([088](../in-progress/088-keepsfoot-lived-in.md)): about 12 more villagers, each doing
+- [ ] **88 Keepsfoot lived in** ([088](../done/088-keepsfoot-lived-in.md)): about 12 more villagers, each doing
   something (a night watchman's round with a lantern, the smith at his anvil with sparks, children at the well, a
   couple on a bench, a lamplighter, a fisher on the bridge, washing hung, a drinker at the tavern door, a girl
   feeding the hens); villagers turn and speak as he passes (as the prototype's did); lanterns strung across the
