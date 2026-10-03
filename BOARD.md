@@ -37,8 +37,7 @@ _Written by `node tools/board.mjs index` on 2026-10-03; the folders are always t
 - [089 Realm 1's set pieces](board/in-progress/089-realm-1-set-pieces.md): an agent (its own copy)
 - [091 Realm 1's sound](board/in-progress/091-realm-1-sound.md): an agent (its own copy)
 - [092 Whisperwood's trees and colours](board/in-progress/092-whisperwood-trees-colours.md): an agent (its own copy)
-- [093 Hollowbough lived in](board/in-progress/093-hollowbough-lived-in.md): an agent (its own copy)
-- [094 Whisperwood's set pieces](board/in-progress/094-whisperwood-set-pieces.md)
+- [094 Whisperwood's set pieces](board/in-progress/094-whisperwood-set-pieces.md): an agent (its own copy)
 
 **Todo (next)**
 
@@ -58,9 +57,9 @@ _Written by `node tools/board.mjs index` on 2026-10-03; the folders are always t
 
 **Done lately**
 
+- [093 Hollowbough lived in](board/done/093-hollowbough-lived-in.md) (2026-10-03)
 - [088 Keepsfoot lived in](board/done/088-keepsfoot-lived-in.md) (2026-10-03)
 - [087 Life in the air, the water and the fields (realms 1 and 2)](board/done/087-life-air-water-fields.md) (2026-10-03)
-- [086 Water that reads (realms 1 and 2)](board/done/086-water-that-reads.md) (2026-10-03)
 
 <!-- /board:now -->
 
