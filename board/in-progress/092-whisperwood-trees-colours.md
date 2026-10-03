@@ -3,11 +3,11 @@ id: 092
 title: Whisperwood's trees and colours
 realm: forest
 area: look
-status: todo
+status: in-progress
 priority: high
 created: 2026-10-02
 done:
-owner:
+owner: an agent (its own copy)
 depends: [085]
 links: [../plans/realms-1-2-revisit.md]
 ---
