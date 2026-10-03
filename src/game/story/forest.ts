@@ -4,6 +4,7 @@ import type { Game } from '../game';
 import type { Npc } from '../objects';
 import type { Enemy } from '../enemies';
 import type { BossInfo, RealmStory } from './story';
+import { HollowLife } from './hollowlife';
 
 /**
  * Realm 2, Whisperwood: the folk of Hollowbough, the sister caged past the river, the
@@ -26,9 +27,13 @@ export class ForestStory implements RealmStory {
   private owlHint = 0;
   /** The wood's harmless life: rooks, bats, ducks, the night heron, carp, trout, frogs, deer, rabbits, the badger, fireflies (src/game/forestlife.ts). */
   wildlife = new WoodLife();
+  /** Hollowbough's evening: the swing, the tale, the lute, the lamplighter, the scarred trees and the lanes'
+   *  lanterns, the news (src/game/story/hollowlife.ts). */
+  private life = new HollowLife();
 
   apply(g: Game) {
     const f = g.save.data.flags;
+    this.life.apply(g);
     if (f.rescued) {
       g.cage?.breakOpen(g, true);
       g.npc('wren')!.visible = false;
@@ -115,7 +120,7 @@ export class ForestStory implements RealmStory {
       });
       return 'handled';
     }
-    return lines;
+    return this.life.talk(g, n, lines) ?? lines;
   }
   victoryLine(id: string) {
     const L: Record<string, string> = {
@@ -127,7 +132,7 @@ export class ForestStory implements RealmStory {
       herbwife: 'The stag knew. It always knows.',
       owl: 'Hoo. Hoo! Go to bed, knight.',
     };
-    return L[id] ?? 'The wood breathes again.';
+    return L[id] ?? this.life.victoryLine(id) ?? 'The wood breathes again.';
   }
   onLever(g: Game) {
     g.save.data.flags.heart = true;
@@ -148,5 +153,6 @@ export class ForestStory implements RealmStory {
   }
   tick(g: Game, dt: number) {
     this.wildlife.update(g, dt);
+    this.life.tick(g, dt);
   }
 }

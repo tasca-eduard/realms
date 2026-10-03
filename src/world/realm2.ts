@@ -12,6 +12,7 @@ import { MapKit, dressRealm, forest, waterPoints, type EnemySpawn, type ObjDef, 
 import { bough, bramble, deadShrub, diceAt, giantMushroom, giantOak, greatTree, homeTree, rootFrom, ropeBridge, thicket, witheredOak, WOOD } from './wood';
 import { dressWoodStair, onWoodStair, paintWoodStair, WOOD_STAIR, WOOD_STAIR_HEAD, woodStairBare } from './seastair';
 import { WOOD_ZONES } from './lightzones';
+import { buildHollowLife, innTree, trunkFades } from './hollowlife';
 
 // ---------------------------------------------------------------------------
 // Realm 2: Whisperwood, the Old Wood (the prototype's second realm).
@@ -1052,7 +1053,9 @@ export function buildRealm2(builder: Builder): RealmData {
     }
   }
   // The Old Grove's ancient oaks, each alone in a pool of moonlight.
-  for (const [x, z, s] of [[64, 100, 1.1], [88, 106, 1.25], [88, 97, 1], [96, 108, 1.15], [70, 111, 0.9]] as [number, number, number][]) giantOak(b, x, z, s, 3);
+  // (The first one's trunk fades like a crown when it stands between the camera and the knight: it is on the
+  // camera's line to the inn's room. Moved instead, it hid the old owl.)
+  for (const [x, z, s] of [[64, 100, 1.1], [88, 106, 1.25], [88, 97, 1], [96, 108, 1.15], [70, 111, 0.9]] as [number, number, number][]) giantOak(x === 64 ? trunkFades(b, x, z, 10.5) : b, x, z, s, 3);
   for (const [x, z] of [[80, 102], [92, 104], [70, 98]] as Pt[]) b.moonflowers(x, z, 8, 1.6);
   // The Warden's Stone: a tall mossy waystone where the road comes over the brook.
   {
@@ -1079,7 +1082,8 @@ export function buildRealm2(builder: Builder): RealmData {
   // three of the crowns; the Heart Oak (the Reeve's) on the island.
   const home = Object.fromEntries(Object.entries(HOMES).map(([k, h]) => {
     const { x, z } = h;
-    return [k, { x, z, ...homeTree(b, x, z, h.s, { face: h.face, treehouse: h.treehouse, chimney: true }) }];
+    // (The inn's foot is a hollow you walk into: src/world/hollowlife.ts.)
+    return [k, { x, z, ...(k === 'inn' ? innTree(b, grid, x, z, h.s, h.face) : homeTree(b, x, z, h.s, { face: h.face, treehouse: h.treehouse, chimney: true })) }];
   })) as Record<keyof typeof HOMES, { x: number; z: number; door: { x: number; z: number }; deck: [number, number, number] | null }>;
   const heart = homeTree(b, OAK.x, OAK.z, 1.25, { face: Math.PI / 4, treehouse: true, chimney: false });
   // Rope bridges to the island, not a matched pair: east from its side to the road's shore, and
@@ -1218,7 +1222,7 @@ export function buildRealm2(builder: Builder): RealmData {
   const kids: [number, number][] = [0.4, 2.0, 3.4, 4.9].map((a) => [FIRE.x + Math.cos(a) * 3.3, FIRE.z + Math.sin(a) * 3.3]);
   const garden: [number, number][] = [off(home.ash, HOMES.ash.face, 2.6, 1.9), off(home.ash, HOMES.ash.face, 3.6, 3.2), off(home.ash, HOMES.ash.face, 1.2, 3.4)];
   const carry: [number, number][] = [
-    off(home.smithy, HOMES.smithy.face, -1.2, 1.4), ...[0.35, 0.7, 1.05, 1.4].map((a) => byLake(a, 2.4)), [61.4, 95.2], off(home.inn, HOMES.inn.face, 1.4, 1.6), // (round the inn's trunk, east of it)
+    off(home.smithy, HOMES.smithy.face, -1.2, 1.4), ...[0.35, 0.7, 1.05, 1.4].map((a) => byLake(a, 2.4)), [61.7, 95], [63.3, 98], [61.2, 101.4], off(home.inn, HOMES.inn.face, 1.4, 1.6), // (round the inn's trunk, east of it: wide of its hollow's walls)
   ];
   carry.push(...carry.slice(1, -1).reverse());
   const watchSpot: Pt = [BRIDGE_END_E + 1.4, BRIDGE_Z + 1.4];
@@ -1770,6 +1774,10 @@ export function buildRealm2(builder: Builder): RealmData {
     { name: 'The Whisper', music: 'wilds', amb: 'woods', test: (x, z) => distLine(RIVER, x, z) < 5, light: WOOD_ZONES.water },
     { name: 'Whisperwood', music: 'wilds', amb: 'woods', test: () => true, light: WOOD_ZONES.woods },
   ];
+  // Hollowbough lived in: the inn's room, the rope swing, the storyteller, the lookout, the carver, the loom,
+  // the foragers and the lamplighter, the thorn-scarred trees, lanterns up the lanes (src/world/hollowlife.ts).
+  const life = buildHollowLife(b, grid, { byLake, weaver: { ...home.weaver.door, face: HOMES.weaver.face }, elder: { x: HOMES.elder.x, z: HOMES.elder.z, deck: 6.4 * HOMES.elder.s }, lanes: [LANE_WEST, LANE_KILNS, ROAD_EAST, [...ROAD_IN].reverse()] });
+  regions.unshift(...life.regions);
   const grassDensity = (x: number, z: number) => {
     const y = grid.groundAt(x, z);
     if (y > 7) return 1.2;
@@ -1796,7 +1804,7 @@ export function buildRealm2(builder: Builder): RealmData {
         'He kept this wood once. Now the wood keeps him, and it keeps nobody else.',
         'His hold is in the north-west: over the Rookfall bridge, through the Thorn Ravine, up the stair by the Overhang.',
       ] },
-      { id: 'keeper2', look: 'woodwife', name: 'Moss the Innkeeper', x: home.inn.door.x, z: home.inn.door.z, face: 1, shop: 'flask', lines: [
+      { id: 'keeper2', look: 'woodwife', name: 'Moss the Innkeeper', x: life.keeper[0], z: life.keeper[1], face: 1, shop: 'flask', lines: [
         'Sit, sit. You have the look of someone who walked the Old Grove at night.',
         'I fill the Moon Flasks from the Heartpool, and the moon does the rest. A new one costs coin, mind.',
       ] },
@@ -1872,7 +1880,10 @@ export function buildRealm2(builder: Builder): RealmData {
         'Hoo! Thorns have a heart. Tear it out, and they wither.',
         'Hoo! Thorns answer thorns. The stag tears away what a sword only scratches.',
       ] },
+      ...life.npcs,
     ],
+    // The inn's voices and its lute, out through its doorway (the room: src/world/hollowlife.ts).
+    inn: life.inn,
     objects,
     // The Ring of Oaks: the Old Wood's relic trial.
     trial: {

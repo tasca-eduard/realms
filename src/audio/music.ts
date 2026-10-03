@@ -187,6 +187,13 @@ export const REALM_TRACKS: Record<string, Record<string, Track>> = {
       pad: 'string_ensemble_1', padVol: 0.14, arp: 'orchestral_harp', arpVol: 0.32, arpStyle: 'up',
       lead: 'flute', leadVol: 0.28, leadOct: 1, density: 0.45, bass: 'cello', bassVol: 0.22, bassStyle: 'half',
     },
+    // The Owl and Acorn's tune (group 93): Robin's lute, a jig in D Dorian rolling in sixes, the lute's plucked
+    // strings over the harp's, a cello under it, a hand drum on the table.
+    tavern: {
+      bpm: 116, key: 62, scale: DORIAN, prog: [[0, 'm'], [-2, 'M'], [5, 'M'], [0, 'm']], steps: 12,
+      arp: 'orchestral_harp', arpVol: 0.24, arpStyle: 'oompah', lead: 'pizzicato_strings', leadVol: 0.34, leadOct: 1, density: 0.7,
+      bass: 'cello', bassVol: 0.24, bassStyle: 'pulse', perc: 'light', percVol: 0.18,
+    },
   },
 };
 
