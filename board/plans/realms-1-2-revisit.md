@@ -91,7 +91,7 @@ Realm 1, the Moonlit Keep:
   feeding the hens); villagers turn and speak as he passes (as the prototype's did); lanterns strung across the
   street; the village changes with the story (a feast table after Tam comes home, lanterns up the north road after
   the drawbridge falls, everyone out at dawn); Gnasher's camp at its business before the fight.
-- [ ] **89 Realm 1's set pieces** ([089](../in-progress/089-realm-1-set-pieces.md)): a watermill on the stream above the
+- [ ] **89 Realm 1's set pieces** ([089](../done/089-realm-1-set-pieces.md)): a watermill on the stream above the
   ford (a turning wheel, a lit window, a lane); the keep's beacon as a landmark (cold moon-blue while the Goblin
   King holds it, gold at dawn); a ruined shrine on Mirrormere's island (hidden stepping stones); the Seven Stones'
   runes glowing in turn and the eighth stone half-buried with a chest; the Kings' Orchard in blossom; the raided
