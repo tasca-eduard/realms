@@ -23,9 +23,10 @@ Every doc, folder and tool in the project, one line each, grouped as they are la
 - [README.md](realms/README.md): the eight realms in one line each, with links; and
   [the map, the journal and saving](realms/README.md#the-map-the-journal-and-saving) (the pause menu's world map,
   the journal, the mist over unexplored land, what is saved and where).
-- [1-moonlit-keep.md](realms/1-moonlit-keep.md): realm 1's places, people, secrets and power-ups, its paths and its
-  edges (no invisible walls).
-- [2-whisperwood.md](realms/2-whisperwood.md): realm 2's places, people, secrets and music.
+- [1-moonlit-keep.md](realms/1-moonlit-keep.md): realm 1's places and set pieces, Keepsfoot's people, secrets and
+  power-ups, its paths, each place's light, its water and creatures, and its edges (no invisible walls).
+- [2-whisperwood.md](realms/2-whisperwood.md): realm 2's places, Hollowbough's people and inn, secrets, trees and
+  colours, light, water, creatures and music.
 - [3-sunken-reef.md](realms/3-sunken-reef.md): realm 3's places, people, the sea, errands, the palace, its sound.
 
 ## docs/design: how the game should be
@@ -84,6 +85,9 @@ What each is for, and when to use it: [agents.md](workflow/agents.md).
 - `tools/mapview.js`: a script for `shot.mjs` that draws the realm from above with everything placed on it.
 - `tools/emptymap.js`: a script for `shot.mjs` that shows where nothing happens (reachable ground far from anything
   with a purpose).
+- `tools/look.mjs`: colour measures of screenshots (brightness, contrast, saturation, hue and its spread, warm and
+  cool shares), one shot or a folder, before and after (`node tools/look.mjs <png or folder>... [--vs <folder>]`;
+  [measuring the look](testing/testing.md#measuring-the-look)).
 - `tools/withserver.sh`: runs one command against a temporary game server (`bash tools/withserver.sh <dir> <port>
   <command...>`).
 - `tools/board.mjs`: prints the board (`node tools/board.mjs`) and the to-do list to post in chat (`todo`); moves,

@@ -4,7 +4,7 @@ There are no unit tests. Every check drives the real game in headless Microsoft 
 moves the knight, presses keys, reads the game's state and leaves a report. You read each report against the check's
 description, which is its pass condition. Screenshots back up anything about looks.
 
-- [The checks](checks.md): all 91 checks in `npm test`, by realm and area, one line each.
+- [The checks](checks.md): all 98 checks in `npm test`, by realm and area, one line each.
 - [Testing shortcuts](shortcuts.md): URL flags (`?play`, `&at=`, `&god`, `&realm=`...), debug keys, `__reach()` in
   the console, one-line screenshot commands.
 - [The docs index](../README.md); the code map in [architecture](../code/architecture.md); the user's
@@ -81,7 +81,7 @@ Playwright waits for it: the whole block runs before `waitMs` starts. A script t
 
 ### tools/test-all.mjs: the suite
 
-A list of 91 checks; for each, it runs `tools/shot.mjs` with the check's query, wait, script, size and variables,
+A list of 98 checks; for each, it runs `tools/shot.mjs` with the check's query, wait, script, size and variables,
 saves `shots/test-<name>.png`, and prints:
 
 ```
@@ -97,12 +97,14 @@ hand (the same query, wait, size, script and variables as its entry) to see them
 
 Each entry is `[name, query, waitMs, script, description, env?, size?]`; `env` holds `MOBILE` or `AFTER` and
 `AFTER_WAIT`. The suite takes the names to run as arguments: `PORT=5175 node tools/test-all.mjs bats economy` (or
-`PORT=5175 npm test -- bats economy`); with none it runs all 91.
+`PORT=5175 npm test -- bats economy`); with none it runs all 98.
 
-**How long.** The waits add up to about 31 minutes. Each check also spends 3 to 4 s starting Edge and building
-the realm, and awaited scripts add their own time: a full run is about 40 to 45 minutes on a quiet machine, longer
-under load. Single checks take seconds (the static ones: `reach`, `spawns`, `normals`, `economy1/2/3`) to two and
-a half minutes (the bots).
+**How long.** The waits add up to about 33 minutes (31.5 for the checks, 1.5 for the scripts after reloads). Each
+check also spends 3 to 4 s starting Edge and building the realm, and awaited scripts add their own time: with 91
+checks a full run was about 40 to 45 minutes on a quiet machine, longer under load; the seven checks added on
+2026-10-03 (`zonelight`, `wildlife1`, `wildlife2`, `folk1`, `hollowlife`, `keepsights`, `woodcolours`) bring
+about two minutes more of waits (`folk1` alone 50 s, after its awaited part). Single checks take seconds (the
+static ones: `reach`, `spawns`, `normals`, `economy1/2/3`) to two and a half minutes (the bots).
 
 **Checks across a reload** (↻ in [the checks](checks.md)): part 1 does its work, writes what it found to
 `sessionStorage` (it survives the reload; `localStorage` holds the save) and reloads the page, or crosses a
@@ -226,12 +228,17 @@ regions or places.
 | You changed | Run |
 |---|---|
 | Anything | `npx tsc --noEmit -p .` first; then load the realm once (`PORT=<port> node tools/shot.mjs "shot&play&realm=<id>" shots/x.png 2500`): no `[pageerror]`. |
-| Land, props, colliders, water, a place moved | The realm's `reach`, `spawns`, `normals`; its mount reach (`reachstag`/`reachstag2`, `reachserpent`, `seastair`, `arenastag`); the overhead map and before/after screenshots; checks that visit the place (`treasures2`, `corners2`, `secrets2`/`secrets3`, `rides`...). |
+| Land, props, colliders, water, a place moved | The realm's `reach`, `spawns`, `normals`; its mount reach (`reachstag`/`reachstag2`, `reachserpent`, `seastair`, `arenastag`); the overhead map and before/after screenshots; checks that visit the place (`keepsights`, `treasures2`, `corners2`, `secrets2`/`secrets3`, `rides`...). |
 | Foes, villagers, critters placed | `spawns`; the realm's foe check (`foes`, `foes2`, `seafoes`); `economy*` if health or coins changed. |
+| Villagers' rounds, poses, lines; the village's story changes | `folk1` (Keepsfoot), `hollowlife`, `folk`, `corners2` (Hollowbough), `reef` (the coral village); `talk`; `spawns`. |
+| Harmless life (`src/game/wildlife.ts` and a realm's `*life.ts`) | `wildlife1`, `wildlife2`, `sea` (realm 3's sea life is built on the same module); `spawns`, `spawns2`. |
+| A place's light (`RegionDef.light`, `src/world/lightzones.ts`), a realm's night or dawn | `zonelight`; before and after shots measured with `tools/look.mjs` ([below](#measuring-the-look)). |
+| Trees' and plants' colours (`b.leafTone`, `src/world/woodcolours.ts`), hand-placed trees | `woodcolours`, `reach2`, `spawns2`, `normals2`; shots measured with `tools/look.mjs`. |
+| Rivers, lakes and pools (`src/world/water.ts`, `RealmData.flows`) | `reach`, `reach2`, `normals`, `normals2`, `sea` (the Reef's sea must not change); shots of the ford, Mirrormere, the Heartpool. |
 | Prices, chests, rewards, foe health | `economy`, `economy1`, `economy2`, `economy3`; the shops (`wares`, `wares1`, `folk`, `reef`). |
 | A boss or mini-boss, its arena or crew | Its fight check and its bots: `boss`; `warden`, `wardenfair`, `bossbot`, `hold`; `tidelord`, `tidefair`, `tidebot`, `palace`; `costume`, `salvagerbot`; `inkbot`. |
 | The knight's moves, input, the HUD or menus | `controls`, `moves`, `menus`, `talk`, `pad`, `phone`, `pause`, `fly`. |
-| Saving, quests, story flags | The ↻ checks of that realm (`migrate`, `sister`, `hold`, `kip`, `serpent`, `palace`, `costumedrop`) and `review`. |
+| Saving, quests, story flags | The ↻ checks of that realm (`migrate`, `keepsights`, `sister`, `hold`, `kip`, `serpent`, `palace`, `costumedrop`) and `review`; the village checks that follow the story (`folk1`, `hollowlife`). |
 | Borders and travel | `travel`, `border`, `menutravel`, `worldmap`, `seastair`, `stairleap`, `stairmenu`. |
 | Under the sea: physics, air, the suit, the serpent | `sea`, `costume`, `serpentswim`, `serpentmoves`, `serpentledge`, `rides`, `reachserpent`. |
 | Meshes, models, geometry helpers | `normals*`, `rigs`; screenshots. |
@@ -286,7 +293,7 @@ load was timing; one that fails the same way twice is real. For a bot, run it tw
 
 ## Long runs: the suite in the background
 
-The full suite takes about 40 to 45 minutes. Never sit in a wait loop for it, and never block the chat:
+The full suite takes 45 minutes or more. Never sit in a wait loop for it, and never block the chat:
 
 1. Start it in the background on its own server and port, so nobody else's server is used or reloaded (in Claude
    Code, the Bash tool with `run_in_background`):
@@ -298,12 +305,12 @@ The full suite takes about 40 to 45 minutes. Never sit in a wait loop for it, an
 2. Keep doing read-only work. Every few minutes post a one-line status, from the log:
 
    ```
-   grep -c '^[^ ]' shots/suite.txt                          # checks started, of 91
+   grep -c '^[^ ]' shots/suite.txt                          # checks started, of 98
    grep -n -E 'FAILED|pageerror|script error' shots/suite.txt   # anything gone wrong so far
    tail -n 2 shots/suite.txt                                # the check running now
    ```
 
-   e.g. "Suite: 41 of 91, no errors so far, now on `wardenfair`."
+   e.g. "Suite: 41 of 98, no errors so far, now on `wardenfair`."
 3. **Don't edit `src/` while it runs** (nor `tests/` or `tools/`): Vite reloads the page when a source file changes,
    in the middle of whatever check is running, and spoils it; a changed test changes what later checks do. Work in a
    copy if you must change code (see [parallel work](../workflow/parallel-work.md)).
@@ -318,3 +325,34 @@ Before and after shots from the game's camera prove a change to how a place look
 be plainly visible from the camera). The details (spots, zoom, under the sea, phone sizes, judging the shots) are in
 the `realms-screenshots` skill, `.claude/skills/realms-screenshots/SKILL.md`. Read every PNG you take; a shot nobody
 looked at proves nothing.
+
+## Measuring the look
+
+`tools/look.mjs` measures the colour of screenshots: the measures realms 1 and 2 were compared to realm 3 with
+([the plan](../../board/plans/realms-1-2-revisit.md)). It needs no game server, only Edge (it reads the PNGs in a
+headless page).
+
+```
+node tools/look.mjs shots/after/                                    # every .png in the folder, sorted by name
+node tools/look.mjs shots/after/ --vs shots/before/                 # before -> after, shots matched by file name
+node tools/look.mjs shots/a.png shots/b.png --bottom=0.86 --json=shots/look.json
+```
+
+It skips the top 14% of each shot (the HUD's strip); `--bottom` ends the measured band higher (0.86 leaves out the
+bottom 14% too); `--json` also writes the numbers to a file. One row a shot, and with two shots or more a mean of
+the first three columns:
+
+| Column | Meaning |
+|---|---|
+| `lum`, `contrast`, `sat` | mean luminance (0 to 1), its standard deviation, mean saturation |
+| `hue`, `wHue` | the hue of the mean colour; the weighted mean hue of the coloured pixels (degrees) |
+| `spread` | how far the coloured pixels' hues spread (0 one hue; large, many) |
+| `warm`, `cool`, `green` | shares of the colour: warm under 70° or over 320°, cool 160-270°, green 70-160° |
+| `bins`, `colourful` | 30° hue bins holding over 3% of the colour; Hasler and Suesstrunk's colourfulness |
+
+Take the shots from the same `&at=` spots before and after (same size, same zoom), then compare. The plan's
+targets, met by group 85 ([085](../../board/done/085-light-mist-dawn-per-zone.md)): realm 1's night luminance about
+0.28, saturation about 0.45, contrast 0.11 or more, its hues kept in 205-253°; realm 2's about 0.30 and 0.12, hues
+in 143-169°; dawns with a hue spread over 40. Measured on 2026-10-03: realm 1's night 0.228 -> 0.276, contrast
+0.091 -> 0.119, saturation 0.402 -> 0.448; realm 2's 0.247 -> 0.295, contrast 0.091 -> 0.120; the dawns' spread
+21 -> 79 and 15 -> 51; realm 3 the same (0.344 and 0.345).

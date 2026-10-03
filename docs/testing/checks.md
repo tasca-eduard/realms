@@ -1,6 +1,6 @@
 # The checks
 
-All 91 checks in `tools/test-all.mjs`, by realm and area, one line each. The line here is a summary;
+All 98 checks in `tools/test-all.mjs`, by realm and area, one line each. The line here is a summary;
 the check's full description in `tools/test-all.mjs` (printed above its report when it runs) is its pass condition.
 How to run them and read their reports: [how the game is checked](testing.md). URL flags: [shortcuts](shortcuts.md).
 
@@ -14,7 +14,7 @@ How to run them and read their reports: [how the game is checked](testing.md). U
   `PORT=5175 npm test -- reach3 spawns3 normals3`; or with a temporary server of their own:
   `bash tools/withserver.sh . 5190 node tools/test-all.mjs reach3 spawns3 normals3`.
 
-## Realm 1, the Moonlit Keep (`castle`, the default): 37 checks
+## Realm 1, the Moonlit Keep (`castle`, the default): 41 checks
 
 ### The world
 
@@ -24,6 +24,8 @@ How to run them and read their reports: [how the game is checked](testing.md). U
 | `spawns` | `spawns.js` | `shot&play` | 0.3 | No foe, villager or animal starts inside a tent, wall, rock, deep water or a fire. |
 | `normals` | `normals.js` | `shot&play` | 0.3 | No mesh face without a normal, no corner that is not a number (they blacken the screen). |
 | `reachstag` | `reachstag.js` | `shot&play` | 1.5 | On the Thornstag (2.75 m climb): no way out, nothing shut skipped but the known thorn-road hop. |
+| `zonelight` ↻ | `zonelight1.js`, `zonelight2.js`, `zonelight3.js` | `shot&play` | 2.5 | Each place's own light, read from the light maps in all three realms: Keepsfoot amber, the keep indigo, Blackpine green-black, the barrows violet, the hall ember-red, small steps across Keepsfoot's edge, the keep rose-gold at dawn; Whisperwood's mist thin over Hollowbough and the Blackwater, thick in the Deep Wood, the Mossfen and Rookfall; the Reef with no light map. |
+| `wildlife1` | `wildlife.js` | `shot&play&realm=castle&god` | 17 | The Keep's harmless life in four instanced meshes: crows on the battlements go up, sheep make off together, a frog leaps, the swans run and fly, the heron moves on, the white hart bolts; motes over 250 in the marsh. |
 
 ### Controls, menus, talk
 
@@ -36,6 +38,12 @@ How to run them and read their reports: [how the game is checked](testing.md). U
 | `pad` † | `pad.js` | `shot` | 22 | A faked gamepad starts, walks, talks and pauses; prompts and tips name pad buttons. |
 | `phone` | `mobileflow.js` | `shot` `MOBILE=1` 844x390 | 9 | Phone size and touch: tap through the story, the stick, attack. |
 | `pause` | `pause.js` | `shot&play&at=80,64` | 8 | Pause holds timers and cutscenes, leaving the window pauses, victory freezes the world, no music burst. |
+
+### Keepsfoot's folk
+
+| Check | Script | Run | Wait | What it checks |
+|---|---|---|---|---|
+| `folk1` | `folk1.js` | `shot&play&realm=castle` | 50 | About twenty in the village, most doing something; walkers walk, sitters sit; a passer-by gets a word, one at a time; the feast once Tam is home, 10 lantern posts up the north road once the drawbridge is down, everyone in the square at dawn; Gnasher's camp dicing and drumming, up and fighting once they see the knight; an older save's cleared camp stays cleared. |
 
 ### Fights, foes and effects
 
@@ -67,6 +75,7 @@ How to run them and read their reports: [how the game is checked](testing.md). U
 | `trial` | `trial.js` | `shot&play&god` | 9 | The Seven Stones: three waves and the relic. |
 | `trial2` | `trial2.js` | `shot&play` | 11 | The trial brings the new foes; the courtyard holds eight. |
 | `farm` | `farm.js` | `shot&play&god&at=93,97` | 4.6 | The Warden's quest start to finish. |
+| `keepsights` ↻ | `keepsights1.js`, `keepsights2.js` | `shot&play` | 9 | The set pieces: the mill wheel turns and throws foam, the Seven Stones' runes wake in turn, the night fisher's boat drifts, the beacon moon-blue at night and gold at dawn; the raided farm smoulders until its raiders are beaten, is mended once the knight has gone on (scaffolding, lanterns, the Harrows back) and stays mended after a reload. |
 | `review` | `review.js` | `shot&play` | 5.6 | Kills saved, no loot from a reset trial, chandeliers re-hang. |
 | `wares1` | `wares1.js` | `shot&play` | 14 | The smith's barding: one more hit for the warhorse a piece, two pieces at most. |
 | `boss` | `boss.js` | `shot&play&god&at=30,18.5` | 14 | The Goblin King fight runs. |
@@ -88,7 +97,7 @@ How to run them and read their reports: [how the game is checked](testing.md). U
 | `worldmap` ↻ | `worldmap1.js`, `worldmap2.js`, `worldmap3.js` | `shot&play` | 1.5 | The pause menu's world map: realms marked, visited ones' stats, clicking the Keep travels there. |
 | `travel` ↻ | `travel1.js`, `travel2.js`, `travel3.js` | `shot&play` | 3.5 | Crossing to Whisperwood and back: travel card, both realms keep progress, the knight keeps his coins. |
 
-## Realm 2, Whisperwood (`forest`): 27 checks
+## Realm 2, Whisperwood (`forest`): 30 checks
 
 ### The world
 
@@ -103,6 +112,8 @@ How to run them and read their reports: [how the game is checked](testing.md). U
 | `lights` † | `lights.js` | `shot&play&realm=forest` | 9 | Hollowbough's lamps fade in and out as the camera moves, never pop. |
 | `fly` | `fly.js` | `shot&play&realm=forest` | 15 | Explore mode: flies unhurt, foes ignore him, nothing opened or moved on, wheel zooms, lands on open ground. |
 | `arenastag` | `arenastag.js` | `shot&play&realm=forest` | 1.5 | The Warden's hollow holds until its garrison falls, on foot or on the stag's second leap. |
+| `woodcolours` | `woodcolours.js` | `shot&play&realm=forest&at=59,81&god` | 3 | The trees' colours: over 400 distinct prop colours; leaves by zone (the Old Grove copper and gold, the East Woods blue-black, the Deep Wood lime, the Withered Wood rust, the High Canopy teal, the verge's birches pale); the hand-placed hawthorns, rowans and beeches, campion, foxgloves and ivy, none on a path; the elder's, the fisher's and the lodge's doors in the camera's view. |
+| `wildlife2` | `wildlife.js` | `shot&play&realm=forest&god` | 17 | Whisperwood's harmless life in four instanced meshes: rooks by the Rookery go up, the red deer make off together, a tree frog leaps, the wood ducks paddle away, the night heron flies, the white hart bolts; motes over 250 in the Deep Wood. |
 
 ### Foes
 
@@ -118,6 +129,7 @@ How to run them and read their reports: [how the game is checked](testing.md). U
 | `folk` | `folk.js` | `shot&play&realm=forest` | 30 | Prompts name the folk; the Reeve, the owl's hints, the thorn-smith (tempers to level 5), the innkeeper's flasks. |
 | `wares` | `wares.js` | `shot&play&realm=forest` | 16 | The weaver's boots and the herbwife's tonic: paid for, at once, saved. |
 | `sister` ↻ | `sister1.js`, `sister2.js` | `shot&play&realm=forest` | 16 | Wren's cage: three blows, her purse, she runs home, Ash's savings; all stays done after a reload. |
+| `hollowlife` | `hollowlife.js` | `shot&play&realm=forest` | 22 | Hollowbough lived in: 35 folk, 32 in the village (33 once Wren is home), all but those keeping a door or a post doing something; the swing, the lamplighter and the foragers move; the Owl and Acorn walked into (its own region, voices and lute, Moss at her counter, no traps); the scarred trees green once the Thorn Heart is torn out; the lanes' lanterns and garlands once the Warden falls. |
 
 ### The Thornstag, places and secrets
 

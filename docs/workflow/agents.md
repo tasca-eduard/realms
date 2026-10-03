@@ -16,7 +16,7 @@ and the report to give, so it can be launched with only a task line.
 | `reviewer` | Finding and fixing real defects: after a merge of several copies, before a group is called done, "review, find flaws, fix". Tries to refute each finding before fixing; "read-only" for a review without fixes | Its own copy (or read-only) | A page script that shows each defect and then its fix; the area's checks |
 | `playtester` | Playing a realm from a fresh save to its victory with page scripts, reloads and travel; fixing flow-breakers | Its own copy | The playthrough itself, step by step; reach and spawns if it moved anything |
 | `balancer` | A realm's economy (coins paid against coins sold), its foes' toughness (`foeHp`), boss and mini-boss fights (player-like bots, fair-fight checks) | Its own copy | The economy checks and the bots, two or three runs each, before and after |
-| `suite-runner` | The whole suite (91 checks, 40 minutes or more): sorting out-of-date tests from regressions and noise, fixing, running it all again | A copy of the merged project | The suite, twice |
+| `suite-runner` | The whole suite (98 checks, 45 minutes or more): sorting out-of-date tests from regressions and noise, fixing, running it all again | A copy of the merged project | The suite, twice |
 | `docs-writer` | README, the pages in `docs/`, the board's entries, measuring a realm against the 40/60 aim | The project itself when told (docs only), else a copy | Every number against the code |
 
 Every agent that edits code works in a copy, never in the project. If the task line gives no copy, the agent makes
@@ -72,7 +72,7 @@ Loaded by Claude Code when a task matches them; each is `.claude/skills/<name>/S
 
 | Skill | What it covers |
 |---|---|
-| `realms-testing` | Checking a change: which of the 91 checks to run for which kind of change, running them on a temporary server (in the background when long), reading their reports, which ones are flaky |
+| `realms-testing` | Checking a change: which of the 98 checks to run for which kind of change, running them on a temporary server (in the background when long), reading their reports, which ones are flaky |
 | `realms-screenshots` | Screenshots from the game camera, the overhead map, before-and-after shots, looking at them |
 
 ## Tools

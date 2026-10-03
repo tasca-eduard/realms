@@ -131,6 +131,7 @@ Paths are from the project root. [Architecture](../code/architecture.md) maps th
 | `borders` | ways to the neighbouring realms (`BorderDef`: where, the other side's id, where you come out, the travel card, `leap` for a way only the stag crosses) |
 | `horse`, `stagHome` | where the warhorse and the Thornstag wait (`horse: null`: no land beasts here) |
 | `sea` | a sea's surface, depth, air pockets, `currents`, `lifts` (bubble columns) |
+| `flows` | its streams and rivers: each a line in the way the water runs and its speed (m/s); the water's ripples and foam drift along them, and other water lies still |
 | `enemies`, `npcs`, `objects`, `regions`, `trial` | the placed foes, people, objects, named regions and the relic trial (below) |
 | `foeHp` | how much tougher its foes are than their kind (not the tyrant) |
 | `arena` | the tyrant's hall: walking in (above `y`) starts the fight; `summons` (two points), `dust`, `mountOut` (where the beast waits) |
@@ -172,7 +173,9 @@ Paths are from the project root. [Architecture](../code/architecture.md) maps th
 ### Props
 - `src/world/builder.ts`: the `Builder` (trees, bushes, rocks, boats and the rest; geometry by place `b.g(x, z)`,
   glowing parts `b.gl(x, z)`, colliders `b.collide`, lights `b.lights.add`, particles `b.fx.addEmitter`) and the
-  palettes `PAL`, `GLOW`.
+  palettes `PAL`, `GLOW`. A realm's own leaf colours go through `b.leafTone` (set before the trees grow: their dice
+  stay the same, only the colour changes; Whisperwood's by zone in `src/world/woodcolours.ts`), so each zone's
+  woods read as its own (W4, W5).
 - `src/world/details.ts`: realm 1's dressing (headstones, lanterns, stalls, fences, crops...) and `dressWorld`, the
   realm-wide scatter.
 - `src/world/wood.ts`: Whisperwood's living wood, built with `Geo.sweep` (`trunkUp`, `rootFrom`, `bough`,
@@ -185,7 +188,8 @@ Paths are from the project root. [Architecture](../code/architecture.md) maps th
 ### Regions, music and ambience
 - `RegionDef` (`src/world/realm.ts`): `name` (shown when the knight walks in), `music` (a mood), `amb` (the
   ambience: `fields`, `village`, `woods`, `keep`, `indoor`, `road`, `shore`, `harbour`, `sea`, `cave`, `grotto`,
-  `temple`), `test(x, z, y)`.
+  `temple`), `test(x, z, y)`, and `light` (the place's own light: [below](#the-light)). Every new region needs a
+  `light:`, a module's too (group 93's inn room took the wood's `indoor`).
 - **The first region that matches wins** (`checkRegion` in `src/game/game.ts`), so list small, specific regions
   first and end with a catch-all (`test: () => true`); modules `unshift` theirs in front. A name that covers
   another place hides it (Whisperwood's Deer Meadow once covered Bryony's forge).
@@ -264,8 +268,30 @@ Paths are from the project root. [Architecture](../code/architecture.md) maps th
 `Light` in `src/game/realms.ts`: the moon's colour and strength, the sky and ground light, fog, mist (`mistLevel`
 about 1.2 m above the realm's floor), the lift in the shadows, warmth, exposure, cloud, and under a sea the deep
 water's colour, the caustics and the shafts. Each realm has a `night` and a `dawn` (`CASTLE_NIGHT`, `FOREST_NIGHT`,
-`SEA_NIGHT`...). The light's direction is one fixed vector in `src/game/game.ts` for every realm; realm 4's draft
-(a low sun in the west) needs a direction per realm.
+`SEA_NIGHT`...), and may set `saturation`, `fogNear` and `fogFar`. The light's direction is one fixed vector in
+`src/game/game.ts` for every realm; realm 4's draft (a low sun in the west) needs a direction per realm.
+
+Over that, **each place has its own light** (group 85, realms 1 and 2): a region's `light` is a `ZoneLight` (a
+colour cast `tint`, `bright` and `mist` times the realm's, and the same under `dawn`). `src/game/zonelight.ts`
+paints the regions' lights into two maps of the realm, night and dawn, blended over about 4 m, and the atmosphere
+pass lays them over the ground (lamps, fires and glows keep their own colour). Keep a realm's values together, as
+`KEEP_ZONES` and `WOOD_ZONES` in `src/world/lightzones.ts` do, and point each region at one. A realm whose regions
+have no `light` gets no map (realm 3); in a realm that has them, ground whose region has none takes the realm's
+plain light (no cast, its mist as the realm sets it). Check it with a `zonelight`-style script (read the maps at
+each place: `g.pipe.zone`) and measure shots with `tools/look.mjs` ([testing](../testing/testing.md#measuring-the-look)).
+
+### Water and harmless life
+Both are shared systems a new realm uses, not builds again:
+- **Rivers, lakes and pools** (`src/world/water.ts`, any realm without a `sea`): soft banks shelving into the water,
+  the lapping edge, flow along `RealmData.flows`, white water at fords, falls and bridges, clear shallows and dark
+  deeps, the moon's path and the lamps' streaks, reeds and stones by the shores. The realm gives its `flows` and its
+  water's place in the grid; the colours come from its own moon and sky.
+- **Harmless life** (`src/game/wildlife.ts`): flocks, birds on the water, herds, frogs, fish, a wader, a shy rare
+  beast, motes in the air, each kind of body one instanced mesh, moving only near the camera and fewer on phones.
+  A realm brings its own creatures and their models in a `Wildlife` subclass of its own (`castlelife.ts`,
+  `forestlife.ts`; realm 3's `sealife.ts` is built on the same grammar), started in its story's `apply` and run in
+  its `tick`. Its creatures are its own (the 40/60 aim: the system is shared grammar, the animals the realm's
+  vocabulary). Checks: a `wildlife`-style script (each group in place and answering the knight), `spawns`.
 
 ### The beast
 Realm 2's Thornstag is built on the warhorse's frame (`src/game/mount.ts`); realm 3's Tide Serpent is a module of

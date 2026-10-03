@@ -19,7 +19,7 @@ Add these to the URL while the dev server runs:
   (`__reach(false)` checks before the story opens anything, such as realm 1's drawbridge;
   `__reach(true, 2.75)` on the Thornstag; `__reach(true, undefined, true)` with the Tide Serpent).
 
-**Automated checks.** `PORT=<port> npm test` (all 91) or `PORT=<port> npm test -- talk pad` (only those) against a
+**Automated checks.** `PORT=<port> npm test` (all 98) or `PORT=<port> npm test -- talk pad` (only those) against a
 running server; what each check covers is in [the checks](checks.md), how to run and read them in
 [how the game is checked](testing.md).
 
@@ -40,6 +40,9 @@ PORT=5175 MOBILE=1 node tools/shot.mjs "shot" shots/phone.png 9000 844x390 tests
 PORT=5175 node tools/shot.mjs "shot&play&god" shots/village.png 1500 924x700 tests/villagemap.js   # top-down plan of Keepsfoot
 PORT=5175 node tools/shot.mjs "shot&play" shots/monkey.png 124000 1280x720 tests/monkey.js      # random-play soak
 bash tools/withserver.sh . 5190 node tools/shot.mjs "shot&play&realm=aqua" shots/reef.png 2500   # a server of its own
+node tools/look.mjs shots/after/ --vs shots/before/        # colour measures of shots, before -> after (no server)
 ```
+
+What `tools/look.mjs`'s columns mean and the targets they were held to: [measuring the look](testing.md#measuring-the-look).
 
 See also: [How the game is checked](testing.md), [The checks](checks.md), [Project layout](../code/layout.md), [the docs index](../README.md).

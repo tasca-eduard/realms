@@ -255,8 +255,8 @@ After each copy, or after a few small ones:
 3. **Reach and spawns** for that realm: `PORT=5175 node tools/test-all.mjs reach3 spawns3` (nothing unreachable, no
    way out of the world, no traps; nothing starts inside anything).
 4. **The suite** once the round is merged, in the background, with nobody editing `src/` while it runs (Vite reloads
-   the page mid-check and spoils results): `npm test`. The 91 checks wait about 31 minutes between them, so a full
-   run takes 40 minutes or more. On 2026-10-02 this went to an agent in its own copy of the merged whole (`f1`), so
+   the page mid-check and spoils results): `npm test`. The 98 checks wait about 33 minutes between them, so a full
+   run takes 45 minutes or more. On 2026-10-02 this went to an agent in its own copy of the merged whole (`f1`), so
    the lead could go on merging docs meanwhile. How to read the suite's reports: [testing.md](../testing/testing.md).
 5. The board: a Done entry for each merged area, from the agent's lines (see [board/README.md](../../board/README.md)).
 

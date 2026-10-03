@@ -20,13 +20,19 @@ page, so a page only ever holds one realm.
 2. **The map.** A `Grid` (`src/world/grid.ts`) covers the realm plus 26 cells of outskirts on every side. A `Builder`
    (`src/world/builder.ts`) is handed to `def.build(builder)` (`buildRealm1/2/3`), which paints the grid (heights,
    ground types, water, decks), places props (geometry into the builder's chunks, colliders into the grid) and returns
-   a `RealmData` (`src/world/realm.ts`): start, borders, enemy spawns, people, objects, regions, the sea, the trial,
-   the arena, `foeHp` and the rest.
+   a `RealmData` (`src/world/realm.ts`): start, borders, enemy spawns, people, objects, regions (each with its
+   `light`), the streams' `flows`, the sea, the trial, the arena, `foeHp` and the rest.
 3. **The outskirts.** `def.paintOutskirts`, then `realm.afterOutskirts`, then `def.decorateOutskirts`: the land past
-   the map edge is real terrain that ends in something you can see (cliffs, a gorge, a river, the open sea).
+   the map edge is real terrain that ends in something you can see (cliffs, a gorge, a river, the open sea). Then,
+   in a realm without a sea, `dressShores` (`src/world/water.ts`) sets reeds in the still shallows and stones in the
+   running ones; and `ZoneLights.build` (`src/game/zonelight.ts`) paints each region's `light` into two maps of the
+   realm, night and dawn, handed to the pipeline as `pipe.zone` (none when no region has a `light`: realm 3).
 4. **Meshes.** `builder.finish(scene)` merges each chunk's geometry into meshes; `buildTerrain` and `buildWater`
-   (`src/world/terrain.ts`) and `buildGrass` (`src/world/grass.ts`) add the ground, water and grass. The moon
-   (a shadow-casting directional light) and a hemisphere light are added.
+   (`src/world/terrain.ts`) and `buildGrass` (`src/world/grass.ts`) add the ground, water and grass. Without a sea
+   the terrain's chunks also take the soft banks that shelve into rivers and lakes (`shoreBank`), and `buildWater`
+   hands rivers, lakes and pools to `buildInlandWater` (`src/world/water.ts`: one mesh, its ripples and foam running
+   along `realm.flows`); a sea keeps the clear water. The moon (a shadow-casting directional light) and a hemisphere
+   light are added.
 5. **Things.** `Combat` and `Player` are made; the player gets the land or sea `Physics`. Each `ObjDef` in
    `realm.objects` becomes its class (`Moonfire`, `Chest`, `LoreStone`, `Sign`, `Lever`, `Drawbridge`, `Cage`,
    `ThornGate`, `HallDoor`, `Breakable`, `Windmill`, `Shard`, `CrackedWall`, `Bindings`, `ThornHedge`), most of them
@@ -35,8 +41,9 @@ page, so a page only ever holds one realm.
    retired (`off`), not killed in the save, and allowed by `story.spawns()`.
 6. **The save applied.** `Game.start()` calls `applySave()`: explored land, what the knight carries, shards taken,
    walls broken, chests opened, moonfires lit, the Thornstag if freed, then **`story.apply(g)`**, which restores the
-   realm's own state from `save.data.flags` and builds what only that realm has (the Sunken Reef's serpent pen, sea
-   life, palace bell and floodgate, the diving suit lying where Brassbelly fell). Foes are spawned again after it.
+   realm's own state from `save.data.flags` and builds what only that realm has (each realm's harmless life; the
+   Keep's and Whisperwood's village life, set to how far the story has come; the Sunken Reef's serpent pen, palace
+   bell and floodgate, the diving suit lying where Brassbelly fell). Foes are spawned again after it.
 7. **Into the world.** `enterWorld()` puts the knight at the border he came through, his last lit moonfire, or the
    realm's start. `?play` goes straight there; otherwise the title screen waits.
 
@@ -57,7 +64,7 @@ page, so a page only ever holds one realm.
 - particles and the light pool updated round the camera, structures faded where they hide the knight,
   the camera, small shadows, **audio** (ambience by region, music by region, the inn's tune, a mini-boss's fight
   music), **dawn** (the realm's night and dawn light blended into the moon, the hemisphere and the pipeline's
-  atmosphere, sea look included);
+  atmosphere, sea look included, and the places' night maps into their dawn ones: `pipe.zone.k`);
 - fog of war revealed round the knight, the HUD, the air bubbles, the breathless tunnel, the muffle under water;
 - `story.tick(g, dt)` and `checkBorders()` while playing.
 
@@ -69,8 +76,10 @@ slow motion scale `dt`; pause sets it to 0.
 ## src/engine: drawing and input
 
 - `pipeline.ts`, **`Pipeline`**: renders the scene into a small target (the pixel buffer, about `VIEW.targetLines`
-  high), then bloom, then one atmosphere pass at that resolution: outlines from depth steps, cloud shadows, ground
-  mist, depth fog, fog of war, and under the sea's surface the **sea look** (light rippling over everything, darker
+  high), then bloom, then one atmosphere pass at that resolution: outlines from depth steps, cloud shadows, each
+  place's light (from the zone maps under every pixel: a colour cast over the unlit ground, so lamps, fires and glows
+  keep their colour, and how thick the mist lies), ground mist, depth fog, fog of war, and under the sea's surface
+  the **sea look** (light rippling over everything, darker
   and bluer with depth, shafts of light from the surface), then grading (exposure, saturation, lift and gain,
   warmth, flash, desaturation, the breathless tunnel). Last, a nearest-filtered blit with a sub-pixel offset so the
   camera moves smoothly while pixels stay on the grid. Its inputs are the `Atmosphere` fields in `pipe.atmo`, set each
@@ -89,7 +98,9 @@ slow motion scale `dt`; pause sets it to 0.
 - `rig.ts`, **`Rig`**: a character as rigid parts on joints, merged into one skinned mesh (plus glow and a
   see-through silhouette, the red outline of foes hidden behind things); `face`, `place`, hit flash, tint.
 - `materials.ts`: the uniforms every world material shares (`shared`: time, the knight's position, wind, the
-  see-through circle round him), pattern ids **`K`**, `worldMaterial`, `glowMaterial`, `grassMaterial`.
+  see-through circle round him), pattern ids **`K`**, `worldMaterial`, `glowMaterial`, `grassMaterial`. Trunks
+  and crowns cut away between the camera and the knight keep only a faint pale outline, in every realm (walls and
+  roofs fade with an ordered dither).
 - `sprites.ts` (pixel textures, `SpriteActor` for coins, hearts and alert marks), `util.ts` (`mulberry32` seeded
   random, `hash2`, `valueNoise`, `fbm`, `clamp`, `lerp`, `damp`, `smoothstep`).
 
@@ -101,21 +112,54 @@ slow motion scale `dt`; pause sets it to 0.
   `groundAt`, `typeAt`, `waterAt`, `isDeep` (deeper than `DEEP` = 0.55 m), `cellTop`, `move(body, dx, dz, stepUp)`,
   `lineClear`. A **`Body`** may set `dives` (walks into deep water and along the bottom: the knight in the suit,
   goblin divers) or `aquatic` (never leaves deep water: the sea's creatures).
-- `terrain.ts`: `buildTerrain` (chunked ground tops coloured by type, cliff sides) and `buildWater` (`clear` for the
-  Reef's sea: a thin bright skin you see the floor through).
+- `terrain.ts`: `buildTerrain` (chunked ground tops coloured by type, cliff sides, and without a sea the soft banks)
+  and `buildWater` (`clear` for the Reef's sea: a thin bright skin you see the floor through; otherwise water.ts's).
+- `water.ts`: rivers, lakes and pools in every realm without a sea. `shoreBank` (a slope from a low bank of soft
+  ground down through the surface to the bed, its waterline wavering, points of land rounded; paving, wood and
+  walls stay sheer), `buildInlandWater` (one mesh: a pale edge lapping at every shore, ripples and foam drifting
+  along the realm's **`Flow`**s, white water at fords, falls and round bridges over running water, clear shallows
+  over stones and weed, dark deeps mirroring the sky, the moon's path and the lamps' light laid on it in wavering
+  streaks, its colours from the realm's own moon and sky), `dressShores` (reeds and stones in patches, its own
+  dice, none where a path, jetty or bridge meets the water).
+- `lightzones.ts`: the places' light in realms 1 and 2, as `ZoneLight` values a region's `light` points to:
+  **`KEEP_ZONES`** (`village`, `home`, `pines`, `barrows`, `stones`, `marsh`, `fields`, `water`, `keep`, `orchard`,
+  `hall`, `hollow`) and **`WOOD_ZONES`** (`village`, `open`, `water`, `woods`, `grove`, `deep`, `fen`, `gorge`,
+  `withered`, `hold`, `roots`, `indoor`).
 - `builder.ts`, **`Builder`**: geometry per chunk (`g` casts shadows, `d` small clutter without, `gl` glow),
   `structure()` (buildings that fade when they hide the knight; their shell goes when he walks inside), light
   sources, fires, and the shared props (`pine`, `oak`, `bush`, `rock`, `reeds`, `fence`, `lamp`, `torch`,
-  `brazier`, `tent`, `wall`, `roundTower`...). `PAL` and `GLOW` are the shared colours.
+  `brazier`, `tent`, `wall`, `roundTower`...). `PAL` and `GLOW` are the shared colours. `leafTone`, set by a
+  realm before it grows its trees, gives the leaves its own colours (from the tree's kind, where it stands and the
+  colour it would have; `tone()` asks it): the trees' dice stay as they were, only their colour changes.
 - `paint.ts`: `Painter` (a pass over every cell), `insidePoly`, `distLine`, `sdPoly`: how realms shape their land.
 - `realm.ts`: the types a realm's map provides (`RealmData`, `EnemySpawn`, `NpcDef`, `ObjDef`, `RegionDef`,
-  `BorderDef`, `TrialDef`), `RealmId`, `EnemyType`, and shared layout helpers (`MapKit.room/flatAround/clearOf`,
-  `forest`, `dressRealm`, `waterPoints`).
+  `ZoneLight`, `BorderDef`, `TrialDef`), `RealmId`, `EnemyType`, and shared layout helpers
+  (`MapKit.room/flatAround/clearOf`, `forest`, `dressRealm`, `waterPoints`). A `RegionDef`'s **`light`** is its `ZoneLight`: a colour cast (`tint`, 1
+  leaves a channel as it is), `bright` and `mist` (times the realm's), and the same under `dawn`. `RealmData.flows`
+  lists the streams and rivers, each a line in the way the water runs and its speed in m/s (realm 1: the stream 0.9,
+  the Mirrow 0.55, the mill race 1.3, the spring above Pilgrims' Fall 1.2; realm 2: the Whisper 0.8, Rookfall's
+  stream 1.5, the brook 0.6, the Greywater 0.45); other water lies still.
 - **Realm 1**: `realm1.ts` (the map, the keep, tavern, hollow, crypt, winch hut; people, foes, objects),
   `details.ts` (its props: graves, fences, stalls, the chapel, crops, camp gear), `outskirts.ts` (its land beyond the
-  edges: mountains, the gorge, the Mirrow river and its broken bridge).
+  edges: mountains, the gorge, the Mirrow river and its broken bridge), `keepsfoot.ts` (`buildKeepsfoot`: the
+  village's sixteen more people with their rounds and poses, the paper lanterns strung over the square and street,
+  the washing, the hen-house, the drinker's bench; Gnasher's camp's spit, dice crate and three goblins at their
+  business, appended to the foes; the places the story uses: `WELL`, `FEAST`, `LAMP_STOPS`, `NORTH_LANTERNS`),
+  `moonpetals.ts` (`buildMoonpetals`: the realm's glowing moon-blue flower in drifts at the Seven Stones, the
+  barrows and the dolmen, and the Kings' Orchard; its own dice), `keepsights.ts` (`buildKeepSights`: the set pieces
+  that stand still: the Old Mill and its race (a flow of its own), the beacon's cresset on the gatehouse (a
+  landmark, never under the mist), the eighth stone and its chest, the orchard in blossom, Pilgrims' Fall and the
+  chest behind it, Hobb the Miller and the Harrows; `buildIsleShrine`, the First Knights' Isle in Mirrormere;
+  `MILL`, `WHEEL`, `BEACON`, `STONES`, `FARM`, `BOAT_WAY` for the story).
 - **Realm 2**: `realm2.ts` (zones, the Heartpool village, the gorge, the hold; its outskirts), `wood.ts` (living
-  wood: `trunkUp`, `rootFrom`, `bough`, `greatTree`, `homeTree`, `giantOak`, `bramble`, `thicket`, `ropeBridge`).
+  wood: `trunkUp`, `rootFrom`, `bough`, `greatTree`, `homeTree`, `giantOak`, `bramble`, `thicket`, `ropeBridge`),
+  `hollowlife.ts` (`buildHollowLife`: seventeen more villagers, the rope swing, the storyteller's spot, the carving,
+  the loom, four thorn-scarred trees, lantern posts up the lanes; `innTree`, the inn tree with the Owl and Acorn's
+  room in its foot, a region of its own; `trunkFades`, a tree whose trunk fades like a crown when it hides the
+  knight; `HOLLOW` holds what the story moves), `woodcolours.ts` (`woodTones`, the wood's `leafTone`: leaves by
+  zone from realm 2's `zoneAt`, one tree in twelve an odd tone; `buildWoodColours`: hawthorns by the Heartpool,
+  rowans along the lanes, copper beeches at the glades, the Withered Wood's rust beeches, campion and foxgloves,
+  ivy on the cliffs the camera sees, its own dice; `WOOD_COLOURS` records what went where for the check).
 - **Realm 3**: `realm3.ts` (the land and sea floor, the strand, the sandbar, the isles, the trench and abyss, vents,
   currents and bubble columns, the palace (`buildPalace`, `HALL`, `FLOODGATE`, `BELL`), Stairfoot Cove, its
   outskirts) calls its parts in turn, each `build<Part>(b, grid, under)` returning `{ enemies, objects, npcs,
@@ -136,8 +180,12 @@ slow motion scale `dt`; pause sets it to 0.
   `openChest`, `rest`, `talkTo` (shops and wares too), `quest(id, step)`, `writeSave`, `travel`, `startBoss`,
   `bossSummon`, `setDawn`, `focus` (cutscene), `after(t, fn)` (timers), `firstTime(key)` (tips once per device).
   Tests reach it as `window.__game`.
-- `realms.ts`: **`RealmDef`**, **`Light`** (a realm's night and dawn, with `sea` for the underwater look) and the
-  **`REALMS`** registry.
+- `realms.ts`: **`RealmDef`**, **`Light`** (a realm's night and dawn, with `sea` for the underwater look,
+  `saturation`, `fogNear` and `fogFar`) and the **`REALMS`** registry.
+- `zonelight.ts`, **`ZoneLights`**: each region's `light` painted into two small textures over the realm and its
+  outskirts (a texel a metre; night and dawn), from the first region whose test holds on each texel's ground,
+  blurred about 4 m so places blend at their edges. The atmosphere pass reads them under every pixel, so a place
+  keeps its light whether the knight stands in it or looks into it from next door.
 - `player.ts`, **`Player`**: the moveset (combo, charge and spin, down-stab, roll, block, parry, air dash, the
   three specials, jump, flask), status effects (`afflict`, `Effect`), power-ups, riding (`updateRiding`; the serpent
   hands off to `TideSerpent.swim`), vines (`climb`), explore-mode flight, and the sea: `phys` switches between
@@ -162,16 +210,36 @@ slow motion scale `dt`; pause sets it to 0.
   **`SerpentPen`**, the nets that hold it; `nearestSea`).
 - `objects.ts`: the **`Interactable`** interface (`prompt`, `interact`) and the objects: `Moonfire`, `Chest`,
   `LoreStone`, `Sign`, `Lever`, `Drawbridge`, `ThornGate`, `Cage`, `HallDoor`, `Shard`, `CrackedWall`, `ThornHedge`,
-  `Bindings`, `Breakable`, `Windmill`, `Npc` (talks, walks rounds, sits, works), `DiveSuit`. `palace.ts`:
+  `Bindings`, `Breakable`, `Windmill`, `Npc` (talks, walks rounds, sits, works; `heed`, seconds turned to the
+  knight with a word as he passes, while walking and work wait: set only by realm 1's story), `DiveSuit`. `palace.ts`:
   `SunkenBell`, `Floodgate`, `DawnShafts`. `trial.ts`: `Trial` (a realm's three-wave relic trial).
 - `hazards.ts`: `ArrowSlit`, `Chandelier` (the keep), `SnareTrap`, `ThornBurst`, `WardenMark` (Whisperwood).
-- `critters.ts` (land animals), `sealife.ts` (`SeaLife`: fish, rays, turtles, octopuses, plankton, as instanced
-  meshes) and `shorelife.ts` (`ShoreLife`: gulls, seals, surf, boats): harmless life, only moving near the camera.
+- Harmless life, only moving and drawn near the camera. `wildlife.ts` is the grammar every realm shares: a
+  **`Kind`** draws all of a realm's creatures that bend one way as one instanced mesh (`Herd`; bent in the vertex
+  shader by `BEND`: fish wag, wings beat and fold, legs swing, heads go down to graze), and the ways of living
+  take their share of it: **`Flock`** (wheeling and perching, going up when the knight comes), **`Swimmers`** (birds
+  on the water; swans run along it and fly), **`Grazers`** (herds that bolt together), **`Frogs`** (on their pads),
+  **`Fishes`** and **`Risers`** (basking, holding in a current, rising in rings), **`Wader`** (a heron),
+  **`Shy`** (a rare beast that bolts: the white hart), **`Motes`** (moths, down, midges, glow-worms, fireflies).
+  `RANGE` 38 m (30 on phones), `FEW` 0.55 on phones; a realm's subclass of **`Wildlife`** holds its groups.
+  `castlelife.ts` (**`KeepLife`**, realm 1: four meshes, birds, beasts, frogs, fish) and `forestlife.ts`
+  (**`WoodLife`**, realm 2) bring each realm's own creatures and models, started in the story's `apply` and run
+  in its `tick`. `sealife.ts` (`SeaLife`: fish, rays, turtles, octopuses, jellies, crabs, plankton) is built on the
+  same `Herd`, material and culling; `shorelife.ts` (`ShoreLife`: gulls, seals, surf, boats); `critters.ts` (the
+  older land animals: chickens, rabbits, squirrels, foxes, deer, owls).
 - `fow.ts`: `FogOfWar`, the explored-land texture the pipeline draws mist over.
 - **Story** (`story/`): **`RealmStory`** (`story/story.ts`) is what a realm decides that the generic game does not:
   `apply` (restore from the save), `spawns`, `onKill`, `onRegion`, `areaSub`, `talk`, `victoryLine`, `onLever`,
   `onBreak`, `struck`, `onCageOpen`, `onBossDeath`, `arenaOpen`, `tick`, plus the title, intro, victory text and
-  `BossInfo`. Realm 1 is `castle.ts` (`CastleStory`), realm 2 `forest.ts` (`ForestStory`), realm 3 `aqua.ts`
+  `BossInfo`. Realm 1 is `castle.ts` (`CastleStory`, which holds `KeepLife` and `keepsfoot.ts`'s
+  `KeepsfootLife`: what the villagers hold and do, the word over the shoulder (`Npc.heed`), the feast once Tam is
+  home, lanterns up the north road once the drawbridge is down, everyone in the square at dawn, the camp's goblins
+  dicing and drumming until they see the knight; and `keepsights.ts`'s `KeepSights`: the mill wheel turning, the
+  beacon moon-blue until dawn and then gold, the Seven Stones' runes waking in turn, the raided farm smouldering
+  until its raiders are beaten and mended once the knight is away, the night fisher's boat), realm 2 `forest.ts`
+  (`ForestStory`, which holds `WoodLife` and `hollowlife.ts`'s `HollowLife`: the swing, the lute, Granny Yarrow's
+  tale in bubbles, the scarred trees greening once the Thorn Heart is torn out, the lanes' lanterns lit once the
+  Warden falls), realm 3 `aqua.ts`
   (`AquaStory`, which holds its parts and hands each hook on to them: `reef.ts` `ReefFolk`, `reeflife.ts`
   `ReefLife`, `errands.ts` `ReefErrands`, `seacaves.ts` `SeaCaves`, `lighthouse.ts` `DarkLamp`, `grotto.ts`
   `InkGrotto`). Story state lives in `save.data.flags`.
@@ -208,13 +276,14 @@ slow motion scale `dt`; pause sets it to 0.
   drips, echo, choir, hum, bubbles), `setMuffle` (under water, paused, dying).
 - `music.ts`, **`Music`**: generative music on instrument samples (`public/audio/samples/`). **`TRACKS`** are the
   moods (road, village, fields, wilds, keep, hall, boss, dawn, tavern); **`REALM_TRACKS`** holds a realm's own
-  versions (`forest`, `aqua`). A region's `music` picks the mood; the inn's tune leaks into the street; a mini-boss's
-  fight sets `g.fightMusic`.
+  versions (`forest`, `aqua`; Whisperwood's `tavern` is the Owl and Acorn's jig on Robin's lute). A region's
+  `music` picks the mood; the inn's tune leaks into the street; a mini-boss's fight sets `g.fightMusic`.
 
 ## Adding to a realm, or a realm
 
 New content goes in its own module hooked in with a few lines (the pattern in `realm3.ts` above, the story class in
 `aqua.ts`). A new realm needs: an id in `RealmId` (`src/world/realm.ts`), a builder and outskirts, a `RealmDef` in
-`REALMS`, quests in `QUESTS`, a `RealmStory`, its light, its music in `REALM_TRACKS`, its foes' dress in
+`REALMS`, quests in `QUESTS`, a `RealmStory`, its light (and a `light` on each region), its streams' `flows`, its
+harmless life (a `Wildlife` subclass), its music in `REALM_TRACKS`, its foes' dress in
 `setFoePalette`, borders in both realms, and checks in `tools/test-all.mjs`. The steps and the rules:
 [realm-building.md](../design/realm-building.md).
