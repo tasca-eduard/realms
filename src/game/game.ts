@@ -33,6 +33,7 @@ import { ArrowSlit, Chandelier, SnareTrap, ThornBurst, WardenMark } from './haza
 import { GiantClam } from './seafoes';
 import { ROUTE, type MapRealm } from '../ui/worldmap';
 import { Critter } from './critters';
+import { PlaceSounds } from './placesounds';
 import { QuestBook } from './quests';
 import { REALMS, isRealm, type RealmDef } from './realms';
 import { WARES } from './wares';
@@ -165,6 +166,8 @@ export class Game {
   private raycaster = new THREE.Raycaster();
   private ambT = 0;
   private ambCache = { water: 0, fire: 0, surf: 0, surfX: 0, surfZ: 0, creak: 0, lap: 0 };
+  /** The realm's places' own sounds (its map's `sounds`): their beds as heard here, and the animals' calls. */
+  placeSounds: PlaceSounds | null = null;
   private deadT = 0;
   private titleT = 0;
   private hintsShown = new Set<string>(Game.loadTips());
@@ -2310,7 +2313,10 @@ export class Game {
       }
       this.ambCache.fire = Math.min(1, fire);
       if (this.realm.sea) this.seaAmb();
+      if (this.placeSounds?.spots !== this.realm.sounds) this.placeSounds = this.realm.sounds ? new PlaceSounds(this.realm.sounds) : null;
+      this.placeSounds?.hear(this);
     }
+    this.placeSounds?.update(real, this);
     const amb = this.region?.amb ?? 'road';
     const prof: Record<string, [number, number, number]> = {
       fields: [1, 1, 0.7], road: [0.7, 0.9, 0.6], village: [0.5, 0.7, 0.4], woods: [0.6, 0.5, 1], keep: [0.9, 0.2, 0.2], indoor: [0, 0, 0],
@@ -2327,6 +2333,7 @@ export class Game {
       x: p.x, z: p.z, wind, crickets: crickets * dawnMul, owls: owls * dawnMul, birds: this.def.birds * (0.4 + crickets * 0.6) * (1 + this.dawn), bubbles: sea ? this.def.bubbles ?? 0 : 0, water: sea ? 0 : this.ambCache.water, fire: this.ambCache.fire,
       drums, indoor: amb === 'indoor' || amb === 'cave',
       ...this.seaSounds(amb),
+      places: sea ? [] : this.placeSounds?.heard ?? [], dawn: this.dawn, clock: this.save.data.playTime,
     });
     // The inn's tune leaks out into the street.
     const inn = this.realm.inn;

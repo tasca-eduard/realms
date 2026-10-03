@@ -12,7 +12,7 @@ import { MapKit, dressRealm, forest, waterPoints, type EnemySpawn, type ObjDef, 
 import { bough, bramble, deadShrub, diceAt, giantMushroom, giantOak, greatTree, homeTree, rootFrom, ropeBridge, thicket, witheredOak, WOOD } from './wood';
 import { dressWoodStair, onWoodStair, paintWoodStair, WOOD_STAIR, WOOD_STAIR_HEAD, woodStairBare } from './seastair';
 import { WOOD_ZONES } from './lightzones';
-import { buildHollowLife, innTree, trunkFades } from './hollowlife';
+import { buildHollowLife, INN_NAME, innTree, trunkFades } from './hollowlife';
 import { buildWoodColours, woodTones } from './woodcolours';
 
 // ---------------------------------------------------------------------------
@@ -1811,6 +1811,40 @@ export function buildRealm2(builder: Builder): RealmData {
     horse: { x: 109.5, z: 110.5 },
     // The Whisper runs east and over the fall down Rookfall's floor; the brook east into the Greywater, which runs south.
     flows: [{ pts: RIVER, speed: 0.8 }, { pts: GORGE, speed: 1.5 }, { pts: BROOK, speed: 0.6 }, { pts: [[127.5, -30], [127.5, 150]], speed: 0.45 }],
+    // Its places' own sounds (src/audio/lands.ts): the canopy's hush and its trunks groaning over all the woods,
+    // the roar at the Whisper's Fall and where Rookfall swallows the river, white water down the gorge, the
+    // Whisper's and the brook's babble, the frogs' chorus round the Heartpool and in the Mossfen, chimes in the
+    // home trees, the inn's voices and lute, branches cracking in the Deep Wood, a nightingale by the Heartpool
+    // at night and the dawn chorus after; and the beasts calling (rooks over Rookfall, a heron and ducks on
+    // the Heartpool, a stag belling in the Deer Meadow, a cuckoo and a woodpecker at dawn).
+    sounds: [
+      { kind: 'canopy', amb: ['woods'] },
+      { kind: 'canopy', amb: ['village', 'fields', 'road'], v: 0.45 },
+      { kind: 'falls', x: 91.5, z: 50.5, r: 42 },
+      { kind: 'falls', x: GORGE[GORGE.length - 1][0], z: GORGE_END + 1, r: 24, v: 0.6 },
+      { kind: 'falls', x: 9, z: 47.5, r: 16, v: 0.4 },
+      { kind: 'rush', pts: GORGE, r: 14, v: 0.7 },
+      { kind: 'brook', pts: RIVER, r: 14, pitch: 0.75 },
+      { kind: 'brook', pts: BROOK, r: 12 },
+      { kind: 'peepers', x: POND.x, z: POND.z, r: 34, when: 'night' },
+      { kind: 'peepers', poly: MOSSFEN, r: 16, when: 'night' },
+      { kind: 'chimes', x: OAK.x, z: OAK.z, r: 22 },
+      { kind: 'chimes', x: HOMES.weaver.x, z: HOMES.weaver.z, r: 15, v: 0.8 },
+      { kind: 'chimes', x: HOMES.elder.x, z: HOMES.elder.z, r: 15, v: 0.8 },
+      { kind: 'chimes', x: HOMES.ash.x, z: HOMES.ash.z, r: 15, v: 0.8 },
+      { kind: 'chimes', x: HOMES.smithy.x, z: HOMES.smithy.z, r: 15, v: 0.8 },
+      { kind: 'inn', x: HOMES.inn.x, z: HOMES.inn.z, r: 16, room: 5, region: INN_NAME },
+      { kind: 'snaps', poly: DEEP_WEST, r: 8 },
+      { kind: 'nightingale', x: 38, z: 84, r: 26, when: 'night' },
+      { kind: 'dawnsong', amb: ['woods', 'village', 'fields', 'road', 'keep'], when: 'dawn' },
+      { kind: 'call', voice: 'rook', x: ROOKERY.x, z: ROOKERY.z, area: 7, r: 45, every: 2.5 },
+      { kind: 'call', voice: 'rook', x: 96, z: 34, area: 6, r: 32, every: 6 },
+      { kind: 'call', voice: 'heron', x: 66, z: 64, area: 3, r: 32, every: 26 },
+      { kind: 'call', voice: 'duck', x: 47, z: 79, area: 4, r: 28, every: 13 },
+      { kind: 'call', voice: 'stag', x: 83, z: 78, area: 5, r: 45, every: 35, when: 'night' },
+      { kind: 'call', voice: 'cuckoo', x: 28, z: 70, area: 10, r: 60, every: 10, when: 'dawn' },
+      { kind: 'call', voice: 'woodpecker', x: 80, z: 100, area: 10, r: 40, every: 14, when: 'dawn' },
+    ],
     enemies,
     npcs: [
       // Hollowbough's folk, at the doors of their home trees round the lake.

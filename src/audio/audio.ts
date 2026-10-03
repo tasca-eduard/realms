@@ -1,5 +1,6 @@
 // Web Audio: synthesized effects, layered ambience, and sample-based music.
 import { Music } from './music';
+import { LandSounds, type PlaceSound } from './lands';
 
 export interface AmbState {
   x: number;
@@ -30,6 +31,11 @@ export interface AmbState {
   echo?: number;
   choir?: number;
   hum?: number;
+  /** The Moonlit Keep's and Whisperwood's places' own beds as heard where the knight is (src/audio/lands.ts); how
+   *  far the dawn has come (0 night, 1 day); seconds of play (the chapel's bell tolls the hours). */
+  places?: PlaceSound[];
+  dawn?: number;
+  clock?: number;
 }
 
 export class Audio {
@@ -76,6 +82,8 @@ export class Audio {
   private nextDrip = 0;
   private nextChoir = 2;
   private nextTick = 0;
+  /** The lands' own beds and beasts' voices (the Moonlit Keep's and Whisperwood's). */
+  lands = new LandSounds(this);
   /** The realm being played (its own music). */
   realm = '';
   private muffle!: BiquadFilterNode;
@@ -179,7 +187,7 @@ export class Audio {
     return b;
   }
 
-  private loopNoise(buf: AudioBuffer, type: BiquadFilterType, freq: number, q: number) {
+  loopNoise(buf: AudioBuffer, type: BiquadFilterType, freq: number, q: number) {
     const ctx = this.ctx!;
     const src = ctx.createBufferSource();
     src.buffer = buf;
@@ -214,7 +222,7 @@ export class Audio {
   }
 
   /** Stereo pan and distance gain for a world position. */
-  private spatial(x?: number, z?: number, range = 10) {
+  spatial(x?: number, z?: number, range = 10) {
     if (x === undefined || z === undefined) return { pan: 0, gain: 1 };
     const dx = x - this.lx, dz = z - this.lz;
     const d = Math.hypot(dx, dz);
@@ -237,7 +245,7 @@ export class Audio {
     return g;
   }
 
-  private noiseHit(dest: AudioNode, t: number, dur: number, type: BiquadFilterType, f0: number, f1: number, q: number, vol: number, attack = 0.002, brown = false) {
+  noiseHit(dest: AudioNode, t: number, dur: number, type: BiquadFilterType, f0: number, f1: number, q: number, vol: number, attack = 0.002, brown = false) {
     const ctx = this.ctx!;
     const src = ctx.createBufferSource();
     src.buffer = brown ? this.brown : this.noise;
@@ -258,7 +266,7 @@ export class Audio {
     src.stop(t + dur + 0.05);
   }
 
-  private tone(dest: AudioNode, t: number, type: OscillatorType, f0: number, f1: number, dur: number, vol: number, attack = 0.005) {
+  tone(dest: AudioNode, t: number, type: OscillatorType, f0: number, f1: number, dur: number, vol: number, attack = 0.005) {
     const ctx = this.ctx!;
     const o = ctx.createOscillator();
     o.type = type;
@@ -273,7 +281,7 @@ export class Audio {
     o.stop(t + dur + 0.05);
   }
 
-  private bell(dest: AudioNode, t: number, f: number, dur: number, vol: number, ratios = [1, 2.76, 5.4, 8.93]) {
+  bell(dest: AudioNode, t: number, f: number, dur: number, vol: number, ratios = [1, 2.76, 5.4, 8.93]) {
     ratios.forEach((r, i) => this.tone(dest, t, 'sine', f * r, f * r * 0.998, dur / (1 + i * 0.7), vol / (1 + i * 1.3), 0.002));
   }
 
@@ -671,6 +679,7 @@ export class Audio {
         break;
       default:
         if (name.startsWith('step')) this.step(name.slice(5), o);
+        else this.lands.voice(name, o, t);
     }
   }
 
@@ -816,11 +825,12 @@ export class Audio {
       }
     }
     this.seaSounds(t, s);
+    this.lands.update(t, s);
     this.music?.update(dt);
   }
 
   /** A gain (and pan) into the ambience for one sound, with some of it sent to the reverb. */
-  private ambOut(vol: number, pan: number, rev = 0, dest: AudioNode = this.ambBus) {
+  ambOut(vol: number, pan: number, rev = 0, dest: AudioNode = this.ambBus) {
     const g = this.ctx!.createGain();
     g.gain.value = vol;
     const p = this.ctx!.createStereoPanner();
@@ -980,7 +990,7 @@ export class Audio {
   }
 
   /** One spoken syllable: a voice at pitch f through a vowel's formant, gliding a little. */
-  private syllable(dest: AudioNode, t: number, f: number, dur: number, formant = 350 + Math.random() * 700) {
+  syllable(dest: AudioNode, t: number, f: number, dur: number, formant = 350 + Math.random() * 700) {
     const ctx = this.ctx!;
     const o = ctx.createOscillator(), bp = ctx.createBiquadFilter(), g = ctx.createGain();
     o.type = 'sawtooth';

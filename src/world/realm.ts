@@ -7,6 +7,7 @@ import { PAL, GLOW, type Builder, type Structure } from './builder';
 import { Grid, NONE } from './grid';
 import { distLine, type Pt } from './paint';
 import * as D from './details';
+import type { LandBed } from '../audio/lands';
 
 // ---------------------------------------------------------------------------
 // What every realm's map provides, and the layout helpers realms share.
@@ -145,6 +146,37 @@ export interface ZoneLight {
   dawn?: { tint?: [number, number, number]; bright?: number; mist?: number };
 }
 
+/** A place's own sound (the kinds are in src/audio/lands.ts): a bed heard round a point (x, z), along a line
+ *  (pts: a stream), over an area (poly: full inside it) or wherever the ambience is one of `amb` (none of these:
+ *  everywhere); or animals calling now and then ('call': its `voice` from somewhere within `area` of the point,
+ *  every `every` seconds or so). */
+export interface SoundSpot {
+  kind: LandBed | 'call';
+  x?: number;
+  z?: number;
+  pts?: Pt[];
+  poly?: Pt[];
+  /** Heard out to r metres from it (full within a quarter of that). */
+  r?: number;
+  /** How loud (1 by default). */
+  v?: number;
+  /** Only where the ambience is one of these (Whisperwood's canopy over its woods). */
+  amb?: string[];
+  /** Its room: in this region (or indoors within `room` metres of it) it's heard clear, from outside through the walls. */
+  region?: string;
+  room?: number;
+  /** Only while this save flag is set, or unset; only at night, or at dawn (as it comes). */
+  flag?: string;
+  unless?: string;
+  when?: 'night' | 'dawn';
+  /** Higher or lower (a broad river babbles lower than a stream). */
+  pitch?: number;
+  /** A call's: the beast (an audio.sfx name: 'sheep', 'crow', 'rook'...), the patch it calls from, how often. */
+  voice?: string;
+  area?: number;
+  every?: number;
+}
+
 export interface RealmData {
   id: RealmId;
   /** Size of the playable map in cells (the grid reaches further, into the outskirts). */
@@ -208,6 +240,8 @@ export interface RealmData {
   inn?: { x: number; z: number; region: string; chatter?: boolean };
   /** Lamps that hum once lit (the lighthouse's): where, and the save flag that lights them. */
   hums?: { x: number; y: number; z: number; flag: string }[];
+  /** Its places' own sounds: beds heard round a point, along a line or over an area, and animals calling. */
+  sounds?: SoundSpot[];
   /** Where the camera drifts behind the title screen, and where the model viewer stands. */
   titleView: { x: number; z: number };
   /** Where the character viewer (?viewer) lines the models up. */
