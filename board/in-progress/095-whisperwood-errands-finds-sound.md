@@ -3,11 +3,11 @@ id: 095
 title: Whisperwood's errands, finds and sound
 realm: forest
 area: quests, sound
-status: todo
+status: in-progress
 priority: high
 created: 2026-10-02
 done:
-owner:
+owner: an agent (its own copy)
 depends: [093, 094]
 links: [../plans/realms-1-2-revisit.md]
 ---
