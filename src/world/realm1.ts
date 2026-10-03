@@ -11,6 +11,7 @@ import * as D from './details';
 import { bramble, greatTree, thicket } from './wood';
 import { KEEP_ZONES } from './lightzones';
 import { buildMoonpetals } from './moonpetals';
+import { buildKeepsfoot } from './keepsfoot';
 import { MapKit, dressRealm, forest, wallTorch, waterPoints, type EnemySpawn, type NpcDef, type ObjDef, type RealmData, type RegionDef } from './realm';
 
 // ---------------------------------------------------------------------------
@@ -1016,6 +1017,13 @@ export function buildRealm1(builder: Builder): RealmData {
     { kind: 'owl', x: owlGrave[0], z: owlGrave[2], perch: owlGrave[1], area: [0, 0, 0, 0] },
     { kind: 'owl', x: owlLodge[0], z: owlLodge[2], perch: owlLodge[1], area: [0, 0, 0, 0] },
   ];
+
+  // Keepsfoot lived in: its people at their night's work, lanterns over the square and the street, the hens;
+  // Gnasher's camp at its business before the fight (src/world/keepsfoot.ts).
+  const folk = buildKeepsfoot(b, grid, npcs);
+  enemies.push(...folk.enemies);
+  npcs.push(...folk.npcs);
+  critters.push(...folk.critters);
 
   return {
     id: 'castle',

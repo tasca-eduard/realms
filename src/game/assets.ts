@@ -11,7 +11,7 @@ export interface Look {
   boots: string;
   /** Rough height class: under 18 is a child. */
   h: number;
-  hat?: 'hood' | 'helmet' | 'souwester';
+  hat?: 'hood' | 'helmet' | 'souwester' | 'cap';
   hatCol?: string;
   bald?: boolean;
   beard?: string;
@@ -29,6 +29,24 @@ export const LOOKS: Record<string, Look> = {
   keeper: { skin: '#e0a880', hair: '#6a4a2a', cloth: '#7a4a3a', cloth2: '#6a3a2a', pants: '#3a2e28', boots: '#2a2018', h: 22, bald: true, beard: '#6a4a2a', apron: '#d8d0c0' },
   smith: { skin: '#c89070', hair: '#2a2a2a', cloth: '#4a4a52', cloth2: '#3a3a42', pants: '#2e2a28', boots: '#1e1a18', h: 23, beard: '#2a2a2a', apron: '#5a3a2a' },
   captive: { skin: '#e8b890', hair: '#c88a3a', cloth: '#7a6a4a', cloth2: '#6a5a3a', pants: '#4a3a2a', boots: '#3a2a20', h: 19 },
+  // Keepsfoot's folk about their night (src/world/keepsfoot.ts): the prototype's village look, caps and
+  // plum, cornflower and russet cloth, with the watch in kettle helms.
+  kfwatch: { skin: '#d8a888', hair: '#a8a8b0', cloth: '#3a4a6a', cloth2: '#2e3a56', pants: '#2e2a34', boots: '#1e1a20', h: 22, hat: 'helmet', hatCol: '#7a7a88', beard: '#a8a8b0' },
+  kfboy: { skin: '#e0a880', hair: '#3a2a1a', cloth: '#6a4a3a', cloth2: '#5a3a2e', pants: '#3a2e28', boots: '#2a2018', h: 18, hat: 'cap', hatCol: '#3a3040', apron: '#5a3a2a' },
+  kfnell: { skin: '#f0c8a0', hair: '#e0c070', cloth: '#7a4a8a', cloth2: '#6a3a7a', pants: '#4a3a4a', boots: '#3a2a20', h: 15, dress: true, longHair: true },
+  kfdickon: { skin: '#e8b890', hair: '#6a3a1a', cloth: '#4a6a9a', cloth2: '#3a5a86', pants: '#4a3a2a', boots: '#3a2a20', h: 15, hat: 'cap', hatCol: '#5a3a60' },
+  kfaldous: { skin: '#d8a888', hair: '#e0e0e8', cloth: '#6a5a3a', cloth2: '#5a4a2e', pants: '#3a3030', boots: '#2a2018', h: 21, bald: true, beard: '#e0e0e8' },
+  kfmabel: { skin: '#e0b090', hair: '#d8d8e0', cloth: '#5a6a9a', cloth2: '#4a5a86', pants: '#3a3a4a', boots: '#2a2018', h: 21, hat: 'hood', hatCol: '#7a4a8a', dress: true, apron: '#d8d0c0' },
+  kflamp: { skin: '#e0b090', hair: '#8a5a2a', cloth: '#4a6a9a', cloth2: '#3a5a86', pants: '#2e2a34', boots: '#2a2018', h: 22, hat: 'cap', hatCol: '#2e3a56' },
+  kfangler: { skin: '#c89070', hair: '#5a4a3a', cloth: '#6a6a4a', cloth2: '#5a5a3e', pants: '#3a3024', boots: '#2a2018', h: 21, hat: 'cap', hatCol: '#5a4a2a', beard: '#5a4a3a', prop: 'rod' },
+  kfwasher: { skin: '#e8b890', hair: '#a85a2a', cloth: '#8a6a3a', cloth2: '#7a5a2e', pants: '#4a3a2a', boots: '#3a2a20', h: 21, dress: true, longHair: true, apron: '#e0d8c8' },
+  kfdrinker: { skin: '#e0a080', hair: '#8a4a2a', cloth: '#7a2a3a', cloth2: '#6a2230', pants: '#3a2e28', boots: '#2a2018', h: 22, bald: true, beard: '#8a4a2a' },
+  kfhens: { skin: '#f0c8a0', hair: '#5a3a1a', cloth: '#5a6a9a', cloth2: '#4a5a86', pants: '#4a3a2a', boots: '#3a2a20', h: 16, dress: true, longHair: true, apron: '#d8d0c0', prop: 'basket' },
+  kfstall: { skin: '#e0b090', hair: '#4a2a1a', cloth: '#7a4a8a', cloth2: '#6a3a7a', pants: '#3a3a4a', boots: '#2a2018', h: 21, dress: true, apron: '#c8b890', hat: 'hood', hatCol: '#4a3a66' },
+  kfcarter: { skin: '#c89070', hair: '#3a2a1a', cloth: '#6a5a3a', cloth2: '#5a4a2e', pants: '#3a3024', boots: '#2a2018', h: 22, hat: 'cap', hatCol: '#4a3a2a', beard: '#3a2a1a', prop: 'sack' },
+  kfmilitia: { skin: '#e8b890', hair: '#c88a3a', cloth: '#4a5a8a', cloth2: '#3a4a76', pants: '#3a3a44', boots: '#2a2a30', h: 21, hat: 'helmet', hatCol: '#8a8a98' },
+  kfpriest: { skin: '#e0b090', hair: '#d0d0d8', cloth: '#3a3450', cloth2: '#2e2a44', pants: '#2a2638', boots: '#1e1a20', h: 21, bald: true, dress: true },
+  kfwater: { skin: '#e8b890', hair: '#2a1a14', cloth: '#4a6a9a', cloth2: '#3a5a86', pants: '#3a3a4a', boots: '#2a2018', h: 20, dress: true, longHair: true, hat: 'hood', hatCol: '#8a6a3a' },
   woodreeve: { skin: '#d8a888', hair: '#c8c8c0', cloth: '#3b6b2a', cloth2: '#2e5420', pants: '#3a3024', boots: '#2a2018', h: 21, hat: 'hood', hatCol: '#3b6b2a', beard: '#c8c8c0' },
   woodwife: { skin: '#e0b090', hair: '#5a3a26', cloth: '#6b4226', cloth2: '#5a3620', pants: '#3a3024', boots: '#2a2018', h: 21, hat: 'hood', hatCol: '#5a7a3a', dress: true },
   woodsmith: { skin: '#c89070', hair: '#3a2a1a', cloth: '#5a7a3a', cloth2: '#4a6a2e', pants: '#2e2a20', boots: '#1e1a14', h: 23, beard: '#3a2a1a', apron: '#6b4226' },

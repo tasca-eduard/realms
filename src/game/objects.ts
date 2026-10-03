@@ -758,6 +758,8 @@ export class Npc implements Interactable {
   t = 0;
   private roamI = 0;
   private roamWait = 0;
+  /** Seconds left turned to the knight as he passes (a word over the shoulder): walking and work wait. */
+  heed = 0;
   constructor(public def: NpcDef, g: Game) {
     this.x = def.x;
     this.z = def.z;
@@ -782,7 +784,8 @@ export class Npc implements Interactable {
   }
   update(dt: number, g: Game) {
     this.t += dt;
-    const p = g.player, talking = g.talking === this;
+    this.heed = Math.max(0, this.heed - dt);
+    const p = g.player, talking = g.talking === this || this.heed > 0;
     if (this.walkTo && !talking) {
       const dx = this.walkTo.x - this.x, dz = this.walkTo.z - this.z, d = Math.hypot(dx, dz);
       if (d < 0.2) this.walkTo = this.route.shift() ?? null;
@@ -810,7 +813,9 @@ export class Npc implements Interactable {
     }
     this.model.rig.setCastShadow(Math.hypot(p.x - this.x, p.z - this.z) < 16);
     const caged = this.def.caged && g.cage && !g.cage.open;
-    const name = this.def.look === 'owl' ? 'perch' : caged ? 'captive' : talking ? 'talk' : g.victory ? 'cheer' : !this.walkTo && this.def.pose ? this.def.pose : 'idle';
+    // (Heeding the knight from a seat or a fishing spot, they stay sat.)
+    const seated = this.heed > 0 && g.talking !== this && (this.def.pose === 'sit' || this.def.pose === 'fish');
+    const name = this.def.look === 'owl' ? 'perch' : caged ? 'captive' : seated ? this.def.pose! : talking ? 'talk' : g.victory ? 'cheer' : !this.walkTo && this.def.pose ? this.def.pose : 'idle';
     const rig = this.model.rig;
     rig.face(this.fx, this.fz, dt, 6);
     this.model.animate(dt, this.x, this.z, name, this.t, g.time + this.x);

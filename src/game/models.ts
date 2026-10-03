@@ -2237,6 +2237,10 @@ export function makeVillager(lookName: string): Model {
       g.box(0, 0.2, -0.02, 0.3, 0.15, 0.31, L.hatCol!);
       g.box(0, 0.19, -0.04, 0.42, 0.03, 0.44, L.hatCol!);
       g.box(0, 0.04, -0.23, 0.38, 0.16, 0.04, L.hatCol!);
+    } else if (L.hat === 'cap') {
+      // A Keepsfoot cap: a soft flat crown and a short peak over the eyes (the prototype's village look).
+      g.box(0, 0.19, -0.01, 0.3, 0.1, 0.31, L.hatCol!);
+      g.box(0, 0.18, 0.18, 0.28, 0.03, 0.11, L.hatCol!);
     }
   });
   const arm = (g: Geo) => {

@@ -3,6 +3,7 @@ import { KeepLife } from '../castlelife';
 import type { Enemy } from '../enemies';
 import type { Game } from '../game';
 import type { Npc } from '../objects';
+import { KeepsfootLife } from './keepsfoot';
 import type { BossInfo, RealmStory } from './story';
 
 /**
@@ -31,6 +32,8 @@ export class CastleStory implements RealmStory {
   private campCleared = false;
   /** The realm's harmless life: crows, bats, swans, ducks, the heron, sheep, cows, geese, frogs, fish, moths (src/game/castlelife.ts). */
   wildlife = new KeepLife();
+  /** Keepsfoot's night, the feast, the lanterns, the dawn; Gnasher's camp at its business (story/keepsfoot.ts). */
+  private folk = new KeepsfootLife();
 
   apply(g: Game) {
     const f = g.save.data.flags;
@@ -46,12 +49,14 @@ export class CastleStory implements RealmStory {
     if (f.courtyard) g.hallDoor?.setOpen(true, g, true);
     if (f.boss) g.setDawn(1);
     this.wildlife.apply(g);
+    this.folk.apply(g);
   }
 
   spawns(g: Game, s: EnemySpawn) {
     const f = g.save.data.flags;
     if (s.group === 'courtyard' && f.courtyard) return false;
     if (s.group === 'boss' && f.boss) return false;
+    if (!this.folk.spawns(g, s)) return false;
     return true;
   }
 
@@ -97,6 +102,8 @@ export class CastleStory implements RealmStory {
 
   talk(g: Game, n: Npc, lines: string[]): string[] | 'handled' {
     const d = n.def, f = g.save.data.flags;
+    const folk = this.folk.talk(g, n, lines);
+    if (folk) return folk;
     if (d.id === 'elder') {
       if (f.bridge) lines = ['The drawbridge! We heard the chains all the way down here.', 'Go, sir knight. End this.'];
       g.after(0.1, () => g.quest('main', 2));
@@ -137,6 +144,8 @@ export class CastleStory implements RealmStory {
   }
 
   victoryLine(id: string) {
+    const folk = this.folk.victoryLine(id);
+    if (folk) return folk;
     const L: Record<string, string> = {
       elder: 'The sun is rising over the keep. I had forgotten what it looks like.',
       wife: 'Listen! Birds! When did we last hear birds?',
@@ -194,6 +203,7 @@ export class CastleStory implements RealmStory {
 
   tick(g: Game, dt: number) {
     this.wildlife.update(g, dt);
+    this.folk.tick(g, dt);
     // First steps: point the way to the wayshrine's moonfire.
     const p = g.player;
     if (g.state === 'play' && g.settings.hints && !g.tipShown('road') && g.tutorialT > 12 && !g.save.data.lit.length && Math.hypot(p.x - 105.5, p.z - 99.5) < 22 && g.firstTime('road')) {
