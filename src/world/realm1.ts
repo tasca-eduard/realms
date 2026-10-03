@@ -12,6 +12,7 @@ import { bramble, greatTree, thicket } from './wood';
 import { KEEP_ZONES } from './lightzones';
 import { buildMoonpetals } from './moonpetals';
 import { buildKeepsfoot } from './keepsfoot';
+import { blossomTree, buildIsleShrine, buildKeepSights } from './keepsights';
 import { MapKit, dressRealm, forest, wallTorch, waterPoints, type EnemySpawn, type NpcDef, type ObjDef, type RealmData, type RegionDef } from './realm';
 
 // ---------------------------------------------------------------------------
@@ -782,7 +783,7 @@ export function buildRealm1(builder: Builder): RealmData {
 
   // ---------- the Kings' Orchard: the keep's old orchard behind its west wall, gone wild ----------
   // Found, not signposted (no path): north from the Overlook along the outside of the wall.
-  for (const [x, z, s] of [[6.6, 15.8, 1.25], [9.4, 18.6, 1.05], [7.2, 21.4, 0.9], [6.4, 30.2, 1.3], [9.2, 32.6, 1], [6.9, 35.4, 0.85]] as [number, number, number][]) b.oak(x, z, s);
+  for (const [x, z, s] of [[6.6, 15.8, 1.25], [9.4, 18.6, 1.05], [7.2, 21.4, 0.9], [6.4, 30.2, 1.3], [9.2, 32.6, 1], [6.9, 35.4, 0.85]] as [number, number, number][]) blossomTree(b, x, z, s);
   for (const [x, z, s] of [[8.4, 14.6, 0.8], [5.8, 19.2, 1], [10.6, 30.4, 0.7], [8, 34.4, 0.9], [11.2, 24, 0.6]] as [number, number, number][]) b.bush(x, z, s);
   b.deadTree(10.2, 26.4, 0.9);
   b.moonflowers(8.6, 25.4, 9, 1.8);
@@ -989,6 +990,12 @@ export function buildRealm1(builder: Builder): RealmData {
     { name: "The King's Road", music: 'road', amb: 'road', test: () => true, light: KEEP_ZONES.fields },
   ];
 
+  // The Keep's set pieces: the old mill, the beacon, the First Knights' Isle, the Seven Stones' runes and the eighth
+  // stone, the orchard in blossom, the raided farm, Pilgrims' Fall, the night fisher (src/world/keepsights.ts).
+  const sights = buildKeepSights(b, grid);
+  objects.push(...sights.objects);
+  npcs.push(...sights.npcs);
+  regions.unshift(...sights.regions);
 
   const grassDensity = (x: number, z: number) => {
     const y = grid.groundAt(x, z);
@@ -1034,7 +1041,7 @@ export function buildRealm1(builder: Builder): RealmData {
     start: { x: 105.5, z: 105 },
     horse: { x: 103.2, z: 107.2 },
     // The stream runs down from the hills to the Mirrow, and the Mirrow round into Mirrormere.
-    flows: [{ pts: STREAM, speed: 0.9 }, { pts: MIRROW, speed: 0.55 }],
+    flows: [{ pts: STREAM, speed: 0.9 }, { pts: MIRROW, speed: 0.55 }, ...sights.flows],
     // The Seven Stones: the last wave is a brute, a shaman, a goblin and an elite boar.
     trial: {
       x: 111.5,
@@ -1069,6 +1076,7 @@ export function buildRealm1(builder: Builder): RealmData {
       bb.rock(-3.8, 101.6, 0.5);
       bb.reeds(-2.8, 98.4, 6);
       bb.moonflowers(-5, 100.8, 6, 1);
+      buildIsleShrine(bb, g);
       // The gorge lookout: a platform out over the drop.
       const rim = g.groundAt(119.5, 30.5);
       for (let z = 29; z <= 31; z++) for (let x = 120; x <= 124; x++) g.deck[g.i(x, z)] = rim;
@@ -1183,7 +1191,7 @@ export function buildRealm1(builder: Builder): RealmData {
     viewer: [79, 64.5],
     debugSpots: [[105.5, 105], [78, 66], [40, 78], [92, 32], [58, 16], [40, 26], [31, 18.5], [115.4, 7]],
     // The Great Tree, where the thorn road goes: seen from afar, so never under the mist.
-    landmarks: [{ x: 117, z: -17.5, r: 7 }],
+    landmarks: [{ x: 117, z: -17.5, r: 7 }, ...sights.landmarks],
     borders: [{ id: 'thornroad', to: 'forest', arrive: 'thornroad', x: 116.6, z: -9.6, r: 1.4, out: { x: 115.6, z: 6.8, fx: -0.25, fz: 0.97 }, card: ['Blackpine', 'The Old Wood'] }],
   };
 }

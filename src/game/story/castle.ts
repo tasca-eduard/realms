@@ -4,6 +4,7 @@ import type { Enemy } from '../enemies';
 import type { Game } from '../game';
 import type { Npc } from '../objects';
 import { KeepsfootLife } from './keepsfoot';
+import { KeepSights } from './keepsights';
 import type { BossInfo, RealmStory } from './story';
 
 /**
@@ -34,6 +35,8 @@ export class CastleStory implements RealmStory {
   wildlife = new KeepLife();
   /** Keepsfoot's night, the feast, the lanterns, the dawn; Gnasher's camp at its business (story/keepsfoot.ts). */
   private folk = new KeepsfootLife();
+  /** The mill, the beacon, the stones' runes, the farm, the night fisher (group 89: src/game/story/keepsights.ts). */
+  private sights = new KeepSights();
 
   apply(g: Game) {
     const f = g.save.data.flags;
@@ -50,6 +53,7 @@ export class CastleStory implements RealmStory {
     if (f.boss) g.setDawn(1);
     this.wildlife.apply(g);
     this.folk.apply(g);
+    this.sights.apply(g);
   }
 
   spawns(g: Game, s: EnemySpawn) {
@@ -61,6 +65,7 @@ export class CastleStory implements RealmStory {
   }
 
   onKill(g: Game, e: Enemy) {
+    this.sights.onKill(g, e);
     const alive = (group: string) => g.enemies.some((o) => o.alive && o.group === group);
     if (e.group === 'courtyard' && !alive('courtyard')) {
       g.save.data.flags.courtyard = true;
@@ -155,7 +160,7 @@ export class CastleStory implements RealmStory {
       tamhome: 'They will sing about this, sir knight.',
       warden: 'Seven more realms, they say. The next lies up the thorn road, past the old lodge. Rest first.',
     };
-    return L[id] ?? 'Thank you, knight.';
+    return L[id] ?? this.sights.victoryLine(id) ?? 'Thank you, knight.';
   }
 
   onLever(g: Game) {
@@ -204,6 +209,7 @@ export class CastleStory implements RealmStory {
   tick(g: Game, dt: number) {
     this.wildlife.update(g, dt);
     this.folk.tick(g, dt);
+    this.sights.tick(g, dt);
     // First steps: point the way to the wayshrine's moonfire.
     const p = g.player;
     if (g.state === 'play' && g.settings.hints && !g.tipShown('road') && g.tutorialT > 12 && !g.save.data.lit.length && Math.hypot(p.x - 105.5, p.z - 99.5) < 22 && g.firstTime('road')) {
