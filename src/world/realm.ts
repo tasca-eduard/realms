@@ -131,6 +131,18 @@ export interface RegionDef {
    *  'grotto' and 'temple' (under the sea: an echo and drips; the temple's choir). */
   amb?: 'fields' | 'village' | 'woods' | 'keep' | 'indoor' | 'road' | 'shore' | 'harbour' | 'sea' | 'cave' | 'grotto' | 'temple';
   quiet?: boolean;
+  /** The place's own light, laid over the ground it covers and blended over a few metres at its edges. */
+  light?: ZoneLight;
+}
+
+/** A place's light: a colour cast over the moonlit ground (1 leaves a channel as it is; lamps, fires and glowing
+ *  things keep their own colour), how bright it is (times the realm's), and its ground mist (times the realm's).
+ *  `dawn` is the same once the sun is up (left out: the night's cast fades out with the night). */
+export interface ZoneLight {
+  tint?: [number, number, number];
+  bright?: number;
+  mist?: number;
+  dawn?: { tint?: [number, number, number]; bright?: number; mist?: number };
 }
 
 export interface RealmData {

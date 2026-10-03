@@ -26,6 +26,7 @@ import { Bindings, Breakable, Cage, Chest, CrackedWall, Drawbridge, HallDoor, Le
 import type { Floodgate } from './palace';
 import { Save } from './save';
 import { FogOfWar } from './fow';
+import { ZoneLights } from './zonelight';
 import { Mount } from './mount';
 import { Trial } from './trial';
 import { ArrowSlit, Chandelier, SnareTrap, ThornBurst, WardenMark } from './hazards';
@@ -290,6 +291,8 @@ export class Game {
     for (let z = 2; z < this.realm.d; z += 3) for (let x = 2; x < this.realm.w; x += 3) this.exploreFow.reveal(x, z, 4);
     this.exploreFow.flush();
     this.pipe.fow = { tex: this.fow.tex, x: this.fow.originX, z: this.fow.originZ, size: this.fow.worldSize, amount: 0 };
+    const zones = ZoneLights.build(this.realm.regions, this.grid, this.realm.w, this.realm.d, PAD);
+    this.pipe.zone = zones && { night: zones.night, dawn: zones.dawn, x: zones.originX, z: zones.originZ, size: zones.worldSize, k: 0 };
     builder.finish(this.scene);
     this.structures = builder.structures;
     const outside = (x: number, z: number) => x < 0 || z < 0 || x >= this.realm.w || z >= this.realm.d;
@@ -2432,6 +2435,8 @@ export class Game {
       a.seaFloor = sea.deep;
     } else a.seaRays = a.seaCaustics = 0;
     a.cloud = lerp(n.cloud, d.cloud, k);
+    a.saturation = lerp(n.saturation ?? 1.05, d.saturation ?? 1.05, k);
+    if (this.pipe.zone) this.pipe.zone.k = k;
   }
 
   private render(real: number) {

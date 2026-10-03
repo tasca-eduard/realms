@@ -63,6 +63,7 @@ uniform vec3 uLift, uGain;
 uniform float uFlash; uniform vec3 uFlashColor;
 uniform float uDesat;
 uniform sampler2D tFow; uniform vec2 uFowOrigin; uniform float uFowSize, uFowAmount; uniform vec3 uFowColor;
+uniform sampler2D tZone, tZoneDawn; uniform vec2 uZoneOrigin; uniform float uZoneSize, uZone, uZoneDawn;
 varying vec2 vUv;
 ${NOISE}
 
@@ -105,6 +106,17 @@ void main() {
     float cl = fbm3(wp.xz * 0.045 + vec2(uTime * 0.018, uTime * 0.008));
     col *= 1.0 - uCloud * smoothstep(0.42, 0.72, cl);
 
+    // Each place's own light (a colour cast over the moonlit ground; lamps, fires and glowing things keep their
+    // colour) and how thick its mist lies, by night and at dawn.
+    float zoneMist = 1.0;
+    if (uZone > 0.0) {
+      vec2 zuv = (wp.xz - uZoneOrigin) / uZoneSize;
+      vec4 zl = mix(texture2D(tZone, zuv), texture2D(tZoneDawn, zuv), uZoneDawn);
+      float lit = smoothstep(0.35, 1.4, dot(col, vec3(0.2126, 0.7152, 0.0722)));
+      col *= mix(zl.rgb * (255.0 / 128.0), vec3(1.0), lit);
+      zoneMist = zl.a * (255.0 / 64.0);
+    }
+
     if (uSea > 0.0 && wp.y < uSeaSurface) {
       // Below the sea's surface: light rippling over everything (two drifting layers of ridges), brightest
       // where it's shallow; deeper down, darker and bluer.
@@ -120,7 +132,7 @@ void main() {
     // Ground mist pooled in low places, rolling slowly.
     float mh = clamp((uMistLevel - wp.y) / uMistDepth, 0.0, 1.0);
     float mn = fbm3(wp.xz * 0.16 + vec2(uTime * 0.05, -uTime * 0.03));
-    float mist = mh * mh * (0.35 + 0.65 * mn) * uMistAmount;
+    float mist = mh * mh * (0.35 + 0.65 * mn) * uMistAmount * zoneMist;
     col = mix(col, uMistColor, clamp(mist, 0.0, 0.85));
 
     // Depth fog toward the top of the screen.
@@ -257,6 +269,8 @@ export class Pipeline {
   narrow = 0;
   time = 0;
   fow: { tex: THREE.Texture; x: number; z: number; size: number; amount: number } | null = null;
+  /** The realm's places' own light by night and at dawn (see ZoneLights), and how far the dawn has come. */
+  zone: { night: THREE.Texture; dawn: THREE.Texture; x: number; z: number; size: number; k: number } | null = null;
   atmo: Atmosphere = {
     fogColor: new THREE.Color(0.012, 0.014, 0.035),
     fogTop: new THREE.Color(0.006, 0.006, 0.02),
@@ -323,6 +337,7 @@ export class Pipeline {
         uFlash: { value: 0 }, uFlashColor: { value: new THREE.Color() }, uDesat: { value: 0 },
         tFow: { value: null }, uFowOrigin: { value: new THREE.Vector2() }, uFowSize: { value: 1 }, uFowAmount: { value: 0 },
         uFowColor: { value: new THREE.Color(0.018, 0.02, 0.045) },
+        tZone: { value: null }, tZoneDawn: { value: null }, uZoneOrigin: { value: new THREE.Vector2() }, uZoneSize: { value: 1 }, uZone: { value: 0 }, uZoneDawn: { value: 0 },
       }),
     );
     this.up = new Pass(
@@ -441,6 +456,14 @@ export class Pipeline {
       c.uFowSize.value = this.fow.size;
       c.uFowAmount.value = this.fow.amount;
       c.uFowColor.value.copy(a.fogColor).lerp(a.mistColor, 0.45);
+    }
+    c.uZone.value = this.zone ? 1 : 0;
+    if (this.zone) {
+      c.tZone.value = this.zone.night;
+      c.tZoneDawn.value = this.zone.dawn;
+      c.uZoneOrigin.value.set(this.zone.x, this.zone.z);
+      c.uZoneSize.value = this.zone.size;
+      c.uZoneDawn.value = this.zone.k;
     }
     this.comp.run(r, this.compRT);
 

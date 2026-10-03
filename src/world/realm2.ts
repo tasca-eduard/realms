@@ -11,6 +11,7 @@ import { MOBILE } from '../config';
 import { MapKit, dressRealm, forest, waterPoints, type EnemySpawn, type ObjDef, type RealmData, type RegionDef } from './realm';
 import { bough, bramble, deadShrub, diceAt, giantMushroom, giantOak, greatTree, homeTree, rootFrom, ropeBridge, thicket, witheredOak, WOOD } from './wood';
 import { dressWoodStair, onWoodStair, paintWoodStair, WOOD_STAIR, WOOD_STAIR_HEAD, woodStairBare } from './seastair';
+import { WOOD_ZONES } from './lightzones';
 
 // ---------------------------------------------------------------------------
 // Realm 2: Whisperwood, the Old Wood (the prototype's second realm).
@@ -1737,37 +1738,37 @@ export function buildRealm2(builder: Builder): RealmData {
   const yard = off(home.smithy, HOMES.smithy.face, 0, 1);
   const eastHomes = (x: number, z: number) => Math.hypot(x - yard[0], z - yard[1]) < 3.2 || Math.hypot(x - HOMES.fisher.x, z - HOMES.fisher.z) < 4;
   const regions: RegionDef[] = [
-    { name: 'The Sea Stair', music: 'road', amb: 'road', test: (x, z) => onWoodStair(x, z) },
-    { name: 'The Withered Wood', music: 'wilds', amb: 'woods', test: (x, z, y) => z > 32 && insidePoly(HOLD, x, z) && y > 4 },
-    { name: 'The Fallen Giant', music: 'wilds', amb: 'woods', test: (x, z) => x > 34 && x < 42 && z > LOG.z0 - 2 && z < LOG.z1 + 2 },
-    { name: 'The Drowned Shrine', music: 'hall', amb: 'fields', test: (x, z) => Math.hypot(x - SHRINE.x, z - SHRINE.z) < SHRINE.r + 2 },
-    { name: 'The Mushroom Dell', music: 'road', amb: 'woods', test: (x, z) => Math.hypot(x - DELL.x, z - DELL.z) < 7 },
-    { name: 'The Charcoal Kilns', music: 'wilds', amb: 'fields', test: (x, z) => Math.hypot(x - KILNS.x, z - KILNS.z) < 9 },
-    { name: 'The Bat Roost', music: 'hall', amb: 'indoor', test: (x, z) => x >= ROOST.x0 && x < ROOST.x1 && z < ROOST.z1 + 1 },
-    { name: "The Whisper's Fall", music: 'wilds', amb: 'woods', test: (x, z) => x > 82 && x < 92 && z > 45 && z < 58 },
-    { name: 'The Deer Meadow', music: 'fields', amb: 'fields', test: (x, z) => insidePoly(DEER_MEADOW, x, z) && lakeSd(x, z) >= 11 && !eastHomes(x, z) },
-    { name: 'The Mirror Pool', music: 'wilds', amb: 'woods', test: (x, z) => Math.hypot((x - MIRROR.x) / (MIRROR.rx + 2), (z - MIRROR.z) / (MIRROR.rz + 2)) < 1 },
-    { name: 'The Niche', music: 'hall', amb: 'indoor', test: (x, z) => x >= NICHE.x0 && x < NICHE.x1 && z >= NICHE.z0 && z < NICHE.z1 },
-    { name: 'The Roots of the Great Tree', music: 'keep', amb: 'keep', test: (x, z, y) => bowlE(x, z) < 1.05 && y > 4 },
-    { name: "The Warden's Hold", music: 'keep', amb: 'keep', test: (x, z, y) => x < 34 && z < 46 && y > 4 },
-    { name: 'The Overhang', music: 'wilds', amb: 'woods', test: (x, z) => x < 46 && z < 24 },
-    { name: 'The Thorn Ravine', music: 'wilds', amb: 'woods', test: (x, z) => z < 23 && x < 88 },
-    { name: 'Rookfall Chasm', music: 'wilds', amb: 'woods', test: (x, z) => gorgeIn(x, z) > -3.5 && z < 50 },
-    { name: "The Gatherers' Clearing", music: 'fields', amb: 'fields', test: (x, z) => Math.hypot(x - CLEARING.x, z - CLEARING.z) < 7 },
-    { name: 'The Blackwater', music: 'fields', amb: 'fields', test: (x, z) => sdPoly(BLACKWATER, x, z) < 7 },
-    { name: 'The East Woods', music: 'wilds', amb: 'woods', test: (x, z) => x >= 100 && z < 56 },
-    { name: 'Hollowbough', music: 'village', amb: 'village', test: (x, z) => lakeSd(x, z) < 11 || eastHomes(x, z) || Math.hypot(x - HOMES.inn.x, z - HOMES.inn.z) < 7 }, // (the inn's yard, where the Old Grove begins)
-    { name: 'The High Canopy', music: 'wilds', amb: 'woods', test: (x, z) => x > 88 && z > 56 && z < 96 },
-    { name: "The Stag's Thicket", music: 'road', amb: 'woods', test: (x, z) => Math.hypot(x - STAG.x, z - STAG.z) < 6 },
-    { name: 'The Ring of Oaks', music: 'road', amb: 'fields', test: (x, z) => Math.hypot(x - RING.x, z - RING.z) < RING.r + 3 },
-    { name: "The Herbwife's Glade", music: 'road', amb: 'fields', test: (x, z) => Math.hypot(x - HERBS.x, z - HERBS.z) < 6 },
-    { name: 'The Mossfen', music: 'fields', amb: 'fields', test: (x, z) => insidePoly(MOSSFEN, x, z) },
-    { name: "The Stag's Bed", music: 'fields', amb: 'woods', test: (x, z) => x < BED.mouth && inStagBed(x, z) > 0 },
-    { name: 'The Deep Wood', music: 'wilds', amb: 'woods', test: (x, z) => insidePoly(DEEP_WEST, x, z) },
-    { name: 'The Old Grove', music: 'road', amb: 'woods', test: (x, z) => x > 54 && z > 88 && x < 104 },
-    { name: 'The Thorn Road', music: 'road', amb: 'road', test: (x, z) => x > 100 && z > 96 },
-    { name: 'The Whisper', music: 'wilds', amb: 'woods', test: (x, z) => distLine(RIVER, x, z) < 5 },
-    { name: 'Whisperwood', music: 'wilds', amb: 'woods', test: () => true },
+    { name: 'The Sea Stair', music: 'road', amb: 'road', test: (x, z) => onWoodStair(x, z), light: WOOD_ZONES.open },
+    { name: 'The Withered Wood', music: 'wilds', amb: 'woods', test: (x, z, y) => z > 32 && insidePoly(HOLD, x, z) && y > 4, light: WOOD_ZONES.withered },
+    { name: 'The Fallen Giant', music: 'wilds', amb: 'woods', test: (x, z) => x > 34 && x < 42 && z > LOG.z0 - 2 && z < LOG.z1 + 2, light: WOOD_ZONES.woods },
+    { name: 'The Drowned Shrine', music: 'hall', amb: 'fields', test: (x, z) => Math.hypot(x - SHRINE.x, z - SHRINE.z) < SHRINE.r + 2, light: WOOD_ZONES.water },
+    { name: 'The Mushroom Dell', music: 'road', amb: 'woods', test: (x, z) => Math.hypot(x - DELL.x, z - DELL.z) < 7, light: WOOD_ZONES.open },
+    { name: 'The Charcoal Kilns', music: 'wilds', amb: 'fields', test: (x, z) => Math.hypot(x - KILNS.x, z - KILNS.z) < 9, light: WOOD_ZONES.open },
+    { name: 'The Bat Roost', music: 'hall', amb: 'indoor', test: (x, z) => x >= ROOST.x0 && x < ROOST.x1 && z < ROOST.z1 + 1, light: WOOD_ZONES.indoor },
+    { name: "The Whisper's Fall", music: 'wilds', amb: 'woods', test: (x, z) => x > 82 && x < 92 && z > 45 && z < 58, light: WOOD_ZONES.water },
+    { name: 'The Deer Meadow', music: 'fields', amb: 'fields', test: (x, z) => insidePoly(DEER_MEADOW, x, z) && lakeSd(x, z) >= 11 && !eastHomes(x, z), light: WOOD_ZONES.open },
+    { name: 'The Mirror Pool', music: 'wilds', amb: 'woods', test: (x, z) => Math.hypot((x - MIRROR.x) / (MIRROR.rx + 2), (z - MIRROR.z) / (MIRROR.rz + 2)) < 1, light: WOOD_ZONES.water },
+    { name: 'The Niche', music: 'hall', amb: 'indoor', test: (x, z) => x >= NICHE.x0 && x < NICHE.x1 && z >= NICHE.z0 && z < NICHE.z1, light: WOOD_ZONES.indoor },
+    { name: 'The Roots of the Great Tree', music: 'keep', amb: 'keep', test: (x, z, y) => bowlE(x, z) < 1.05 && y > 4, light: WOOD_ZONES.roots },
+    { name: "The Warden's Hold", music: 'keep', amb: 'keep', test: (x, z, y) => x < 34 && z < 46 && y > 4, light: WOOD_ZONES.hold },
+    { name: 'The Overhang', music: 'wilds', amb: 'woods', test: (x, z) => x < 46 && z < 24, light: WOOD_ZONES.withered },
+    { name: 'The Thorn Ravine', music: 'wilds', amb: 'woods', test: (x, z) => z < 23 && x < 88, light: WOOD_ZONES.withered },
+    { name: 'Rookfall Chasm', music: 'wilds', amb: 'woods', test: (x, z) => gorgeIn(x, z) > -3.5 && z < 50, light: WOOD_ZONES.gorge },
+    { name: "The Gatherers' Clearing", music: 'fields', amb: 'fields', test: (x, z) => Math.hypot(x - CLEARING.x, z - CLEARING.z) < 7, light: WOOD_ZONES.open },
+    { name: 'The Blackwater', music: 'fields', amb: 'fields', test: (x, z) => sdPoly(BLACKWATER, x, z) < 7, light: WOOD_ZONES.water },
+    { name: 'The East Woods', music: 'wilds', amb: 'woods', test: (x, z) => x >= 100 && z < 56, light: WOOD_ZONES.woods },
+    { name: 'Hollowbough', music: 'village', amb: 'village', test: (x, z) => lakeSd(x, z) < 11 || eastHomes(x, z) || Math.hypot(x - HOMES.inn.x, z - HOMES.inn.z) < 7, light: WOOD_ZONES.village }, // (the inn's yard, where the Old Grove begins)
+    { name: 'The High Canopy', music: 'wilds', amb: 'woods', test: (x, z) => x > 88 && z > 56 && z < 96, light: WOOD_ZONES.woods },
+    { name: "The Stag's Thicket", music: 'road', amb: 'woods', test: (x, z) => Math.hypot(x - STAG.x, z - STAG.z) < 6, light: WOOD_ZONES.woods },
+    { name: 'The Ring of Oaks', music: 'road', amb: 'fields', test: (x, z) => Math.hypot(x - RING.x, z - RING.z) < RING.r + 3, light: WOOD_ZONES.open },
+    { name: "The Herbwife's Glade", music: 'road', amb: 'fields', test: (x, z) => Math.hypot(x - HERBS.x, z - HERBS.z) < 6, light: WOOD_ZONES.open },
+    { name: 'The Mossfen', music: 'fields', amb: 'fields', test: (x, z) => insidePoly(MOSSFEN, x, z), light: WOOD_ZONES.fen },
+    { name: "The Stag's Bed", music: 'fields', amb: 'woods', test: (x, z) => x < BED.mouth && inStagBed(x, z) > 0, light: WOOD_ZONES.woods },
+    { name: 'The Deep Wood', music: 'wilds', amb: 'woods', test: (x, z) => insidePoly(DEEP_WEST, x, z), light: WOOD_ZONES.deep },
+    { name: 'The Old Grove', music: 'road', amb: 'woods', test: (x, z) => x > 54 && z > 88 && x < 104, light: WOOD_ZONES.grove },
+    { name: 'The Thorn Road', music: 'road', amb: 'road', test: (x, z) => x > 100 && z > 96, light: WOOD_ZONES.open },
+    { name: 'The Whisper', music: 'wilds', amb: 'woods', test: (x, z) => distLine(RIVER, x, z) < 5, light: WOOD_ZONES.water },
+    { name: 'Whisperwood', music: 'wilds', amb: 'woods', test: () => true, light: WOOD_ZONES.woods },
   ];
   const grassDensity = (x: number, z: number) => {
     const y = grid.groundAt(x, z);

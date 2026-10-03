@@ -9,6 +9,8 @@ import type { CritterDef } from '../game/critters';
 import { OUTSKIRT_ROAD, RIVER as MIRROW } from './outskirts';
 import * as D from './details';
 import { bramble, greatTree, thicket } from './wood';
+import { KEEP_ZONES } from './lightzones';
+import { buildMoonpetals } from './moonpetals';
 import { MapKit, dressRealm, forest, wallTorch, waterPoints, type EnemySpawn, type NpcDef, type ObjDef, type RealmData, type RegionDef } from './realm';
 
 // ---------------------------------------------------------------------------
@@ -70,6 +72,8 @@ const BARROWS = [
   { x: 16.5, z: 80.5, len: 5, wid: 3.4, rot: -Math.PI / 2 },
 ];
 const DOLMEN = { x: 24, z: 68.4 };
+// The keep's banners and pennants: moon-blue cloth with the gold crescent, as the prototype's castle flew them.
+const MOON_CLOTH = '#2a64b8';
 // A great glowing stone arch among the barrows.
 const ARCH = { x: 23.6, z: 77.6 };
 // What the raiders left of the farm's barn; the rail where the warhorse is tied.
@@ -785,6 +789,9 @@ export function buildRealm1(builder: Builder): RealmData {
   b.mushrooms(6.2, 31.6, 5, false);
   b.rock(5.9, 9.8, 0.8);
 
+  // Moonpetals glowing moon-blue by the Seven Stones, the barrows and in the orchard.
+  buildMoonpetals(b, grid);
+
   // ---------- data ----------
   const enemies: EnemySpawn[] = [
     // Barrow Fields
@@ -958,27 +965,27 @@ export function buildRealm1(builder: Builder): RealmData {
   for (const [x, z, what] of pots) objects.push({ kind: 'breakable', x, z, what });
 
   const regions: RegionDef[] = [
-    { name: "The Warden's Homestead", music: 'road', amb: 'road', test: (x, z) => Math.abs(x - HOME.x) < 7.5 && z > HOME.z - 6 && z < HOME.z + 13 },
-    { name: 'The Crescent & Crown', music: 'tavern', amb: 'indoor', test: (x, z) => x > 72 && x < 82 && z > 50 && z < 57 },
-    { name: 'Hall of the Moon Throne', music: 'hall', amb: 'indoor', test: (x, z) => x > 16 && x < 34 && z > 10 && z < 27 },
-    { name: 'The Hollow', music: 'hall', amb: 'indoor', test: (x, z, y) => x > 30 && x < 36.2 && z > 54 && z < 59.4 && y < 1 },
-    { name: 'The Old Lodge', music: 'wilds', amb: 'woods', test: (x, z) => (x - LODGE.x) ** 2 + (z - LODGE.z) ** 2 < 81 },
-    { name: 'The Gorge Lookout', music: 'wilds', amb: 'woods', test: (x, z) => x > 115 && z > 24 && z < 37 },
-    { name: 'The Thorn Road', music: 'wilds', amb: 'woods', test: (x, z) => z < 0 || (x + z * 0.35 > 113 && z < 7) },
-    { name: 'Riverside', music: 'road', amb: 'road', test: (x, z) => x > 119.5 && z > 58 },
-    { name: 'The Raided Farm', music: 'road', amb: 'fields', test: (x, z) => x > 68 && x < 109 && z > 109 },
-    { name: 'The Moonlit Keep', music: 'keep', amb: 'keep', test: (x, z) => x > 13 && x < 47 && z > 7 && z < 41 },
-    { name: "The Kings' Orchard", music: 'keep', amb: 'woods', test: (x, z, y) => y > 3.5 && x < 47 && z > 3 && (x < 13.5 ? z < 41.5 : z < 7.5) },
-    { name: 'The Outer Bailey', music: 'keep', amb: 'keep', test: (x, z, y) => x >= 47 && x < 63 && z < 47 && y > 3.5 },
-    { name: "Gnasher's Camp", music: 'wilds', amb: 'woods', test: (x, z) => (x - CAMP.x) ** 2 + (z - CAMP.z) ** 2 < 11 * 11 },
-    { name: 'Blackpine Wood', music: 'wilds', amb: 'woods', test: (x, z, y) => insidePoly(WOODS, x, z) && y > 1.5 },
-    { name: 'The Overlook', music: 'keep', amb: 'keep', test: (x, z, y) => y > 3.5 && z > 40 && x < 47 },
-    { name: 'Keepsfoot', music: 'village', amb: 'village', test: (x, z, y) => insidePoly(VILLAGE, x, z) && y > 0.5 },
-    { name: 'Mirrormere', music: 'fields', amb: 'fields', test: (x, z) => x < 14 && z > 80 },
-    { name: 'The Sallow Marsh', music: 'fields', amb: 'fields', test: (x, z) => z > 104 && x < 62 },
-    { name: 'The Seven Stones', music: 'road', amb: 'road', test: (x, z) => (x - 111.5) ** 2 + (z - 88) ** 2 < 36 },
-    { name: 'The Barrow Fields', music: 'fields', amb: 'fields', test: (x, z) => x < 66 && z > 55 },
-    { name: "The King's Road", music: 'road', amb: 'road', test: () => true },
+    { name: "The Warden's Homestead", music: 'road', amb: 'road', test: (x, z) => Math.abs(x - HOME.x) < 7.5 && z > HOME.z - 6 && z < HOME.z + 13, light: KEEP_ZONES.home },
+    { name: 'The Crescent & Crown', music: 'tavern', amb: 'indoor', test: (x, z) => x > 72 && x < 82 && z > 50 && z < 57, light: KEEP_ZONES.village },
+    { name: 'Hall of the Moon Throne', music: 'hall', amb: 'indoor', test: (x, z) => x > 16 && x < 34 && z > 10 && z < 27, light: KEEP_ZONES.hall },
+    { name: 'The Hollow', music: 'hall', amb: 'indoor', test: (x, z, y) => x > 30 && x < 36.2 && z > 54 && z < 59.4 && y < 1, light: KEEP_ZONES.hollow },
+    { name: 'The Old Lodge', music: 'wilds', amb: 'woods', test: (x, z) => (x - LODGE.x) ** 2 + (z - LODGE.z) ** 2 < 81, light: KEEP_ZONES.pines },
+    { name: 'The Gorge Lookout', music: 'wilds', amb: 'woods', test: (x, z) => x > 115 && z > 24 && z < 37, light: KEEP_ZONES.pines },
+    { name: 'The Thorn Road', music: 'wilds', amb: 'woods', test: (x, z) => z < 0 || (x + z * 0.35 > 113 && z < 7), light: KEEP_ZONES.pines },
+    { name: 'Riverside', music: 'road', amb: 'road', test: (x, z) => x > 119.5 && z > 58, light: KEEP_ZONES.water },
+    { name: 'The Raided Farm', music: 'road', amb: 'fields', test: (x, z) => x > 68 && x < 109 && z > 109, light: KEEP_ZONES.fields },
+    { name: 'The Moonlit Keep', music: 'keep', amb: 'keep', test: (x, z) => x > 13 && x < 47 && z > 7 && z < 41, light: KEEP_ZONES.keep },
+    { name: "The Kings' Orchard", music: 'keep', amb: 'woods', test: (x, z, y) => y > 3.5 && x < 47 && z > 3 && (x < 13.5 ? z < 41.5 : z < 7.5), light: KEEP_ZONES.orchard },
+    { name: 'The Outer Bailey', music: 'keep', amb: 'keep', test: (x, z, y) => x >= 47 && x < 63 && z < 47 && y > 3.5, light: KEEP_ZONES.keep },
+    { name: "Gnasher's Camp", music: 'wilds', amb: 'woods', test: (x, z) => (x - CAMP.x) ** 2 + (z - CAMP.z) ** 2 < 11 * 11, light: KEEP_ZONES.pines },
+    { name: 'Blackpine Wood', music: 'wilds', amb: 'woods', test: (x, z, y) => insidePoly(WOODS, x, z) && y > 1.5, light: KEEP_ZONES.pines },
+    { name: 'The Overlook', music: 'keep', amb: 'keep', test: (x, z, y) => y > 3.5 && z > 40 && x < 47, light: KEEP_ZONES.fields },
+    { name: 'Keepsfoot', music: 'village', amb: 'village', test: (x, z, y) => insidePoly(VILLAGE, x, z) && y > 0.5, light: KEEP_ZONES.village },
+    { name: 'Mirrormere', music: 'fields', amb: 'fields', test: (x, z) => x < 14 && z > 80, light: KEEP_ZONES.water },
+    { name: 'The Sallow Marsh', music: 'fields', amb: 'fields', test: (x, z) => z > 104 && x < 62, light: KEEP_ZONES.marsh },
+    { name: 'The Seven Stones', music: 'road', amb: 'road', test: (x, z) => (x - 111.5) ** 2 + (z - 88) ** 2 < 36, light: KEEP_ZONES.stones },
+    { name: 'The Barrow Fields', music: 'fields', amb: 'fields', test: (x, z) => x < 66 && z > 55, light: KEEP_ZONES.barrows },
+    { name: "The King's Road", music: 'road', amb: 'road', test: () => true, light: KEEP_ZONES.fields },
   ];
 
 
@@ -1393,9 +1400,9 @@ function buildKeep(b: Builder, grid: Grid, r: Rng): Structure {
   const wE2 = wall('wallE2', 46, 28, 46, 38, 1);
   // Long red banners down the outer walls, torches between them. Drawn into the
   // walls so they fade with them when the knight is behind.
-  for (const bx of [21, 30, 39]) b.banner(bx, base + 0.4, 40.83, 0, PAL.cloth, 3.8, wS.core);
-  b.banner(46.83, base + 0.4, 15, Math.PI / 2, PAL.cloth, 3.8, wE1.core);
-  b.banner(46.83, base + 0.4, 33, Math.PI / 2, PAL.cloth, 3.8, wE2.core);
+  for (const bx of [21, 30, 39]) b.banner(bx, base + 0.4, 40.83, 0, MOON_CLOTH, 3.8, wS.core);
+  b.banner(46.83, base + 0.4, 15, Math.PI / 2, MOON_CLOTH, 3.8, wE1.core);
+  b.banner(46.83, base + 0.4, 33, Math.PI / 2, MOON_CLOTH, 3.8, wE2.core);
   for (const tx of [25.5, 34.5]) wallTorch(b, wS, tx, base + 2.8, 41.0, 0, 1);
   wallTorch(b, wE1, 47.0, base + 2.8, 11.5, 1, 0);
   wallTorch(b, wE2, 47.0, base + 2.8, 36.5, 1, 0);
@@ -1435,13 +1442,13 @@ function buildKeep(b: Builder, grid: Grid, r: Rng): Structure {
       g.pyramid(46.35, base + 2.62, pz, 0.08, 0.08, -0.14, PAL.iron);
     }
     g.box(46.35, base + 2.95, 24.5, 0.06, 0.07, 2.9, PAL.iron, { kind: K.Metal });
-    b.banner(47.0, base + 1.2, 22.4, Math.PI / 2, PAL.cloth, 1.8);
-    b.banner(47.0, base + 1.2, 26.6, Math.PI / 2, PAL.cloth, 1.8);
+    b.banner(47.0, base + 1.2, 22.4, Math.PI / 2, MOON_CLOTH, 1.8);
+    b.banner(47.0, base + 1.2, 26.6, Math.PI / 2, MOON_CLOTH, 1.8);
   }
   // Towers.
   const tower = (name: string, x: number, z: number, rad: number, h: number, banner = true) => {
     const s = b.structure(name, new THREE.Box3(new THREE.Vector3(x - rad, base - 2, z - rad), new THREE.Vector3(x + rad, base + h + rad * 2.4, z + rad)));
-    b.roundTower(s, x, z, rad, base, h, { banner: banner ? PAL.cloth : undefined, windows: 5 });
+    b.roundTower(s, x, z, rad, base, h, { banner: banner ? MOON_CLOTH : undefined, windows: 5 });
     return s;
   };
   tower('towerNE', 46, 8, 2.2, 7.5);
@@ -1461,7 +1468,7 @@ function buildKeep(b: Builder, grid: Grid, r: Rng): Structure {
     }
     g.pyramid(x, base + 16.5, z, 5, 5, 4.5, PAL.slate2, { kind: K.Slate });
     g.box(x, base + 20.8, z, 0.08, 1.6, 0.08, PAL.iron);
-    g.box(x + 0.45, base + 21.8, z, 0.8, 0.45, 0.03, PAL.cloth, { kind: K.Cloth, wind: 0.9 });
+    g.box(x + 0.45, base + 21.8, z, 0.8, 0.45, 0.03, MOON_CLOTH, { kind: K.Cloth, wind: 0.9 });
     for (const [wy, wx, wz] of [[9, 3.01, 0], [13, 3.01, 0], [11, 0, 3.01], [14.2, 0, 3.01], [6, 3.01, 1.5]] as [number, number, number][]) {
       s.glow.box(x + wx, base + wy, z + wz, wx ? 0.05 : 0.5, 1.0, wz ? 0.05 : 0.5, GLOW.sinister, {});
       b.lights.add(x + wx * 1.3, base + wy, z + wz * 1.3, 0xffd060, 5, 6, 0.1);
@@ -1511,7 +1518,7 @@ function buildKeep(b: Builder, grid: Grid, r: Rng): Structure {
     grid.addCollider({ kind: 'b', x0: tx - 0.6, z0: tz - 0.8, x1: tx + 0.4, z1: tz + 0.8, y0: 0, y1: 8 });
   }
   for (const [bx, bz] of [[21.5, 15.8], [21.5, 21.2]] as Pt[]) b.brazier(bx, bz);
-  for (const bx of [23.5, 27.5, 31.5]) b.banner(bx, y + 3.2, z0 + t + 0.03, 0, PAL.cloth, 2.4);
+  for (const bx of [23.5, 27.5, 31.5]) b.banner(bx, y + 3.2, z0 + t + 0.03, 0, MOON_CLOTH, 2.4);
   // (The chandeliers are live objects: see game/hazards.ts.)
   for (const [wx, wz] of [[x0 + t + 0.1, 13], [x0 + t + 0.1, 24]] as Pt[]) b.torch(wx + 0.2, y + 2.4, wz);
   // Hall wall colliders (door gap on the east side).
