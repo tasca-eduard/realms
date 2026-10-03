@@ -1,11 +1,11 @@
 ---
 name: realms-testing
-description: How to check a change to the Eight Realms game (F:\dev\realms) - which of the 91 headless checks to run for which kind of change, how to run them on a temporary server (in the background when long), how to read their reports, and which ones are flaky. Use after changing anything in src/ or tests/, before calling a task done, when a check fails, or when asked to run the suite or "test" or "verify" the game.
+description: How to check a change to the Eight Realms game (F:\dev\realms) - which of the 98 headless checks to run for which kind of change, how to run them on a temporary server (in the background when long), how to read their reports, and which ones are flaky. Use after changing anything in src/ or tests/, before calling a task done, when a check fails, or when asked to run the suite or "test" or "verify" the game.
 ---
 
 # Checking a change to Eight Realms
 
-Every check drives the real game in headless Edge (`tools/shot.mjs`), and `tools/test-all.mjs` runs the 91 of them.
+Every check drives the real game in headless Edge (`tools/shot.mjs`), and `tools/test-all.mjs` runs the 98 of them.
 A check passes only when its report shows what its description says. Full guide: `docs/testing/testing.md`; every
 check by realm and area: `docs/testing/checks.md`.
 

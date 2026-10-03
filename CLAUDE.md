@@ -39,8 +39,8 @@ npm run dev
 
 - **Type-check:** `npx tsc --noEmit -p .` (no output means clean). When you pipe it (`... | tail -20`), `$?` is `tail`'s:
   read `${PIPESTATUS[0]}` for tsc's.
-- **The suite:** `PORT=<port> npm test` runs the 91 scripted checks in `tools/test-all.mjs` in headless Edge, about 40
-  to 45 minutes: always in the background. `PORT=<port> npm test -- talk pad` runs only those. Each check prints its
+- **The suite:** `PORT=<port> npm test` runs the 98 scripted checks in `tools/test-all.mjs` in headless Edge, 45 minutes
+  or more: always in the background. `PORT=<port> npm test -- talk pad` runs only those. Each check prints its
   description and its `[report]`: read every report; a check passes only when the report shows what the description
   says. How checks work and the table of all of them: `docs/testing/testing.md`, `docs/testing/checks.md`.
 - `npm run build` type-checks and builds `dist/`.

@@ -1,6 +1,6 @@
 ---
 name: suite-runner
-description: "Runs the whole Eight Realms suite (90 scripted checks in headless Edge, 40 minutes or more) in its own copy, reads every report, sorts failures into out-of-date tests, real regressions and timing noise, fixes each with the smallest change, and runs it all again. Use after a round of merges, before calling a group done, or when checks start failing. Give it a copy of the merged project (or let it make one)."
+description: "Runs the whole Eight Realms suite (98 scripted checks in headless Edge, 45 minutes or more) in its own copy, reads every report, sorts failures into out-of-date tests, real regressions and timing noise, fixes each with the smallest change, and runs it all again. Use after a round of merges, before calling a group done, or when checks start failing. Give it a copy of the merged project (or let it make one)."
 tools: Read, Edit, Write, Glob, Grep, Bash, PowerShell
 ---
 

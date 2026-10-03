@@ -1,10 +1,10 @@
 ---
 description: Run the realms test suite (or the named checks) on a temporary server in the background, then report what failed
-argument-hint: "[check names...]  (none: all 91; e.g. reach3 spawns3 normals3)"
+argument-hint: "[check names...]  (none: all 98; e.g. reach3 spawns3 normals3)"
 allowed-tools: Bash(bash tools/withserver.sh:*), Bash(grep:*), Bash(tail:*), Bash(curl:*), Read
 ---
 
-Run these checks of the game: `$ARGUMENTS` (empty means the whole suite, all 91 in `tools/test-all.mjs`).
+Run these checks of the game: `$ARGUMENTS` (empty means the whole suite, all 98 in `tools/test-all.mjs`).
 How checks work: `docs/testing/testing.md`; the list: `docs/testing/checks.md`.
 
 1. Every name must be a check in `tools/test-all.mjs` (the first item of each `TESTS` entry). If one isn't, say so
@@ -20,7 +20,7 @@ How checks work: `docs/testing/testing.md`; the list: `docs/testing/checks.md`.
 4. While it runs: **do not edit `src/`, `tests/` or `tools/`** (Vite would reload the page mid-check). Don't sit in a
    wait loop. For a long run, post a one-line status every few minutes:
    `grep -c '^[^ ]' shots/suite.txt` (checks started), `grep -n -E 'FAILED|pageerror|script error' shots/suite.txt`,
-   `tail -n 2 shots/suite.txt` (the one running), e.g. "Suite: 41 of 91, no errors so far, now on `wardenfair`."
+   `tail -n 2 shots/suite.txt` (the one running), e.g. "Suite: 41 of 98, no errors so far, now on `wardenfair`."
 5. When it ends, read `shots/suite.txt` whole. For every check, judge its `[report]` against the description printed
    above it: it passes only if the report shows what the description says. A `[pageerror]`, a `[script error]`, a
    `FAILED:` line or a missing report is a failure. Every check failing at once usually means the server never came

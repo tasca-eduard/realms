@@ -70,7 +70,8 @@ const SCARRED: [number, number, number][] = [[29.6, 66.2, 1], [61.4, 55.5, 0.9],
 const BARK = WOOD.bark, BARK_D = WOOD.barkDark;
 /** The inn's room by angle from its doorway (radians round it): the counter at the back (Moss behind it), the kegs,
  *  the hearth, the lutenist's seat by it, the round table and its two regulars across from them. (All in the
- *  camera's view: the Old Grove's first oak, which stood on its line, moved a little east; see realm2.ts.) */
+ *  camera's view: the Old Grove's first oak stands on its line, and its trunk fades like a crown while it is between
+ *  the camera and the knight: trunkFades, used in realm2.ts.) */
 const ROOM = { counter: Math.PI, kegs: [Math.PI + 0.75, Math.PI + 0.98], hearth: Math.PI - 1.25, lute: Math.PI - 2.05, table: -1.3, sitters: [-0.75, -1.85] };
 const LANTERN_FRAME = '#2e2a24', LANTERN_DARK = '#3a3428';
 
