@@ -106,6 +106,12 @@ export class Builder {
   collide(c: Parameters<Grid['addCollider']>[0]) {
     if (!this.heightFn) this.grid.addCollider(c);
   }
+  /** A realm's own leaf colours: from a tree's kind, where it stands and the colour it would have, the colour its
+   *  leaves take (Whisperwood colours its woods by zone: src/world/woodcolours.ts). */
+  leafTone: ((kind: string, x: number, z: number, col: Col) => Col) | null = null;
+  tone(kind: string, x: number, z: number, col: Col) {
+    return this.leafTone ? this.leafTone(kind, x, z, col) : col;
+  }
 
   structure(name: string, box: THREE.Box3, interior?: [number, number, number, number], interiorY?: number): Structure {
     const s: Structure = {
@@ -165,7 +171,7 @@ export class Builder {
     const g = this.g(x, z), y = yAt ?? this.y(x, z), r = this.rng;
     g.cyl(x, y - 0.1, z, 0.13 * s, 0.09 * s, 1.0 * s, 5, PAL.bark, { kind: K.Bark });
     const layers = 4;
-    const tone = r() < 0.5 ? PAL.pine : PAL.pine2;
+    const tone = this.tone('pine', x, z, r() < 0.5 ? PAL.pine : PAL.pine2);
     const rot = r() * 6;
     for (let i = 0; i < layers; i++) {
       const t = i / (layers - 1);
@@ -180,7 +186,7 @@ export class Builder {
     g.cyl(x, y - 0.1, z, 0.22 * s, 0.14 * s, 1.6 * s, 6, PAL.bark, { kind: K.Bark });
     g.beam([x, y + 1.2 * s, z], [x + 0.6 * s, y + 1.9 * s, z + 0.2 * s], 0.07 * s, PAL.bark, { kind: K.Bark });
     g.beam([x, y + 1.1 * s, z], [x - 0.5 * s, y + 1.8 * s, z - 0.3 * s], 0.07 * s, PAL.bark, { kind: K.Bark });
-    const tone = r() < 0.5 ? PAL.oak : PAL.oak2;
+    const tone = this.tone('oak', x, z, r() < 0.5 ? PAL.oak : PAL.oak2);
     const n = 3 + Math.floor(r() * 2);
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2 + r();
@@ -214,6 +220,7 @@ export class Builder {
 
   bush(x: number, z: number, s = 1, col: Col = PAL.oak) {
     const g = this.g(x, z), y = this.y(x, z), r = this.rng;
+    col = this.tone('bush', x, z, col);
     g.blob(x, y + 0.3 * s, z, 0.6 * s, 0.45 * s, 0.6 * s, col, Math.floor(r() * 999), { kind: K.Leaves, wind: 0.3, detail: 1, flatBottom: true });
     if (r() < 0.6) g.blob(x + 0.35 * s, y + 0.25 * s, z + 0.2 * s, 0.4 * s, 0.35 * s, 0.4 * s, col, Math.floor(r() * 999), { kind: K.Leaves, wind: 0.3, shade: 0.9, flatBottom: true });
   }

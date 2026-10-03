@@ -592,7 +592,7 @@ export function birch(b: Builder, x: number, z: number, s = 1) {
   }
   g.beam([0, 1.8 * s, 0], [0.5 * s, 2.5 * s, 0.1 * s], 0.03 * s, '#c8c4b8');
   g.beam([0, 2.1 * s, 0], [-0.4 * s, 2.7 * s, -0.2 * s], 0.03 * s, '#c8c4b8');
-  const tone = r() < 0.5 ? '#6a8a3e' : '#7a9444';
+  const tone = b.tone('birch', x, z, r() < 0.5 ? '#6a8a3e' : '#7a9444');
   for (let i = 0; i < 4; i++) {
     const a = (i / 4) * Math.PI * 2 + r();
     const d = i === 0 ? 0 : 0.4 * s;

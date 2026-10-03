@@ -185,23 +185,43 @@ export function worldMaterial(opts: { alphaHash?: boolean } = {}) {
       .replace(
         '#include <color_fragment>',
         `#include <color_fragment>
-         // Trees between the camera and the knight thin out around him.
-         if (uCutRadius > 0.0 && vKind > 10.5 && vKind < 12.5) {
+         // Trees between the camera and the knight thin out around him: what is cut away keeps only its
+         // outline, faint and pale (the specks a dither kept caught the outline pass and read as dark columns).
+         float cutRim = 0.0;
+         bool woody = vKind > 10.5 && vKind < 12.5;
+         float facing = abs(dot(normalize(vWNrm), uCamFwd));
+         if (uCutRadius > 0.0 && woody) {
            float fd = dot(vWPos - uCamPos, uCamFwd);
            if (fd < uCutDepth - 0.8) {
              float dd = length(gl_FragCoord.xy - uCutCenter) / uCutRadius;
              float vis = smoothstep(0.55, 1.0, dd);
-             if (bayer16(gl_FragCoord.xy) > vis * 0.9 + 0.12) discard;
+             if (bayer16(gl_FragCoord.xy) > vis) {
+               if (facing > 0.3) discard;
+               cutRim = 1.0;
+             }
            }
          }
          diffuseColor.rgb *= pattern(vKind, vWPos, normalize(vWNrm));
-         ${opts.alphaHash ? `// Screen-door fade: an ordered dither reads as intentional pixel art.
+         ${opts.alphaHash ? `// Screen-door fade: an ordered dither reads as intentional pixel art (crowns and trunks fade to their
+         // outline, as above).
          if (opacity < 0.999) {
            ivec2 bp = ivec2(mod(gl_FragCoord.xy, 4.0));
            int bi = bp.x + bp.y * 4;
            float bm[16] = float[16](0.,8.,2.,10.,12.,4.,14.,6.,3.,11.,1.,9.,15.,7.,13.,5.);
-           if (opacity <= (bm[bi] + 0.5) / 16.0) discard;
+           float bt = (bm[bi] + 0.5) / 16.0;
+           if (woody) {
+             if (bt > (opacity - 0.25) / 0.75) {
+               if (facing > 0.3) discard;
+               cutRim = 1.0;
+             }
+           } else if (opacity <= bt) discard;
          }` : ''}`,
+      )
+      .replace(
+        '#include <opaque_fragment>',
+        `#include <opaque_fragment>
+         // (No alpha: the outline pass leaves it be.)
+         if (cutRim > 0.5) gl_FragColor = vec4(gl_FragColor.rgb * 0.55 + vec3(0.03, 0.04, 0.036), 0.0);`,
       );
   };
   mat.customProgramCacheKey = () => 'world' + (opts.alphaHash ? 'h' : '');

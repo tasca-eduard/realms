@@ -318,7 +318,7 @@ export function greatTree(b: Builder, x: number, z: number, s = 1, o: { clearTow
   crown.push([x, y + 24 * s, z]);
   for (const [cx, cy, cz] of crown)
     for (let k = 0; k < 4; k++)
-      cs.core.blob(cx + (r() - 0.5) * 4 * s, cy + (k === 3 ? 1 : (r() - 0.4) * 1.5) * s, cz + (r() - 0.5) * 4 * s, (2 + r() * 1) * s, (1.5 + r() * 0.6) * s, (2 + r() * 1) * s, k === 3 ? '#4a7a34' : r() < 0.5 ? WOOD.leaf : WOOD.leaf2, Math.floor(r() * 999), { kind: K.Leaves, wind: 0.15, jitter: 0.3, detail: 1 });
+      cs.core.blob(cx + (r() - 0.5) * 4 * s, cy + (k === 3 ? 1 : (r() - 0.4) * 1.5) * s, cz + (r() - 0.5) * 4 * s, (2 + r() * 1) * s, (1.5 + r() * 0.6) * s, (2 + r() * 1) * s, b.tone('great', x, z, k === 3 ? '#4a7a34' : r() < 0.5 ? WOOD.leaf : WOOD.leaf2), Math.floor(r() * 999), { kind: K.Leaves, wind: 0.15, jitter: 0.3, detail: 1 });
   // Glowing seed-pods hanging in the crown.
   for (let i = 0; i < 16; i++) {
     const [cx, cy, cz] = crown[i % crown.length];
@@ -413,7 +413,7 @@ export function homeTree(b: Builder, x: number, z: number, s = 1, o: { face: num
   }
   for (const [cx, cy, cz] of crown)
     for (let k = 0; k < 3; k++)
-      cs.core.blob(cx + (r() - 0.5) * 3 * s, cy + (r() - 0.3) * 1.2 * s, cz + (r() - 0.5) * 3 * s, (1.9 + r() * 0.8) * s, (1.4 + r() * 0.5) * s, (1.9 + r() * 0.8) * s, r() < 0.5 ? WOOD.leaf : WOOD.leaf2, Math.floor(r() * 999), { kind: K.Leaves, wind: 0.2, jitter: 0.3, detail: 1 });
+      cs.core.blob(cx + (r() - 0.5) * 3 * s, cy + (r() - 0.3) * 1.2 * s, cz + (r() - 0.5) * 3 * s, (1.9 + r() * 0.8) * s, (1.4 + r() * 0.5) * s, (1.9 + r() * 0.8) * s, b.tone('home', x, z, r() < 0.5 ? WOOD.leaf : WOOD.leaf2), Math.floor(r() * 999), { kind: K.Leaves, wind: 0.2, jitter: 0.3, detail: 1 });
   let deck: [number, number, number] | null = null;
   if (o.treehouse) {
     // A plank platform round the trunk, a round hut with a thatched cone on the near side, a
@@ -479,7 +479,7 @@ export function giantOak(b: Builder, x: number, z: number, s = 1, pods = 0) {
   for (const [cx, cy, cz] of crown)
     for (let k = 0; k < 3; k++) {
       const up = k === 2;
-      cs.core.blob(cx + (r() - 0.5) * 2 * s, cy + (up ? 0.6 : -0.2 + r() * 0.4) * s, cz + (r() - 0.5) * 2 * s, (1.1 + r() * 0.5) * s, (0.8 + r() * 0.3) * s, (1.1 + r() * 0.5) * s, up ? '#4a7a34' : r() < 0.5 ? WOOD.leaf : WOOD.leaf2, Math.floor(r() * 999), { kind: K.Leaves, wind: 0.2, jitter: 0.3, detail: 1 });
+      cs.core.blob(cx + (r() - 0.5) * 2 * s, cy + (up ? 0.6 : -0.2 + r() * 0.4) * s, cz + (r() - 0.5) * 2 * s, (1.1 + r() * 0.5) * s, (0.8 + r() * 0.3) * s, (1.1 + r() * 0.5) * s, b.tone('giant', x, z, up ? '#4a7a34' : r() < 0.5 ? WOOD.leaf : WOOD.leaf2), Math.floor(r() * 999), { kind: K.Leaves, wind: 0.2, jitter: 0.3, detail: 1 });
     }
   for (let i = 0; i < pods; i++) {
     const [cx, cy, cz] = crown[i % crown.length];

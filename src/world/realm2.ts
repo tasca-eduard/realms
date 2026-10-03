@@ -13,6 +13,7 @@ import { bough, bramble, deadShrub, diceAt, giantMushroom, giantOak, greatTree, 
 import { dressWoodStair, onWoodStair, paintWoodStair, WOOD_STAIR, WOOD_STAIR_HEAD, woodStairBare } from './seastair';
 import { WOOD_ZONES } from './lightzones';
 import { buildHollowLife, innTree, trunkFades } from './hollowlife';
+import { buildWoodColours, woodTones } from './woodcolours';
 
 // ---------------------------------------------------------------------------
 // Realm 2: Whisperwood, the Old Wood (the prototype's second realm).
@@ -127,12 +128,12 @@ const FIRE = { x: 58.6, z: 78.8 };
 // few in front of it), how big, which way their doors face (toward the camera side).
 const HOMES = {
   inn: { x: 58.2, z: 96, s: 1.05, face: 1.05, treehouse: true }, // where the road comes in, across the kilns lane (on the bay's south shore its crown hid the west shore, Ash's family's door and the lane west)
-  lodge: { x: 31, z: 58, s: 0.9, face: 0.8, treehouse: false }, // the forester's, apart by the Whisper (on the north shore it hid the Gatherers' Clearing)
+  lodge: { x: 28, z: 58, s: 0.9, face: 0.8, treehouse: false }, // the forester's, apart by the Whisper (on the north shore it hid the Gatherers' Clearing; 3 m further west the Heart Oak's crown no longer hides its door)
   smithy: { x: 77.8, z: 75.2, s: 1, face: 0.4, treehouse: false }, // by the road east
   ash: { x: 33.5, z: 87.5, s: 0.85, face: 0.73, treehouse: true }, // a size smaller: a bigger crown reached over the Ring of Oaks' near side
   weaver: { x: 40, z: 60, s: 0.85, face: 0.9, treehouse: false },
-  elder: { x: 79, z: 58, s: 1.18, face: 1.1, treehouse: true },
-  fisher: { x: 79.5, z: 83.5, s: 0.82, face: 0.3, treehouse: false }, // east, off the line from the camera to the green
+  elder: { x: 78, z: 60, s: 1.18, face: 1.5, treehouse: true }, // (a step south-west, its door to the road: from 2 m north-east the High Canopy's first giant hid it)
+  fisher: { x: 79.5, z: 81.5, s: 0.82, face: 0.3, treehouse: false }, // east, off the line from the camera to the green (2 m north of where the Old Grove's giant oak hid its door)
 };
 /** The lakeside path round the Heartpool. */
 const LAKE_RING: Pt[] = Array.from({ length: 25 }, (_, k) => byLake((k / 24) * Math.PI * 2, 2.4));
@@ -755,6 +756,8 @@ export function buildRealm2(builder: Builder): RealmData {
     }, cx - rr - 1, cz - rr - 1, cx + rr + 1, cz + rr + 1);
 
   // ---------- props ----------
+  // Leaves by zone (src/world/woodcolours.ts).
+  b.leafTone = woodTones(zoneAt);
   const kit = new MapKit(grid, [ROAD_IN, ROAD_EAST, ROAD_NORTH, RAVINE_PATH, LANE_BANK, LANE_WEST, LANE_GLADE, HOLD_PATH, LANE_STAG, LANE_KILNS, LAKE_RING, LANE_SEA]);
   const flat = (x: number, z: number, rad: number) => kit.flatAround(x, z, rad);
   // ---------- who lives where (placed before the props, which keep clear of them) ----------
@@ -1678,6 +1681,18 @@ export function buildRealm2(builder: Builder): RealmData {
     else b.mushrooms(x, z, 5);
   }
   for (const [x, z] of [[14, 104], [22, 108], [18, 100]] as Pt[]) b.fx.addEmitter({ x, y: FLOOR + 0.4, z, rate: 0.4, spec: P.wisp, spread: 3, vy: 0.1 });
+  // ---------- Whisperwood's colours ----------
+  // Hawthorns, rowans and copper beeches put in by hand, the Withered Wood's last leaves, campion and foxgloves,
+  // ivy down the cliffs (src/world/woodcolours.ts).
+  buildWoodColours(b, grid, {
+    zoneAt, kit, keepOut, byLake,
+    people: [...homes, ...carry, ...kids, ...garden, watchSpot, [washSpot[0], washSpot[1]], [sitSpot[0], sitSpot[1]], [jettyX - 1.6, JETTY_Z + 0.5], [jettyX + 1, JETTY_Z + 0.5]],
+    lanes: [LANE_WEST, LANE_GLADE, LANE_STAG, LANE_KILNS, LANE_BANK, ROAD_EAST, ROAD_NORTH, ROAD_IN],
+    glades: [[GLADE.x, GLADE.z, 6], [CLEARING.x, CLEARING.z, 6], [DELL.x, DELL.z, 7]],
+    withered: (x, z) => z > 32 && insidePoly(HOLD, x, z) && grid.groundAt(x, z) > HOLD_H - 0.6,
+    bare: (x, z) => (insidePoly(HOLD, x, z) && grid.groundAt(x, z) > HOLD_H - 0.6) || insidePoly(MOSSFEN, x, z),
+    climb: (x, z) => LEDGES.some((l) => x > l.x0 - 1.5 && x < l.x1 + 1.5 && z > l.z0 - 1.5 && z < l.z1 + 1.5) || (x > STAND.x0 - 1.5 && x < STAND.x1 + 1.5 && z > STAND.z0 - 1.5 && z < STAND.z1 + 1.5),
+  });
 
   // ---------- data ----------
   // The Old Wood's folk cut their waymarks into standing stones, not planed boards.
