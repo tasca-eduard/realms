@@ -64,7 +64,7 @@ fungi and the Mushroom Dell, the Drowned Shrine, the rope bridges, the Warden's 
 
 Shared groundwork (one agent each, side by side):
 
-- [ ] **85 Light, mist and dawn per zone** ([085](../in-progress/085-light-mist-dawn-per-zone.md)): a light per zone,
+- [ ] **85 Light, mist and dawn per zone** ([085](../done/085-light-mist-dawn-per-zone.md)): a light per zone,
   blended at the borders (realm 1: Keepsfoot warm amber, Blackpine green-black, the barrows cold violet with
   ghost-cyan, the marsh sallow, the fields silver-blue, the keep indigo against torch orange, the hall ember-red;
   realm 2: mist by zone, thin and low over open ground, water and the village, thick only in the Deep Wood, the
