@@ -24,3 +24,7 @@ The look measured again against the plan's targets at the comparison's spots; pe
 
 The full suite; the targets met or the gap said; draw calls no worse than before the plan; the docs. Before/after shots from the game camera at the comparison's spots (the user's rule: changes plainly
 visible from where the player looks).
+
+From 087: the new life costs +1.5 to +5 draw calls where in view; pay it back by moving the old critters (about 46 in
+realm 1, 28 in realm 2, 2-3 draws each) onto wildlife.ts's shared meshes, or their blob shadows onto one mesh.
+From 088: the camp fight is three goblins bigger (11 foes); look at it in the balance.

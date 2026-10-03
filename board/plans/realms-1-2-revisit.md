@@ -76,7 +76,7 @@ Shared groundwork (one agent each, side by side):
   aren't square steps; flow on streams and rivers (ripples and foam drifting downstream, white water at fords,
   falls and bridges); clear shallows over a visible bed, dark deeps as a mirror; a moon path and lamps' light laid
   on the water. Realm 3's sea unchanged.
-- [ ] **87 Life in the air, the water and the fields** ([087](../in-progress/087-life-air-water-fields.md)): the reef's
+- [ ] **87 Life in the air, the water and the fields** ([087](../done/087-life-air-water-fields.md)): the reef's
   instanced flocks and schools made general; realm 1: crows round the keep's towers, harmless bats over the
   barrows, swans and ducks on Mirrormere and the moat, a heron at the ford, frogs, fish rising, sheep, cows,
   geese, moths at every lamp, glow-worms in Blackpine, pale chimney smoke; realm 2: rooks over Rookfall, a heron
