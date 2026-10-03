@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import { MOBILE } from '../config';
-import { Geo, type Col } from '../engine/geo';
+import { Geo } from '../engine/geo';
 import type { PSpec } from '../engine/particles';
 import { angleLerp, clamp, damp, fbm, mulberry32, type Rng } from '../engine/util';
 import { NONE, T } from '../world/grid';
 import type { Game } from './game';
+import { body, both, FEW, Herd, lifeMaterial, NIGHT, RANGE, up } from './wildlife';
 
 // ---------------------------------------------------------------------------
 // The Sunken Reef's harmless life, so that the sea is alive wherever the knight dives (none of it fights, none
@@ -18,169 +19,10 @@ import type { Game } from './game';
 // doesn't move is src/world/seabed.ts.
 // Cheap enough for phones: each group is one instanced mesh (one draw), bent in its vertex shader (fish wag,
 // wings and flippers flap, bells pulse, arms curl, legs scuttle), and only the groups near the camera move
-// or draw.
+// or draw (the group, its bends and its material are the shared grammar of src/game/wildlife.ts).
 // ---------------------------------------------------------------------------
 
 type V3 = [number, number, number];
-
-/** How far from the camera's focus things still move and draw. */
-const RANGE = MOBILE ? 30 : 38;
-/** Fewer of everything on a phone. */
-const FEW = MOBILE ? 0.55 : 1;
-
-/** How much the glowing parts glow: all night, less once dawn comes. */
-const NIGHT = { value: 1 };
-
-/** How each kind of body bends in its own space (aWind: how much a vertex bends; aPhase: its stroke, run on
- *  by how hard it swims). */
-const BEND = {
-  // Fish: a wave running back along the body to the tail (the head at +z).
-  wag: `transformed.x += sin(aPhase - position.z * 5.0) * aWind * 0.13;`,
-  // Rays' wings and turtles' flippers: up and down and a little back, the wave running out to the tips.
-  flap: `float fl = aPhase - abs(position.x) * 1.4;
-         transformed.y += sin(fl) * aWind * 0.3;
-         transformed.z -= cos(fl) * aWind * 0.1;`,
-  // Jellies: the bell squeezes in at its rim and opens again; the tentacles (weights past 1) trail and sway.
-  pulse: `float sq = max(0.0, sin(aPhase));
-          if (aWind > 1.0) {
-            float k = aWind - 1.0;
-            transformed.x += sin(aPhase * 0.5 - position.y * 4.0) * k * 0.09;
-            transformed.z += cos(aPhase * 0.4 - position.y * 3.0) * k * 0.07;
-            transformed.y += sq * k * 0.08;
-          } else {
-            transformed.xz *= 1.0 - sq * aWind * 0.22;
-            transformed.y += sq * aWind * 0.05;
-          }`,
-  // An octopus's arms: waves running out along each, curling up off the floor.
-  curl: `float an = atan(position.z, position.x);
-         transformed.y += (sin(aPhase + an * 3.0 - aWind * 5.0) * 0.5 + 0.5) * aWind * 0.14;
-         transformed.xz *= 1.0 + sin(aPhase * 0.6 + an * 2.0) * aWind * 0.12;`,
-  // A crab's legs: lifting by turns while it scuttles.
-  scuttle: `transformed.y += max(0.0, sin(aPhase + position.z * 9.0 + sign(position.x) * 1.6)) * aWind * 0.12;`,
-};
-type Bend = keyof typeof BEND;
-
-/** Lambert with the bend, a little light of its own (so the sea's creatures read through dark water) and
- *  the glowing parts (aKind 1) lit from inside at night. */
-function lifeMaterial(bend: Bend, self: number) {
-  const mat = new THREE.MeshLambertMaterial({ vertexColors: true });
-  mat.onBeforeCompile = (sh) => {
-    sh.uniforms.uNight = NIGHT;
-    sh.uniforms.uSelf = { value: self };
-    sh.vertexShader = sh.vertexShader
-      .replace(
-        '#include <common>',
-        `#include <common>
-         attribute float aKind; attribute float aWind; attribute float aPhase;
-         varying float vGlow;`,
-      )
-      .replace(
-        '#include <begin_vertex>',
-        `#include <begin_vertex>
-         vGlow = aKind;
-         ${BEND[bend]}`,
-      );
-    sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', `#include <common>\nuniform float uNight; uniform float uSelf; varying float vGlow;`)
-      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>\ntotalEmissiveRadiance += diffuseColor.rgb * (uSelf + vGlow * uNight);`);
-  };
-  mat.customProgramCacheKey = () => 'sealife-' + bend;
-  return mat;
-}
-
-/** A Geo built into a body, each vertex's bend weight worked out from where it lies (and the weight its shape
- *  was drawn with, as a mask). */
-function body(g: Geo, weight: (x: number, y: number, z: number, mask: number) => number) {
-  const geo = g.build();
-  const p = geo.getAttribute('position'), w = geo.getAttribute('aWind');
-  for (let i = 0; i < p.count; i++) w.setX(i, weight(p.getX(i), p.getY(i), p.getZ(i), w.getX(i)));
-  return geo;
-}
-
-/** A triangle seen from both sides (fins, flippers, wings). */
-function both(g: Geo, a: V3, b: V3, c: V3, col: Col, kind = 0, wind = 0) {
-  g.tri(a, b, c, col, { kind, wind });
-  g.tri(a, c, b, col, { kind, wind });
-}
-
-const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _p = new THREE.Vector3(), _s = new THREE.Vector3(), _c = new THREE.Color();
-
-/** One group of creatures: an instanced mesh of `n` bodies with a stroke each (its own copy of the shared
- *  body's attributes, so that each group strokes on its own). */
-class Herd {
-  mesh: THREE.InstancedMesh;
-  phase: Float32Array;
-  private phaseAttr: THREE.InstancedBufferAttribute;
-  /** How far a body reaches from its middle (at size 1). */
-  private reach: number;
-  constructor(geo: THREE.BufferGeometry, mat: THREE.Material, n: number, g: Game, tint: (i: number) => Col = () => '#ffffff') {
-    const own = new THREE.BufferGeometry();
-    for (const k of Object.keys(geo.attributes)) own.setAttribute(k, geo.attributes[k]);
-    this.phase = new Float32Array(n);
-    for (let i = 0; i < n; i++) this.phase[i] = Math.random() * 6.3;
-    this.phaseAttr = new THREE.InstancedBufferAttribute(this.phase, 1).setUsage(THREE.DynamicDrawUsage);
-    own.setAttribute('aPhase', this.phaseAttr);
-    this.mesh = new THREE.InstancedMesh(own, mat, n);
-    this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    // (Drawn only when some of its bodies are in view: see flush.)
-    own.computeBoundingSphere();
-    this.reach = own.boundingSphere!.radius + own.boundingSphere!.center.length();
-    this.mesh.name = 'sealife';
-    for (let i = 0; i < n; i++) this.tint(i, tint(i));
-    g.scene.add(this.mesh);
-  }
-  tint(i: number, c: Col) {
-    if (Array.isArray(c)) _c.setRGB(c[0], c[1], c[2]);
-    else _c.set(c);
-    this.mesh.setColorAt(i, _c);
-    this.mesh.instanceColor!.needsUpdate = true;
-  }
-  /** Place body i: where, which way it heads (yaw from +z), its nose up or down, its roll, its size. */
-  set(i: number, x: number, y: number, z: number, yaw: number, pitch: number, roll: number, s: number) {
-    _q.setFromEuler(_e.set(pitch, yaw, roll, 'YXZ'));
-    _m.compose(_p.set(x, y, z), _q, _s.set(s, s, s));
-    this.mesh.setMatrixAt(i, _m);
-  }
-  /** The same, quicker, for the many that don't roll (written straight into the instance's matrix:
-   *  turned by yaw, then pitched). */
-  setFast(i: number, x: number, y: number, z: number, yaw: number, pitch: number, s: number) {
-    const e = this.mesh.instanceMatrix.array, o = i * 16, cy = Math.cos(yaw) * s, sy = Math.sin(yaw) * s, cp = Math.cos(pitch), sp = Math.sin(pitch);
-    e[o] = cy;
-    e[o + 1] = 0;
-    e[o + 2] = -sy;
-    e[o + 4] = sy * sp;
-    e[o + 5] = cp * s;
-    e[o + 6] = cy * sp;
-    e[o + 8] = sy * cp;
-    e[o + 9] = -sp * s;
-    e[o + 10] = cy * cp;
-    e[o + 12] = x;
-    e[o + 13] = y;
-    e[o + 14] = z;
-    e[o + 15] = 1;
-  }
-  flush() {
-    this.mesh.instanceMatrix.needsUpdate = true;
-    this.phaseAttr.needsUpdate = true;
-    // A sphere round all its bodies, padded by a body's reach at the largest size, so that a group out of view
-    // costs no draw (a shoal, a smack of jellies; one spread over the whole realm is drawn as before).
-    const e = this.mesh.instanceMatrix.array, n = this.mesh.count * 16;
-    let x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity, s = 0;
-    for (let o = 0; o < n; o += 16) {
-      x0 = Math.min(x0, e[o + 12]);
-      x1 = Math.max(x1, e[o + 12]);
-      y0 = Math.min(y0, e[o + 13]);
-      y1 = Math.max(y1, e[o + 13]);
-      z0 = Math.min(z0, e[o + 14]);
-      z1 = Math.max(z1, e[o + 14]);
-      s = Math.max(s, e[o] * e[o] + e[o + 1] * e[o + 1] + e[o + 2] * e[o + 2], e[o + 4] * e[o + 4] + e[o + 5] * e[o + 5] + e[o + 6] * e[o + 6]);
-    }
-    if (!n) return;
-    const b = (this.mesh.boundingSphere ??= new THREE.Sphere());
-    b.center.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
-    b.radius = Math.hypot(x1 - x0, y1 - y0, z1 - z0) / 2 + this.reach * Math.sqrt(s) + 0.5;
-  }
-}
 
 // ---------- the bodies ----------
 
@@ -285,13 +127,6 @@ function rayBody(top: string, spot: string, belly: string) {
   for (const s of [-1, 1]) g.box(s * 0.1, 0.06, 0.3, 0.05, 0.05, 0.05, '#101016');
   g.beam([0, 0.02, -0.36], [0, 0.03, -1.35], 0.018, top);
   return body(g, (x) => Math.pow(Math.abs(x), 1.3));
-}
-
-/** A triangle turned to face up (or down) whichever way its corners come. */
-function up(g: Geo, a: V3, b: V3, c: V3, col: Col, down = false, kind = 0) {
-  const ny = (b[2] - a[2]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[2] - a[2]);
-  if (ny > 0 !== down) g.tri(a, b, c, col, { kind });
-  else g.tri(a, c, b, col, { kind });
 }
 
 /** A sea turtle about a unit long, its head at +z: a domed shell (its plates picked out), a pale belly, a head

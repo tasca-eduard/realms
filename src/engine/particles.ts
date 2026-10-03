@@ -160,7 +160,8 @@ export const P = {
   coinGlint: { color: [4, 3.2, 1.2], size: 1, life: 0.5, gravity: -0.5 },
   heal: { color: [1.2, 3.5, 1.5], color2: [0.3, 1.2, 0.5], size: 1, life: 1.2, gravity: -1.4, wobble: 0.4 },
   dust: { color: [0.2, 0.19, 0.2], color2: [0.12, 0.12, 0.14], size: 3, size2: 5, life: 0.6, drag: 4, gravity: -0.4, alpha: 0.5 },
-  smoke: { color: [0.09, 0.09, 0.12], color2: [0.05, 0.05, 0.07], size: 3, size2: 8, life: 5, gravity: -0.35, drag: 0.4, wobble: 0.35, alpha: 0.35, fadeIn: 0.2 },
+  /** Smoke from chimneys and fires: pale against the night sky (dark smoke couldn't be seen at all). */
+  smoke: { color: [0.52, 0.53, 0.6], color2: [0.26, 0.27, 0.32], size: 4, size2: 11, life: 5.5, gravity: -0.35, drag: 0.4, wobble: 0.35, alpha: 0.42, fadeIn: 0.2 },
   puff: { color: [0.35, 0.34, 0.4], color2: [0.15, 0.15, 0.2], size: 4, size2: 7, life: 0.7, drag: 5, gravity: -0.8, alpha: 0.6 },
   /** Jets of steam from Brassbelly's valves while they hiss. */
   hiss: { color: [0.85, 0.9, 0.95], color2: [0.5, 0.55, 0.6], size: 2, size2: 4.5, life: 0.45, drag: 3, gravity: -1.2, alpha: 0.4 },

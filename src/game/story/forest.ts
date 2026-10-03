@@ -1,4 +1,5 @@
 import type { EnemySpawn, RegionDef } from '../../world/realm';
+import { WoodLife } from '../forestlife';
 import type { Game } from '../game';
 import type { Npc } from '../objects';
 import type { Enemy } from '../enemies';
@@ -23,6 +24,8 @@ export class ForestStory implements RealmStory {
   };
   private garrisonCleared = false;
   private owlHint = 0;
+  /** The wood's harmless life: rooks, bats, ducks, the night heron, carp, trout, frogs, deer, rabbits, the badger, fireflies (src/game/forestlife.ts). */
+  wildlife = new WoodLife();
 
   apply(g: Game) {
     const f = g.save.data.flags;
@@ -38,6 +41,7 @@ export class ForestStory implements RealmStory {
     }
     if (f.garrison) g.hallDoor?.setOpen(true, g, true);
     if (f.boss) g.setDawn(1);
+    this.wildlife.apply(g);
   }
   spawns(g: Game, s: EnemySpawn) {
     const f = g.save.data.flags;
@@ -142,5 +146,7 @@ export class ForestStory implements RealmStory {
   arenaOpen(g: Game) {
     return !!g.save.data.flags.garrison;
   }
-  tick() {}
+  tick(g: Game, dt: number) {
+    this.wildlife.update(g, dt);
+  }
 }

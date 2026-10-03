@@ -1,4 +1,5 @@
 import type { EnemySpawn, RegionDef } from '../../world/realm';
+import { KeepLife } from '../castlelife';
 import type { Enemy } from '../enemies';
 import type { Game } from '../game';
 import type { Npc } from '../objects';
@@ -28,6 +29,8 @@ export class CastleStory implements RealmStory {
   cagedPlea = 'Get me out of here! Break the lock!';
   cageHolds = 'Harder! The lock is rusted through!';
   private campCleared = false;
+  /** The realm's harmless life: crows, bats, swans, ducks, the heron, sheep, cows, geese, frogs, fish, moths (src/game/castlelife.ts). */
+  wildlife = new KeepLife();
 
   apply(g: Game) {
     const f = g.save.data.flags;
@@ -42,6 +45,7 @@ export class CastleStory implements RealmStory {
     }
     if (f.courtyard) g.hallDoor?.setOpen(true, g, true);
     if (f.boss) g.setDawn(1);
+    this.wildlife.apply(g);
   }
 
   spawns(g: Game, s: EnemySpawn) {
@@ -188,7 +192,8 @@ export class CastleStory implements RealmStory {
     return !!g.save.data.flags.courtyard;
   }
 
-  tick(g: Game) {
+  tick(g: Game, dt: number) {
+    this.wildlife.update(g, dt);
     // First steps: point the way to the wayshrine's moonfire.
     const p = g.player;
     if (g.state === 'play' && g.settings.hints && !g.tipShown('road') && g.tutorialT > 12 && !g.save.data.lit.length && Math.hypot(p.x - 105.5, p.z - 99.5) < 22 && g.firstTime('road')) {
