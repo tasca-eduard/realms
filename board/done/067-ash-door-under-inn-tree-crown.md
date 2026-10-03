@@ -41,4 +41,4 @@ The dice unchanged (4,369 colliders, the same away from the two trees). Only `sr
 Checked: reach2 (10,858 reachable, no escapes, no traps), spawns2, folk, oaks, normals2, corners2 (Bram's round),
 treasures2 (9 of 9 chests); tsc clean; before/after shots from the game camera (Ash's garden: his home and lit door
 now in the open). Left as known: the inn's crown now covers the island end of the south rope bridge;
-four doors hidden by crowns ([082](../backlog/082-hollowbough-doors-hidden.md)).
+four doors hidden by crowns ([082](../done/082-hollowbough-doors-hidden.md)).

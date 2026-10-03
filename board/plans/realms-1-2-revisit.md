@@ -109,12 +109,12 @@ Realm 1, the Moonlit Keep:
 
 Realm 2, Whisperwood:
 
-- [ ] **92 Whisperwood's trees and colours** ([092](../in-progress/092-whisperwood-trees-colours.md)): leaves by zone
+- [ ] **92 Whisperwood's trees and colours** ([092](../done/092-whisperwood-trees-colours.md)): leaves by zone
   (silver birches at the verges, copper and gold beeches in the Old Grove, blue-black pines in the East Woods,
   rust in the Withered Wood, lime oaks in the Deep Wood, one tree in twelve an odd tone); accent trees by hand
   (white hawthorn by the Heartpool, rowans with red berries on the lanes); the prototype's pink campion and
   foxgloves; vines on more cliff faces; Hollowbough's camera side cleared (near crowns thinned, the hidden doors in
-  view: [082](../backlog/082-hollowbough-doors-hidden.md), cut-away trunks drawn as faint outlines).
+  view: [082](../done/082-hollowbough-doors-hidden.md), cut-away trunks drawn as faint outlines).
 - [ ] **93 Hollowbough lived in** ([093](../done/093-hollowbough-lived-in.md)): 15-20 more villagers doing things
   (children on a rope swing, a lamplighter, foragers coming home, a storyteller with listeners, a lookout up a
   treehouse, a carver, the weaver at her loom); the inn's hollow as a room to walk into, with voices and a lute;
