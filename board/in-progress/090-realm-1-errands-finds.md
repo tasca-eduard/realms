@@ -3,11 +3,11 @@ id: 090
 title: Realm 1's errands and finds
 realm: castle
 area: quests
-status: todo
+status: in-progress
 priority: high
 created: 2026-10-02
 done:
-owner:
+owner: an agent (its own copy)
 depends: [088, 089]
 links: [../plans/realms-1-2-revisit.md]
 ---

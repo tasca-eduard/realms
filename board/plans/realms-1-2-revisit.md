@@ -97,7 +97,7 @@ Realm 1, the Moonlit Keep:
   runes glowing in turn and the eighth stone half-buried with a chest; the Kings' Orchard in blossom; the raided
   farm smouldering, then mended; a waterfall off the Overlook with a ledge behind it; a night fisher's lantern
   boat on Mirrormere.
-- [ ] **90 Realm 1's errands and finds** ([090](../todo/090-realm-1-errands-finds.md)): five errands that change a
+- [ ] **90 Realm 1's errands and finds** ([090](../in-progress/090-realm-1-errands-finds.md)): five errands that change a
   place you can see (the miller's jammed wheel turns; the lamplighter's stolen oil lights the road's lamps up to
   the keep; Pip's cat in the Hollow; the shepherd's strays in Blackpine; the chapel's bell rope back from
   Gnasher's camp, and the bell rings the hour); lore 5 to ~12, chests 11 to ~18; things that answer the sword
